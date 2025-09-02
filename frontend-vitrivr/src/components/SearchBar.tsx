@@ -1,14 +1,38 @@
-import { useState } from "react";
-import { retrieval } from "../api/client";
-import {buildTextQuery} from "../lib/vitrivr.ts";
+import {useState} from "react";
+import {retrieval} from "../api/client";
+import {buildTextQuery} from "../lib/vitrivr";
+import {videoUrl, thumbnailUrl} from "../lib/vitrivr";
+import "./SearchBar.css";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
+
+type Row = { object?: { id?: string }; id?: string; fields?: Record<string, unknown> };
+type Resp = { results?: Row[]; data?: Row[] } | Row[] | { retrievables?: Array<{ id?: string }> };
+
+function rowsFrom(resp: Resp): Row[] {
+    if (Array.isArray(resp)) return resp;
+    if ("results" in resp && Array.isArray(resp.results)) return resp.results;
+    if ("data" in resp && Array.isArray(resp.data)) return resp.data;
+    return [];
+}
+
+function idsFrom(resp: Resp): string[] {
+    if ("retrievables" in resp && Array.isArray(resp.retrievables)) {
+        return resp.retrievables
+            .map((r) => r?.id)
+            .filter((v): v is string => typeof v === "string");
+    }
+    return rowsFrom(resp)
+        .map((r) => r.object?.id ?? r.id)
+        .filter((v): v is string => typeof v === "string");
+}
 
 export default function SearchBar() {
     const [query, setQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [raw, setRaw] = useState<string>("");
+    const [ids, setIds] = useState<string[]>([]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -17,42 +41,56 @@ export default function SearchBar() {
         setLoading(true);
         setError(null);
         setRaw("");
+        setIds([]);
 
         try {
             const body = buildTextQuery(query.trim());
-            const resp = await retrieval.postExecuteQuery(SCHEMA, body); // it works, red nevertheless
-            console.log(resp);
-            setRaw(JSON.stringify(resp, null, 2)); // just show whatever comes back
+            const resp = await retrieval.postExecuteQuery(SCHEMA, body);
+            setRaw(JSON.stringify(resp, null, 2));
+            setIds(idsFrom(resp as Resp));
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
-            console.log(err);
+            // optional: console.error(err);
         } finally {
             setLoading(false);
         }
     }
 
     return (
-        <div className="p-2 space-y-3">
-            <form onSubmit={handleSubmit} className="flex gap-2">
+        <div className="sb">
+            <form onSubmit={handleSubmit} className="sb__form">
                 <input
                     type="text"
-                    placeholder="Search…"
+                    placeholder="Search videos…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="flex-1 border rounded px-3 py-2"
+                    className="sb__input"
                 />
-                <button className="bg-blue-600 text-white rounded px-4 py-2" disabled={loading}>
+                <button className="sb__button" disabled={loading}>
                     {loading ? "Searching…" : "Search"}
                 </button>
             </form>
 
-            {error && <div className="text-red-600 text-sm">{error}</div>}
+            {error && <div className="sb__error">{error}</div>}
 
-            {raw && (
-                <pre className="text-xs bg-neutral-100 border rounded p-3 overflow-auto max-h-80">
-{raw}
-        </pre>
+            {ids.length > 0 && (
+                <div className="sb__results">
+                    {ids.map((id) => (
+                        <figure key={id} className="sb__card">
+                            <video
+                                controls
+                                preload="metadata"
+                                poster={thumbnailUrl(id)}
+                                className="sb__video"
+                                src={videoUrl(id)}
+                            />
+                            <figcaption className="sb__caption">{id}</figcaption>
+                        </figure>
+                    ))}
+                </div>
             )}
+
+            {raw && <pre className="sb__raw">{raw}</pre>}
         </div>
     );
 }
