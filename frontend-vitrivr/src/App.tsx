@@ -1,4 +1,3 @@
-import Button from "./components/Button";
 import SearchBar from "./components/SearchBar";
 
 function App() {
