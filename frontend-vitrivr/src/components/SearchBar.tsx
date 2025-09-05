@@ -75,15 +75,14 @@ export default function SearchBar() {
 
             {ids.length > 0 && (
                 <div className="sb__results">
-                    {ids.map((id) => (
+                    {ids.slice(0, 10).map((id) => (
                         <figure key={id} className="sb__card">
-                            <video
-                                controls
-                                preload="metadata"
-                                poster={thumbnailUrl(id)}
-                                className="sb__video"
-                                src={videoUrl(id)}
+                            <img // change this to video as soon as the api works. right now only shows the thumbnail
+                                src={thumbnailUrl(id)}
+                                alt={`Thumbnail for ${id}`}
+                                className="sb__thumbnail"
                             />
+
                             <figcaption className="sb__caption">{id}</figcaption>
                         </figure>
                     ))}
