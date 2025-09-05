@@ -3,6 +3,8 @@ import {retrieval} from "../api/client";
 import {buildTextQuery} from "../lib/vitrivr";
 import {videoUrl, thumbnailUrl} from "../lib/vitrivr";
 import "./SearchBar.css";
+import "./Card.css"
+import Card from "./Card.tsx";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
