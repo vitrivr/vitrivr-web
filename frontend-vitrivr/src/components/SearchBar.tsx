@@ -1,10 +1,9 @@
 import {useState} from "react";
 import {retrieval} from "../api/client";
 import {buildTextQuery} from "../lib/vitrivr";
-import {videoUrl, thumbnailUrl} from "../lib/vitrivr";
 import "./SearchBar.css";
 import "./Card.css"
-import Card from "./Card.tsx";
+import ResultItem from "./ResultItem.tsx";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
@@ -78,15 +77,7 @@ export default function SearchBar() {
             {ids.length > 0 && (
                 <div className="sb__results">
                     {ids.slice(0, 10).map((id) => (
-                        <figure key={id} className="sb__card">
-                            <img // change this to video as soon as the api works. right now only shows the thumbnail
-                                src={thumbnailUrl(id)}
-                                alt={`Thumbnail for ${id}`}
-                                className="sb__thumbnail"
-                            />
-
-                            <figcaption className="sb__caption">{id}</figcaption>
-                        </figure>
+                        <ResultItem key={id} id={id} kind="image"/>
                     ))}
                 </div>
             )}
