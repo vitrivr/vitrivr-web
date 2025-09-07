@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useMemo, useState} from "react";
 import {retrieval} from "../api/client";
 import {buildTextQuery} from "../lib/vitrivr";
 import "./SearchBar.css";
@@ -7,25 +7,38 @@ import ResultItem from "./ResultItem.tsx";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
-type Row = { object?: { id?: string }; id?: string; fields?: Record<string, unknown> };
-type Resp = { results?: Row[]; data?: Row[] } | Row[] | { retrievables?: Array<{ id?: string }> };
+type MediaKind = "image" | "video" | "costum";
+type MediaItem = { id: string; kind: MediaKind; rawType?: string };
+type RetrievablesResponse = {
+    retrievables?: Array<{
+        id?: string;
+        type?: string;
+        score?: number;
+        parts?: unknown[];
+        properties?: Record<string, unknown>
+    }>;
+};
 
-function rowsFrom(resp: Resp): Row[] {
-    if (Array.isArray(resp)) return resp;
-    if ("results" in resp && Array.isArray(resp.results)) return resp.results;
-    if ("data" in resp && Array.isArray(resp.data)) return resp.data;
-    return [];
+function mapTypeToKind(t?: string): MediaKind {
+    switch (t) {
+        case "SOURCE:IMAGE":
+            return "image";
+        case "SEGMENT":
+            return "video";
+        default:
+            return "costum";
+    }
 }
 
-function idsFrom(resp: Resp): string[] {
-    if ("retrievables" in resp && Array.isArray(resp.retrievables)) {
-        return resp.retrievables
-            .map((r) => r?.id)
-            .filter((v): v is string => typeof v === "string");
-    }
-    return rowsFrom(resp)
-        .map((r) => r.object?.id ?? r.id)
-        .filter((v): v is string => typeof v === "string");
+function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
+    const list = resp.retrievables ?? [];
+    return list
+        .map((r) => {
+            const id = r.id?.trim();
+            if (!id) return null;
+            return {id, kind: mapTypeToKind(r.type), rawType: r.type};
+        })
+        .filter((v): v is MediaItem => !!v);
 }
 
 export default function SearchBar() {
@@ -34,6 +47,7 @@ export default function SearchBar() {
     const [error, setError] = useState<string | null>(null);
     const [raw, setRaw] = useState<string>("");
     const [ids, setIds] = useState<string[]>([]);
+    const [items, setItems] = useState<MediaItem[]>([]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -48,7 +62,8 @@ export default function SearchBar() {
             const body = buildTextQuery(query.trim());
             const resp = await retrieval.postExecuteQuery(SCHEMA, body);
             setRaw(JSON.stringify(resp, null, 2));
-            setIds(idsFrom(resp as Resp));
+            const media = mediaFrom(resp as RetrievablesResponse);
+            setItems(media);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
             // optional: console.error(err);
@@ -57,12 +72,16 @@ export default function SearchBar() {
         }
     }
 
+    const images = useMemo(() => items.filter(i => i.kind === "image").slice(0, 10), [items]);
+    const videos = useMemo(() => items.filter(i => i.kind === "video").slice(0, 10), [items]);
+    const others = useMemo(() => items.filter(i => i.kind === "costum").slice(0, 10), [items]);
+
     return (
         <div className="sb">
             <form onSubmit={handleSubmit} className="sb__form">
                 <input
                     type="text"
-                    placeholder="Search videos…"
+                    placeholder="Search media…"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="sb__input"
@@ -74,12 +93,47 @@ export default function SearchBar() {
 
             {error && <div className="sb__error">{error}</div>}
 
-            {ids.length > 0 && (
-                <div className="sb__results">
-                    {ids.slice(0, 10).map((id) => (
-                        <ResultItem key={id} id={id} kind="image"/>
-                    ))}
-                </div>
+            {videos.length > 0 && (
+                <>
+                    <h3 className="sb__sectionTitle">Videos</h3>
+                    <div className="sb__results">
+                        {videos.map(({id}) => (
+                            <ResultItem key={id} id={id} kind="video"/>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {images.length > 0 && (
+                <>
+                    <h3 className="sb__sectionTitle">Images</h3>
+                    <div className="sb__results">
+                        {images.map(({id}) => (
+                            <ResultItem key={id} id={id} kind="image"/>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {others.length > 0 && (
+                <>
+                    <h3 className="sb__sectionTitle">Other</h3>
+                    <div className="sb__results">
+                        {others.map(({id, rawType}) => (
+                            <ResultItem
+                                key={id}
+                                id={id}
+                                kind="custom"
+                                renderMedia={() => (
+                                    <div className="sb__unknown">
+                                        {/* fallback preview; you can style this */}
+                                        <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
+                                    </div>
+                                )}
+                            />
+                        ))}
+                    </div>
+                </>
             )}
 
             {raw && <pre className="sb__raw">{raw}</pre>}
