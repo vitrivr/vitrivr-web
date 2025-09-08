@@ -8,11 +8,7 @@ import type { OpenAPIConfig } from './OpenAPI';
 
 export abstract class BaseHttpRequest {
 
-    public readonly config: OpenAPIConfig;
-
-    constructor(config: OpenAPIConfig) {
-        this.config = config;
-    }
+    constructor(public readonly config: OpenAPIConfig) {}
 
     public abstract request<T>(options: ApiRequestOptions): CancelablePromise<T>;
 }

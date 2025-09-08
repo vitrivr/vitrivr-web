@@ -5,11 +5,7 @@
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class ContentService {
-    public readonly httpRequest: BaseHttpRequest;
-
-    constructor(httpRequest: BaseHttpRequest) {
-        this.httpRequest = httpRequest;
-    }
+    constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Fetch previously exported data.
      * @param schema The schema this operation is for.

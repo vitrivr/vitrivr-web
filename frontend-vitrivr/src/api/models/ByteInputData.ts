@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ImageInputData = {
-    data: string;
-    type: 'ImageInputData';
+export type ByteInputData = {
+    data: number;
+    type: 'ByteInputData';
 };
 

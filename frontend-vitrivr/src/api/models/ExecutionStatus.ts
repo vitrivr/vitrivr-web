@@ -2,4 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ExecutionStatus = 'UNKNOWN' | 'RUNNING' | 'FAILED' | 'COMPLETED';
+export enum ExecutionStatus {
+    UNKNOWN = 'UNKNOWN',
+    RUNNING = 'RUNNING',
+    FAILED = 'FAILED',
+    COMPLETED = 'COMPLETED',
+}

@@ -2,9 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type VectorInputData = {
-    data: Array<number>;
-    comparison?: string | null;
-    type: 'VectorInputData';
+export type IntVectorInputData = {
+    data: number;
+    type: 'IntVectorInputData';
 };
 

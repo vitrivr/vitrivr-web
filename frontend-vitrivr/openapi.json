@@ -1,557 +1,818 @@
 {
-  "openapi" : "3.0.3",
-  "info" : {
-    "title" : "vitrivr engine API",
-    "version" : "0.1.0",
-    "description" : "Rest API for the vitrivr engine project. Provides query (runtime) and extraction (ingestion) endpoints"
+  "openapi": "3.0.3",
+  "info": {
+    "title": "vitrivr engine API",
+    "version": "0.1.0",
+    "description": "Rest API for the vitrivr engine project. Provides query (runtime) and extraction (ingestion) endpoints"
   },
-  "paths" : {
-    "/api/schema/list" : {
-      "get" : {
-        "tags" : [ "Schema Management" ],
-        "summary" : "Lists the names of all available schemas.",
-        "operationId" : "getListSchemas",
-        "parameters" : [ ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/SchemaList"
+  "paths": {
+    "/api/schema/list": {
+      "get": {
+        "tags": [
+          "Schema Management"
+        ],
+        "summary": "Lists the names of all available schemas.",
+        "operationId": "getListSchemas",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaList"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorStatus"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStatus"
                 }
               }
             }
           }
         },
-        "deprecated" : false,
-        "security" : [ ]
+        "deprecated": false,
+        "security": []
       }
     },
-    "/api/{schema}/fetch/{exporter}/{retrievableId}" : {
-      "get" : {
-        "tags" : [ "Content" ],
-        "summary" : "Fetch previously exported data.",
-        "operationId" : "getPreview",
-        "parameters" : [ {
-          "name" : "schema",
-          "in" : "path",
-          "description" : "The schema this operation is for.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "exporter",
-          "in" : "path",
-          "description" : "The exporter of the schema to use.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "retrievableId",
-          "in" : "path",
-          "description" : "The ID of the retrievable.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "image/jpeg" : { }
+    "/api/{schema}/fetch/{exporter}/{retrievableId}": {
+      "get": {
+        "tags": [
+          "Content"
+        ],
+        "summary": "Fetch previously exported data.",
+        "operationId": "getPreview",
+        "parameters": [
+          {
+            "name": "schema",
+            "in": "path",
+            "description": "The schema this operation is for.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorStatus"
+          {
+            "name": "exporter",
+            "in": "path",
+            "description": "The exporter of the schema to use.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "retrievableId",
+            "in": "path",
+            "description": "The ID of the retrievable.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStatus"
                 }
               }
             }
           }
         },
-        "deprecated" : false,
-        "security" : [ ]
+        "deprecated": false,
+        "security": []
       }
     },
-    "/api/{schema}/index" : {
-      "post" : {
-        "tags" : [ "Ingest" ],
-        "summary" : "Indexes an item, adding it to the defined schema.",
-        "operationId" : "postExecuteIngest",
-        "parameters" : [ {
-          "name" : "schema",
-          "in" : "path",
-          "description" : "The name of the schema to execute a query for.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
+    "/api/{schema}/index": {
+      "post": {
+        "tags": [
+          "Ingest"
+        ],
+        "summary": "Indexes an item, adding it to the defined schema.",
+        "operationId": "postExecuteIngest",
+        "parameters": [
+          {
+            "name": "schema",
+            "in": "path",
+            "description": "The name of the schema to execute a query for.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/IngestStatus"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestStatus"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorStatus"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStatus"
                 }
               }
             }
           }
         },
-        "deprecated" : false,
-        "security" : [ ]
+        "deprecated": false,
+        "security": []
       }
     },
-    "/api/{schema}/index/{jobId}" : {
-      "get" : {
-        "tags" : [ "Ingest" ],
-        "summary" : "Queries the status of a given ingest job.",
-        "operationId" : "getIngestStatus",
-        "parameters" : [ {
-          "name" : "schema",
-          "in" : "path",
-          "description" : "The name of the schema to execute a query for.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
+    "/api/{schema}/index/{jobId}": {
+      "get": {
+        "tags": [
+          "Ingest"
+        ],
+        "summary": "Queries the status of a given ingest job.",
+        "operationId": "getIngestStatus",
+        "parameters": [
+          {
+            "name": "schema",
+            "in": "path",
+            "description": "The name of the schema to execute a query for.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "The id of the job to query the status for.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
           }
-        }, {
-          "name" : "jobId",
-          "in" : "path",
-          "description" : "The id of the job to query the status for.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/IngestStatus"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestStatus"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorStatus"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStatus"
                 }
               }
             }
           }
         },
-        "deprecated" : false,
-        "security" : [ ]
+        "deprecated": false,
+        "security": []
       }
     },
-    "/api/{schema}/query" : {
-      "post" : {
-        "tags" : [ "Retrieval" ],
-        "summary" : "Executes a query and returns the query's results.",
-        "operationId" : "postExecuteQuery",
-        "parameters" : [ {
-          "name" : "schema",
-          "in" : "path",
-          "description" : "The name of the schema to execute a query for.",
-          "required" : true,
-          "deprecated" : false,
-          "allowEmptyValue" : false,
-          "schema" : {
-            "type" : "string"
+    "/api/{schema}/query": {
+      "post": {
+        "tags": [
+          "Retrieval"
+        ],
+        "summary": "Executes a query and returns the query's results.",
+        "operationId": "postExecuteQuery",
+        "parameters": [
+          {
+            "name": "schema",
+            "in": "path",
+            "description": "The name of the schema to execute a query for.",
+            "required": true,
+            "deprecated": false,
+            "allowEmptyValue": false,
+            "schema": {
+              "type": "string"
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/InformationNeedDescription"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InformationNeedDescription"
               }
             }
           },
-          "required" : false
+          "required": false
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/QueryResult"
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorStatus"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStatus"
                 }
               }
             }
           }
         },
-        "deprecated" : false,
-        "security" : [ ]
+        "deprecated": false,
+        "security": []
       }
     }
   },
-  "components" : {
-    "schemas" : {
-      "ExecutionStatus" : {
-        "type" : "string",
-        "enum" : [ "UNKNOWN", "RUNNING", "FAILED", "COMPLETED" ]
+  "components": {
+    "schemas": {
+      "ExecutionStatus": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "RUNNING",
+          "FAILED",
+          "COMPLETED"
+        ]
       },
-      "QueryContext" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "propertyOrDefault" : {
-            "type" : "string"
-          },
-          "local" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "type" : "string"
-              }
+      "InformationNeedDescription": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InputData"
             }
           },
-          "global" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          }
-        },
-        "required" : [ "propertyOrDefault", "local", "global" ]
-      },
-      "InformationNeedDescription" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "inputs" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/InputData"
+          "operations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/OperatorDescription"
             }
           },
-          "operations" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/OperatorDescription"
+          "output": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "inputs",
+          "operations",
+          "output"
+        ]
+      },
+      "BooleanInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "boolean"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "BooleanVectorInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "boolean"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "ByteInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "DateInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "DoubleInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "number",
+            "format": "double"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "DoubleVectorInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "number",
+            "format": "double"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "FloatInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
             }
           },
-          "output" : {
-            "type" : "string"
-          },
-          "context" : {
-            "$ref" : "#/components/schemas/QueryContext"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "inputs", "operations", "output", "context" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "BooleanInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "boolean"
+      "FloatVectorInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "float"
+            }
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "data", "type" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "DateInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "string"
+      "ImageInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string"
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "data", "type" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "ImageInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "string"
+      "InputData": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TextInputData"
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
+          {
+            "$ref": "#/components/schemas/ImageInputData"
           },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          {
+            "$ref": "#/components/schemas/FloatVectorInputData"
+          },
+          {
+            "$ref": "#/components/schemas/RetrievableIdInputData"
+          },
+          {
+            "$ref": "#/components/schemas/BooleanInputData"
+          },
+          {
+            "$ref": "#/components/schemas/ByteInputData"
+          },
+          {
+            "$ref": "#/components/schemas/DoubleInputData"
+          },
+          {
+            "$ref": "#/components/schemas/FloatInputData"
+          },
+          {
+            "$ref": "#/components/schemas/IntInputData"
+          },
+          {
+            "$ref": "#/components/schemas/LongInputData"
+          },
+          {
+            "$ref": "#/components/schemas/ShortInputData"
+          },
+          {
+            "$ref": "#/components/schemas/StringInputData"
+          },
+          {
+            "$ref": "#/components/schemas/BooleanVectorInputData"
+          },
+          {
+            "$ref": "#/components/schemas/DoubleVectorInputData"
+          },
+          {
+            "$ref": "#/components/schemas/IntVectorInputData"
+          },
+          {
+            "$ref": "#/components/schemas/LongVectorInputData"
+          },
+          {
+            "$ref": "#/components/schemas/DateInputData"
           }
-        },
-        "required" : [ "data", "type" ]
-      },
-      "InputData" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/TextInputData"
-        }, {
-          "$ref" : "#/components/schemas/ImageInputData"
-        }, {
-          "$ref" : "#/components/schemas/VectorInputData"
-        }, {
-          "$ref" : "#/components/schemas/RetrievableIdInputData"
-        }, {
-          "$ref" : "#/components/schemas/BooleanInputData"
-        }, {
-          "$ref" : "#/components/schemas/NumericInputData"
-        }, {
-          "$ref" : "#/components/schemas/DateInputData"
-        } ],
-        "discriminator" : {
-          "propertyName" : "type"
+        ],
+        "discriminator": {
+          "propertyName": "type"
         }
       },
-      "InputType" : {
-        "type" : "string",
-        "enum" : [ "TEXT", "IMAGE", "VECTOR", "ID", "BOOLEAN", "NUMERIC", "DATE" ]
+      "InputType": {
+        "type": "string",
+        "enum": [
+          "IMAGE",
+          "DATE",
+          "ID",
+          "BOOLEAN",
+          "BYTE",
+          "DOUBLE",
+          "FLOAT",
+          "INT",
+          "LONG",
+          "SHORT",
+          "STRING",
+          "TEXT",
+          "BOOLEANVECTOR",
+          "DOUBLEVECTOR",
+          "FLOATVECTOR",
+          "INTVECTOR",
+          "LONGVECTOR"
+        ]
       },
-      "NumericInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "number",
-            "format" : "double"
+      "IntInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int32"
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "data", "type" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "RetrievableIdInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "id" : {
-            "type" : "string"
+      "IntVectorInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int32"
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "id", "type" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "TextInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "string"
+      "LongInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int64"
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
+          "type": {
+            "$ref": "#/components/schemas/InputType"
           }
         },
-        "required" : [ "data", "type" ]
+        "required": [
+          "data",
+          "type"
+        ]
       },
-      "VectorInputData" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "type" : "number",
-              "format" : "float"
+      "LongVectorInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "RetrievableIdInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ]
+      },
+      "ShortInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "StringInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "TextInputData": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InputType"
+          }
+        },
+        "required": [
+          "data",
+          "type"
+        ]
+      },
+      "OperatorDescription": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "factory": {
+            "type": "string",
+            "nullable": true
+          },
+          "field": {
+            "type": "string",
+            "nullable": true
+          },
+          "inputs": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InputData"
             }
           },
-          "comparison" : {
-            "type" : "string",
-            "nullable" : true
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/InputType"
-          }
-        },
-        "required" : [ "data", "type" ]
-      },
-      "OperatorDescription" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "type" : {
-            "$ref" : "#/components/schemas/OperatorType"
-          }
-        },
-        "required" : [ "type" ]
-      },
-      "OperatorType" : {
-        "type" : "string",
-        "enum" : [ "RETRIEVER", "TRANSFORMER", "AGGREGATOR" ]
-      },
-      "QueryResult" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "retrievables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QueryResultRetrievable"
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
             }
           }
         },
-        "required" : [ "retrievables" ]
+        "required": [
+          "inputs",
+          "parameters"
+        ]
       },
-      "QueryResultRetrievable" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "score" : {
-            "type" : "number",
-            "format" : "double"
-          },
-          "type" : {
-            "type" : "string"
-          },
-          "parts" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "properties" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
+      "QueryResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "retrievables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueryResultRetrievable"
             }
           }
         },
-        "required" : [ "id", "score", "type", "parts", "properties" ]
+        "required": [
+          "retrievables"
+        ]
       },
-      "SchemaList" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "schemas" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+      "QueryResultRetrievable": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "type": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "descriptors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
             }
           }
         },
-        "required" : [ "schemas" ]
+        "required": [
+          "id",
+          "score",
+          "type",
+          "parts",
+          "properties",
+          "descriptors"
+        ]
       },
-      "ErrorStatus" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "message" : {
-            "type" : "string"
+      "SchemaList": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required" : [ "message" ]
+        "required": [
+          "schemas"
+        ]
       },
-      "IngestStatus" : {
-        "type" : "object",
-        "additionalProperties" : false,
-        "properties" : {
-          "jobId" : {
-            "type" : "string"
-          },
-          "executionStatus" : {
-            "$ref" : "#/components/schemas/ExecutionStatus"
-          },
-          "timestamp" : {
-            "type" : "integer",
-            "format" : "int64"
+      "ErrorStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
           }
         },
-        "required" : [ "jobId", "executionStatus", "timestamp" ]
+        "required": [
+          "message"
+        ]
+      },
+      "IngestStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "executionStatus": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "jobId",
+          "executionStatus",
+          "timestamp"
+        ]
       }
     },
-    "securitySchemes" : {
-      "CookieAuth" : {
-        "in" : "cookie",
-        "name" : "SESSIONID",
-        "type" : "apiKey"
+    "securitySchemes": {
+      "CookieAuth": {
+        "in": "cookie",
+        "name": "SESSIONID",
+        "type": "apiKey"
       }
     }
   },
-  "servers" : [ ],
-  "security" : [ ]
+  "servers": [],
+  "security": []
 }

@@ -6,11 +6,7 @@ import type { IngestStatus } from '../models/IngestStatus';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class IngestService {
-    public readonly httpRequest: BaseHttpRequest;
-
-    constructor(httpRequest: BaseHttpRequest) {
-        this.httpRequest = httpRequest;
-    }
+    constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Indexes an item, adding it to the defined schema.
      * @param schema The name of the schema to execute a query for.

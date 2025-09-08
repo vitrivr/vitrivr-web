@@ -4,7 +4,6 @@
 /* eslint-disable */
 export type TextInputData = {
     data: string;
-    comparison?: string | null;
     type: 'TextInputData';
 };
 

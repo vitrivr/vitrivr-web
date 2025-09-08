@@ -7,11 +7,7 @@ import type { QueryResult } from '../models/QueryResult';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class RetrievalService {
-    public readonly httpRequest: BaseHttpRequest;
-
-    constructor(httpRequest: BaseHttpRequest) {
-        this.httpRequest = httpRequest;
-    }
+    constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Executes a query and returns the query's results.
      * @param schema The name of the schema to execute a query for.

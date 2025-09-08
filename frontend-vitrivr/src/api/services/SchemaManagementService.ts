@@ -6,11 +6,7 @@ import type { SchemaList } from '../models/SchemaList';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class SchemaManagementService {
-    public readonly httpRequest: BaseHttpRequest;
-
-    constructor(httpRequest: BaseHttpRequest) {
-        this.httpRequest = httpRequest;
-    }
+    constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Lists the names of all available schemas.
      * @returns SchemaList OK

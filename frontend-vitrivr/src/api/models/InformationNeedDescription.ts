@@ -4,11 +4,9 @@
 /* eslint-disable */
 import type { InputData } from './InputData';
 import type { OperatorDescription } from './OperatorDescription';
-import type { QueryContext } from './QueryContext';
 export type InformationNeedDescription = {
     inputs: Record<string, InputData>;
     operations: Record<string, OperatorDescription>;
     output: string;
-    context: QueryContext;
 };
 

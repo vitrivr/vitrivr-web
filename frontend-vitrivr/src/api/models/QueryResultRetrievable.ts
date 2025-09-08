@@ -8,5 +8,6 @@ export type QueryResultRetrievable = {
     type: string;
     parts: Array<string>;
     properties: Record<string, string>;
+    descriptors: Record<string, string>;
 };
 

@@ -2,8 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { OperatorType } from './OperatorType';
+import type { InputData } from './InputData';
 export type OperatorDescription = {
-    type: OperatorType;
+    factory?: string | null;
+    field?: string | null;
+    inputs: Record<string, InputData>;
+    parameters: Record<string, string>;
 };
 

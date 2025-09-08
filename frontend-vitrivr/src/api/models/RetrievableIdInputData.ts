@@ -4,7 +4,6 @@
 /* eslint-disable */
 export type RetrievableIdInputData = {
     id: string;
-    comparison?: string | null;
     type: 'RetrievableIdInputData';
 };
 

@@ -2,4 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type OperatorType = 'RETRIEVER' | 'TRANSFORMER' | 'AGGREGATOR';
+export type FloatInputData = {
+    data: Array<number>;
+    type: 'FloatInputData';
+};
+

@@ -4,7 +4,6 @@
 /* eslint-disable */
 export type BooleanInputData = {
     data: boolean;
-    comparison?: string | null;
     type: 'BooleanInputData';
 };
 
