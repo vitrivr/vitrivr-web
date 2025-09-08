@@ -1,14 +1,12 @@
 import type {PropsWithChildren} from "react";
 import Header from "./Header";
+import "./Layout.css"
 
 function Layout({children}: PropsWithChildren) {
     return (
-        <div className="min-h-screen bg-neutral-50 text-neutral-900">
+        <div>
             <Header/>
-            <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-            <footer className="mx-auto max-w-6xl px-4 py-10 text-xs text-neutral-500">
-                © {new Date().getFullYear()} DBIS
-            </footer>
+            <main className="layout">{children}</main>
         </div>
     );
 }

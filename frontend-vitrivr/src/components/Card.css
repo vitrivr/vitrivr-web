@@ -1,16 +1,63 @@
 
 .card {
-    display: inline-block;
+    display: block;
+    width: 95%;
+    margin: 0 auto;
     border-radius: 30px;
     background: #e0e0e0;
     box-shadow: 15px 15px 30px #bebebe,
     -15px -15px 30px #ffffff;
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.card-header-text {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #111827;
+}
+
+.card-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.card-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4b5563;
+    font-size: 0.875rem;
+}
+
+.card-body {
+    padding: 1rem 1.25rem;
+    background: #ffffff;
 }
 
 .card__content {
     background: rgb(5, 6, 45);
     border-radius: 17px;
-    display: inline-block;
+    width: 100%;
+    height: 100%;
 }
 
 .card__content img {
