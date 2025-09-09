@@ -84,6 +84,15 @@
     object-fit: cover;
 }
 
+.sb__image {
+    display: block;
+    width: auto; /* don't stretch */
+    height: auto;
+    max-width: 100%; /* keep responsive */
+    border-radius: 0.5rem;
+    object-fit: cover;
+}
+
 
 /* Each result card */
 .sb__card {

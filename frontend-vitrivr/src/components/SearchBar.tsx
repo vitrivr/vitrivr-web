@@ -8,7 +8,7 @@ import ResultItem from "./ResultItem.tsx";
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
 type MediaKind = "image" | "video" | "costum";
-type MediaItem = { id: string; kind: MediaKind; rawType?: string };
+type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
 type RetrievablesResponse = {
     retrievables?: Array<{
         id?: string;
@@ -36,10 +36,23 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
         .map((r) => {
             const id = r.id?.trim();
             if (!id) return null;
-            return {id, kind: mapTypeToKind(r.type), rawType: r.type};
+            const filePath = (r as any).descriptors?.["file.path"];
+            let url: string | undefined;
+            if (filePath) {
+                const relative = filePath.split("/sandbox/")[1];
+                url = `/sandbox/${relative}`;
+            }
+
+            return {
+                id,
+                kind: mapTypeToKind(r.type),
+                rawType: r.type,
+                url,
+            };
         })
         .filter((v): v is MediaItem => !!v);
 }
+
 
 export default function SearchBar() {
     const [query, setQuery] = useState("");
@@ -108,8 +121,8 @@ export default function SearchBar() {
                 <>
                     <h3 className="sb__sectionTitle">Images</h3>
                     <div className="sb__results">
-                        {images.map(({id}) => (
-                            <ResultItem key={id} id={id} kind="image"/>
+                        {images.map(({id, url}) => (
+                            <ResultItem key={id} id={id} kind="image" getImageSrc={() => url ?? ""}/>
                         ))}
                     </div>
                 </>
@@ -126,7 +139,6 @@ export default function SearchBar() {
                                 kind="custom"
                                 renderMedia={() => (
                                     <div className="sb__unknown">
-                                        {/* fallback preview; you can style this */}
                                         <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
                                     </div>
                                 )}

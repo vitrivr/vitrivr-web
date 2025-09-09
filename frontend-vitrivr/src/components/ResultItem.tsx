@@ -58,8 +58,10 @@ export default function ResultItem(props: ResultItemProps) {
     } else if (props.kind === "custom") {
         media = props.renderMedia(id);
     } else {
-        const {getImageSrc, alt = `Thumbnail for ${id}`, mediaClassName = "sb__thumbnail"} = props;
-        const src = (getImageSrc ?? thumbnailUrl)(id);
+        const {getImageSrc, alt = `Image for ${id}`, mediaClassName = "sb__image"} = props;
+        console.log("Image Source" + getImageSrc);
+        //const src = (getImageSrc ?? thumbnailUrl)(id);
+        const src = "/home/andrina/repos/vitrivr-engine/instance/./../sandbox/media/images/00003.mp4_frame_9380.jpg"
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
