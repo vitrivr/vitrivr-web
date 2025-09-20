@@ -1,4 +1,3 @@
-// src/components/ResultItem.tsx
 import React from "react";
 import {thumbnailUrl, videoUrl} from "../lib/vitrivr";
 

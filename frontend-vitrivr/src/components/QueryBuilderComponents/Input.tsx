@@ -1,4 +1,3 @@
-import "./FileUploader.tsx"
 import {useState} from "react";
 import FileUploader from "./FileUploader.tsx";
 
