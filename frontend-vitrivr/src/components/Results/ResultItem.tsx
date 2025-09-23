@@ -1,5 +1,5 @@
 import React from "react";
-import {thumbnailUrl, videoUrl} from "../lib/vitrivr";
+import {thumbnailUrl, videoUrl} from "../../lib/vitrivr.ts";
 
 type BaseProps = { id: string; caption?: React.ReactNode; className?: string; captionClassName?: string; };
 type ImageProps = { kind?: "image"; getImageSrc?: (id: string) => string; alt?: string; mediaClassName?: string; };

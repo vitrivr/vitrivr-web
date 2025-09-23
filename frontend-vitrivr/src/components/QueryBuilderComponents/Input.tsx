@@ -1,36 +1,49 @@
-import {useState} from "react";
+"use client";
 import FileUploader from "./FileUploader.tsx";
 
 export type InputProps = {
-    type?: string;
+    type?: "text" | "image";
     disabled?: boolean;
+    value?: string;
+    onChange?: (value: string) => void;
+    onImageChange?: (file: File | null) => void;
     className?: string;
-}
+    placeholder?: string;
+    name?: string;
+    id?: string;
+};
 
-function Input({type, disabled = false, className = ""}: InputProps) {
-    const [query, setQuery] = useState("");
-    const [image, setImage] = useState<string | null>(null);
-
+export default function Input({
+                                  type = "text",
+                                  disabled = false,
+                                  value = "",
+                                  onChange,
+                                  onImageChange,
+                                  className = "",
+                                  placeholder = "Enter textual query.",
+                                  name,
+                                  id,
+                              }: InputProps) {
     if (type === "image") {
         return (
-            <div>
-                <FileUploader/>
-            </div>
-        );
-    } else {
-        return (
-            <div>
-                <input
-                    type="text"
-                    placeholder="Enter textual query. "
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    disabled={disabled}
-                    className={className}
-                />
+            <div className={className}>
+                <FileUploader onChange={onImageChange} disabled={disabled}/>
             </div>
         );
     }
+    
+    return (
+        <div>
+            <input
+                id={id}
+                name={name}
+                type="text"
+                placeholder={placeholder}
+                value={value}
+                onChange={(e) => onChange?.(e.target.value)}
+                disabled={disabled}
+                className={className}
+            />
+        </div>
+    );
 }
-
-export default Input;
