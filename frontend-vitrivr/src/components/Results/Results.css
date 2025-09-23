@@ -1,0 +1,35 @@
+/* 4 columns on desktop, graceful downshift on smaller screens */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px; /* nice gap between items */
+    padding: 16px;
+}
+
+/* Responsive breakpoints (tweak as you like) */
+@media (max-width: 1200px) {
+    .results-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .results-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Make images/videos align nicely with the same visual height */
+.ri-media {
+    width: 100%;
+    aspect-ratio: 16 / 9; /* consistent tile shape */
+    object-fit: cover;
+    border-radius: 12px;
+    background: #f3f4f6; /* placeholder bg while loading */
+}
