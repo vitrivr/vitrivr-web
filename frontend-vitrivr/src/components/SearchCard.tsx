@@ -88,6 +88,7 @@ export default function SearchCard() {
     const [queryType, setQueryType] = useState<string>("text");
     const [file, setFile] = useState<File | null>(null);
     const isTextQuery = queryType === "text";
+    const isEmotionRadio = modality === "emotions";
 
     // results state
     const [loading, setLoading] = useState(false);
@@ -165,25 +166,29 @@ export default function SearchCard() {
                                 />
                             </div>
                             <div style={{padding: 16}}>
-                                <Dropdown
-                                    items={queryTypeItems}
-                                    value={queryType}
-                                    onChange={(v) => setQueryType(v)}
-                                    placeholder="Select a Query Type"
-                                    label="Query Type"
-                                />
+                                {isEmotionRadio ? (
+                                    <Dropdown
+                                        items={emotionItems}
+                                        value={emotion}
+                                        onChange={(v) => setEmotion(v)}
+                                        placeholder="Select an Emotion"
+                                        label="Emotion"
+                                    />
+                                ) : null}
                             </div>
                             <div style={{padding: 16}}>
-                                <Dropdown
-                                    items={emotionItems}
-                                    value={emotion}
-                                    onChange={(v) => setEmotion(v)}
-                                    placeholder="Select an Emotion"
-                                    label="Emotion"
-                                />
+                                {!isEmotionRadio ? (
+                                    <Dropdown
+                                        items={queryTypeItems}
+                                        value={queryType}
+                                        onChange={(v) => setQueryType(v)}
+                                        placeholder="Select a Query Type"
+                                        label="Query Type"
+                                    />
+                                ) : null}
                             </div>
                             <div style={{padding: 16}}>
-                                {isTextQuery ? (
+                                {isTextQuery || isEmotionRadio ? (
                                     <Input
                                         type="text"
                                         value={textQuery}
@@ -198,8 +203,6 @@ export default function SearchCard() {
                                     />
                                 )}
                             </div>
-
-
                         </Card>
                     </div>
                 </div>
