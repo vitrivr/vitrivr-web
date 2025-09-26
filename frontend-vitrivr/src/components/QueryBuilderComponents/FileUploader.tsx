@@ -1,30 +1,31 @@
-import React, {useState} from "react";
+import React from "react";
 import Flash from "./Flash";
 
-const FileUploader = () => {
-    const [file, setFile] = useState<File | null>(null);
-    const [show, setShow] = useState(false);
-    const [msg, setMsg] = useState<string>("");
+export type FileUploaderProps = {
+    label?: string;
+    file?: File | null;                     // <- File (not string)
+    onChange?: (file: File | null) => void; // <- lift changes up
+    className?: string;
+};
+
+const FileUploader = ({file, label, onChange, className = ""}: FileUploaderProps) => {
+    const [show, setShow] = React.useState(false);
+    const [msg, setMsg] = React.useState<string>("");
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const next = e.target.files?.[0] ?? null;
         if (!next) {
-            setFile(null);
+            onChange?.(null);
             return;
         }
         if (!next.type.startsWith("image/")) {
-            setFile(null);
+            onChange?.(null);
             setMsg("Please upload an image!");
             setShow(true);
             return;
         }
-
-        setFile(next);
+        onChange?.(next);
         setShow(false);
-    };
-
-    const handleUpload = () => {
-        // TODO: integrate with VITRIVR engine
     };
 
     return (
@@ -33,13 +34,9 @@ const FileUploader = () => {
                 {msg || "Something went wrong."}
             </Flash>
 
-            <div className="input-group">
-                <input
-                    id="file"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                />
+            <div className={`input-group ${className}`}>
+                {label && <label htmlFor="file">{label}</label>}
+                <input id="file" type="file" accept="image/*" onChange={handleFileChange}/>
             </div>
 
             {file && (
