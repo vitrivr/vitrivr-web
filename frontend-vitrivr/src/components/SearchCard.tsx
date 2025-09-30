@@ -223,31 +223,33 @@ export default function SearchCard() {
                         justifyContent: "flex-end",
                     }}
                 >
-                    <div style={{position: "relative"}}>
-                        <button
-                            type="button"
-                            onClick={() => setFilterOpen(v => !v)}
-                            aria-haspopup="dialog"
-                            aria-expanded={filterOpen}
-                            style={{
-                                height: 36,
-                                borderRadius: 12,
-                                border: "1px solid #ddd",
-                                background: "#fff",
-                                padding: "0 12px",
-                                cursor: "pointer",
-                            }}
-                        >
-                            Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
-                        </button>
-                        <MediaTypeFilter
-                            open={filterOpen}
-                            value={mediaFilter}
-                            counts={counts}
-                            onChange={setMediaFilter}
-                            onClose={() => setFilterOpen(false)}
-                        />
-                    </div>
+                    {items.length > 0 && (
+                        <div style={{position: "relative"}}>
+                            <button
+                                type="button"
+                                onClick={() => setFilterOpen(v => !v)}
+                                aria-haspopup="dialog"
+                                aria-expanded={filterOpen}
+                                style={{
+                                    height: 36,
+                                    borderRadius: 12,
+                                    border: "1px solid #ddd",
+                                    background: "#fff",
+                                    padding: "0 12px",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
+                            </button>
+                            <MediaTypeFilter
+                                open={filterOpen}
+                                value={mediaFilter}
+                                counts={counts}
+                                onChange={setMediaFilter}
+                                onClose={() => setFilterOpen(false)}
+                            />
+                        </div>
+                    )}
                 </div>
 
 

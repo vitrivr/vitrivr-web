@@ -27,8 +27,6 @@ export default function QueryBlock({
                                    }: QueryBlockProps) {
     const isEmotion = block.modality === "emotions";
     const isTextQuery = block.queryType === "text";
-    const isOCR = block.modality === "ocr";
-    const isASR = block.modality === "asr";
     const isCLIP = block.modality === "clip";
 
     // keep text/file mutually exclusive based on queryType
