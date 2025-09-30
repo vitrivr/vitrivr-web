@@ -1,3 +1,5 @@
+import type {BlockState} from "../components/SearchCard.tsx";
+
 export const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL || "http://localhost:7070";
 export const videoUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/video/${encodeURIComponent(id)}`;
@@ -7,24 +9,42 @@ type Inputs = Record<string, TextInput>
 type Operator = Record<string, any>;
 
 /**
- * TODO hier noch machen, dass es auch was anderes als clip sein kann.
- * @param prompt
+ * TODO adjust this such that images, emotions and non clip modalities can be entered.
+ * @param blocks
  */
-export function buildTemporalQuery(prompt: string[]) {
-    let i = 0;
-    for (i; prompt.length - 1; i++) {
-        console.log("Queryyyy" + prompt[i]);
+export function buildTemporalQuery(blocks: BlockState[]) {
+    console.log("Making a termporal query. ")
+    const textBits: string[] = [];
+
+    for (const b of blocks) {
+        //const isEmotion = b.modality === "emotions";
+        const isText = b.queryType === "text";
+
+        if (isText) {
+            textBits.push(b.textQuery);
+        }
+
+        /**if (isEmotion && b.textQuery.trim()) {
+         textBits.push(`${b.textQuery.trim()} ${b.emotion ?? ""}`.trim());
+         continue;
+         }
+
+         if (!isEmotion && isText && b.textQuery.trim()) {
+         textBits.push(b.textQuery.trim());
+         continue;
+         }**/
+
     }
-    if (prompt.length === 0) {
+    if (textBits.length === 0) {
         throw new Error("Prompt Array must not be empty.");
     }
-    const inputs: Inputs = Object.fromEntries(prompt.map((term, i) => [`t${i}`, {
+    const inputs: Inputs = Object.fromEntries(textBits.map((term, i) => [`t${i}`, {
         type: "TEXT",
         data: term
     } as TextInput,])); // maps all the entries of the prompt array to variable called t1,...,tn
 
     const clipOps: Operator = Object.fromEntries(
-        prompt.map((_, i) => {
+        textBits.map((_, i) => {
             const opName = i === 0 ? "clip" : `clip${i}`; // first one is just "clip" and not "clip0"
             const op = {
                 field: "clip",
@@ -34,7 +54,7 @@ export function buildTemporalQuery(prompt: string[]) {
         })
     );
 
-    const temporalInputs = Object.fromEntries(prompt.map((_, i) => [`in${i}`, i === 0 ? "clip" : `clip${i}`]));
+    const temporalInputs = Object.fromEntries(textBits.map((_, i) => [`in${i}`, i === 0 ? "clip" : `clip${i}`]));
 
     const operations: Operator = {
         ...clipOps,

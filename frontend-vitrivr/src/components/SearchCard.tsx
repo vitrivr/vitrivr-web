@@ -7,7 +7,7 @@ import Button from "./QueryBuilderComponents/Button.tsx";
 import Input from "./QueryBuilderComponents/Input.tsx";
 import RadioGroup, {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -28,6 +28,15 @@ type RetrievablesResponse = {
     }>;
 };
 
+export type BlockState = {
+    id: string;
+    modality: string;
+    emotion?: string;
+    queryType: "text" | "image";
+    textQuery: string;
+    file: File | null;
+};
+
 const modalityOptions: RadioOption[] = [
     {value: "clip", label: "CLIP"},
     {value: "emotions", label: "Emotions"},
@@ -45,6 +54,12 @@ const emotionItems: DropdownItem[] = [
     {value: "happy", label: "happy"},
     {value: "neutral", label: "neutral"},
 ];
+
+const makeBlockState = (): BlockState => ({
+    id: crypto.randomUUID(),
+    modality: modalityOptions[0].value,
+    emotion: undefined, queryType: "text", textQuery: "", file: null,
+});
 
 function mapTypeToKind(t?: string): MediaKind {
     switch (t) {
@@ -75,45 +90,103 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
         .filter((v): v is MediaItem => !!v);
 }
 
+function QueryBlock({
+                        block,
+                        onChange,
+                        onRemove,
+                    }: {
+    block: BlockState;
+    onChange: (patch: Partial<BlockState>) => void;
+    onRemove?: () => void;
+}) {
+    const isEmotion = block.modality === "emotions";
+    const isTextQuery = block.queryType === "text";
+
+    useEffect(() => {
+        if (isTextQuery) {
+            onChange({file: null});
+        } else {
+            onChange({textQuery: ""});
+        }
+    }, [isTextQuery]);
+
+    return (
+        <Card title="Query Building Block" actions={
+            onRemove ? <button onClick={onRemove} className="btn--link" aria-label="Remove block">Remove</button> : null
+        }>
+            <div style={{padding: 16}}>
+                <RadioGroup
+                    label="Modalities"
+                    options={modalityOptions}
+                    value={block.modality}
+                    onChange={(v) => onChange({modality: v, emotion: undefined})}
+                    orientation="horizontal"
+                />
+            </div>
+
+            <div style={{padding: 16}}>
+                {isEmotion ? (
+                    <Dropdown
+                        items={emotionItems}
+                        value={block.emotion}
+                        onChange={(v) => onChange({emotion: v})}
+                        placeholder="Select an Emotion"
+                        label="Emotion"
+                    />
+                ) : (
+                    <Dropdown
+                        items={queryTypeItems}
+                        value={block.queryType}
+                        onChange={(v) => onChange({queryType: v as BlockState["queryType"]})}
+                        placeholder="Select a Query Type"
+                        label="Query Type"
+                    />
+                )}
+            </div>
+
+            <div style={{padding: 16}}>
+                {isTextQuery || isEmotion ? (
+                    <Input
+                        type="text"
+                        value={block.textQuery}
+                        onChange={(val: string) => onChange({textQuery: val})}
+                        placeholder="Type your query…"
+                    />
+                ) : (
+                    <FileUploader
+                        file={block.file}
+                        onChange={(f) => onChange({file: f})}
+                        label="Upload an image"
+                    />
+                )}
+            </div>
+        </Card>
+    );
+}
+
+
 export default function SearchCard() {
-    const [flash, setFlash] = useState<{ show: boolean; message: string }>({
-        show: false,
-        message: "",
-    });
-
-    // builder state
-    const [modality, setModality] = useState<string>(modalityOptions[0].value);
-    const [emotion, setEmotion] = useState<string | undefined>(undefined);
-    const [textQuery, setTextQuery] = useState<string>("");
-    const [queryType, setQueryType] = useState<string>("text");
-    const [file, setFile] = useState<File | null>(null);
-    const isTextQuery = queryType === "text";
-    const isEmotionRadio = modality === "emotions";
-
-    // results state
+    const [flash, setFlash] = useState<{ show: boolean; message: string }>({show: false, message: ""});
+    const [blocks, setBlocks] = useState<BlockState[]>([makeBlockState()]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [items, setItems] = useState<MediaItem[]>([]);
     const [raw, setRaw] = useState<string>("");
 
-    useEffect(() => {
-        if (isTextQuery) {
-            setFile(null);
-        } else {
-            setTextQuery("");
-        }
-    }, [isTextQuery]);
+    const addBlock = () => setBlocks((prev) => [makeBlockState(), ...prev]);
+    const removeBlock = (id: string) => setBlocks((prev) => prev.filter((b) => b.id !== id));
+    const patchBlock = (id: string, patch: Partial<BlockState>) =>
+        setBlocks((prev) => prev.map((b) => (b.id === id ? {...b, ...patch} : b)));
 
     const onSearch = async () => {
-        // validate based on query type
-        if (isTextQuery) {
-            if (!textQuery.trim()) {
-                setFlash({show: true, message: "Please enter a text query."});
+        for (const b of blocks) {
+            const isText = b.queryType === "text" || b.modality === "emotions";
+            if (isText && !b.textQuery.trim()) {
+                setFlash({show: true, message: "Please fill all text queries before searching."});
                 return;
             }
-        } else {
-            if (!file) {
-                setFlash({show: true, message: "Please select an image to search."});
+            if (!isText && !b.file) {
+                setFlash({show: true, message: "Please attach images for image query blocks."});
                 return;
             }
         }
@@ -125,20 +198,22 @@ export default function SearchCard() {
         setFlash({show: false, message: ""});
 
         try {
-            if (isTextQuery) {
-                const body = buildTextQuery(textQuery.trim());
+            if (blocks.length == 1) {
+                const body = buildTextQuery(blocks[0].textQuery.trim());
                 const resp = await retrieval.postExecuteQuery(SCHEMA, body);
                 const media = mediaFrom(resp as RetrievablesResponse);
                 setItems(media);
-            } else {
-                // TODO: build your image query here
-                // Example stub:
-                // const imgBody = await buildImageQuery(file);
-                // const resp = await retrieval.postExecuteQuery(SCHEMA, imgBody);
-                // const media = mediaFrom(resp as RetrievablesResponse);
-                // setItems(media);
-                throw new Error("Image query not implemented yet.");
+                return;
             }
+            // Build ONE request body out of many blocks
+            const body = buildTemporalQuery(blocks);
+
+            // If you need mixed text+image, split into multiple backend calls here and merge results.
+            const resp = await retrieval.postExecuteQuery(SCHEMA, body);
+            const media = mediaFrom(resp as RetrievablesResponse);
+            setItems(media);
+            //const pretty = JSON.stringify(resp, null, 2);
+            //setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         } finally {
@@ -146,66 +221,42 @@ export default function SearchCard() {
         }
     };
 
-    //const images = useMemo(() => items.filter(i => i.kind === "image").slice(0, 10), [items]);
-    //const videos = useMemo(() => items.filter(i => i.kind === "video").slice(0, 10), [items]);
-    //const others = useMemo(() => items.filter(i => i.kind === "custom").slice(0, 10), [items]);
-
     return (
         <div>
             <Card title="Query Builder" actions={<div>schema: <code>{SCHEMA}</code></div>}>
-                <div style={{display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start"}}>
-                    <div style={{width: 400}}>
-                        <Card title="Query Building Block">
-                            <div style={{padding: 16}}>
-                                <RadioGroup
-                                    label="Modalities"
-                                    options={modalityOptions}
-                                    value={modality}
-                                    onChange={setModality}
-                                    orientation="horizontal"
-                                />
-                            </div>
-                            <div style={{padding: 16}}>
-                                {isEmotionRadio ? (
-                                    <Dropdown
-                                        items={emotionItems}
-                                        value={emotion}
-                                        onChange={(v) => setEmotion(v)}
-                                        placeholder="Select an Emotion"
-                                        label="Emotion"
-                                    />
-                                ) : null}
-                            </div>
-                            <div style={{padding: 16}}>
-                                {!isEmotionRadio ? (
-                                    <Dropdown
-                                        items={queryTypeItems}
-                                        value={queryType}
-                                        onChange={(v) => setQueryType(v)}
-                                        placeholder="Select a Query Type"
-                                        label="Query Type"
-                                    />
-                                ) : null}
-                            </div>
-                            <div style={{padding: 16}}>
-                                {isTextQuery || isEmotionRadio ? (
-                                    <Input
-                                        type="text"
-                                        value={textQuery}
-                                        onChange={setTextQuery}
-                                        placeholder="Type your query…"
-                                    />
-                                ) : (
-                                    <FileUploader
-                                        file={file}
-                                        onChange={setFile}
-                                        label="Upload an image"
-                                    />
-                                )}
-                            </div>
-                        </Card>
+                <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 16, alignItems: "start"}}>
+                    {/* left rail */}
+                    <div style={{position: "sticky", top: 8}}>
+                        <button
+                            type="button"
+                            onClick={addBlock}
+                            title="Add query block"
+                            aria-label="Add query block"
+                            style={{
+                                width: 48, height: 48, borderRadius: 12, border: "1px solid #ddd",
+                                fontSize: 24, cursor: "pointer", background: "#fff"
+                            }}
+                        >
+                            +
+                        </button>
+                    </div>
+
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
+                        gap: 16
+                    }}>
+                        {blocks.map((b, idx) => (
+                            <QueryBlock
+                                key={b.id}
+                                block={b}
+                                onChange={(patch) => patchBlock(b.id, patch)}
+                                onRemove={blocks.length > 1 ? () => removeBlock(b.id) : undefined}
+                            />
+                        ))}
                     </div>
                 </div>
+
                 <Flash
                     show={flash.show}
                     kind="error"
@@ -218,6 +269,7 @@ export default function SearchCard() {
                     <Button label={loading ? "Searching…" : "Search"} disabled={loading} onClick={onSearch}/>
                 </div>
             </Card>
+
             <Card title="Results">
                 {error && <div style={{color: "crimson", padding: 16}}>{error}</div>}
                 {!error && loading && <div style={{padding: 16}}>Searching…</div>}
@@ -262,10 +314,11 @@ export default function SearchCard() {
                         );
                     })}
                 </div>
+
                 {raw && (
                     <pre style={{padding: 16, background: "#fafafa", borderTop: "1px solid #eee", overflow: "auto"}}>
-      {raw}
-    </pre>
+            {raw}
+          </pre>
                 )}
             </Card>
         </div>
