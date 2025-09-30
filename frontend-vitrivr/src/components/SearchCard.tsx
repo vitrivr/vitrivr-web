@@ -1,5 +1,5 @@
 "use client";
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import Card from "./Card";
 import Dropdown, {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
@@ -12,6 +12,7 @@ import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
 import FileUploader from "./QueryBuilderComponents/FileUploader.tsx";
+import MediaTypeFilter, {type MediaFilter} from "./Results/MediaTypeFilter";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
@@ -112,7 +113,7 @@ function QueryBlock({
 
     return (
         <Card title="Query Building Block" actions={
-            onRemove ? <button onClick={onRemove} className="btn--link" aria-label="Remove block">Remove</button> : null
+            onRemove ? <Button label={"Remove"} onClick={onRemove}/> : null
         }>
             <div style={{padding: 16}}>
                 <RadioGroup
@@ -172,7 +173,15 @@ export default function SearchCard() {
     const [error, setError] = useState<string | null>(null);
     const [items, setItems] = useState<MediaItem[]>([]);
     const [raw, setRaw] = useState<string>("");
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [mediaFilter, setMediaFilter] = useState<MediaFilter>({image: true, video: true, custom: true});
+    const counts = {
+        image: items.filter(i => i.kind === "image").length,
+        video: items.filter(i => i.kind === "video").length,
+        custom: items.filter(i => i.kind === "custom").length,
+    };
 
+    const filteredItems = items.filter(i => mediaFilter[i.kind]);
     const addBlock = () => setBlocks((prev) => [makeBlockState(), ...prev]);
     const removeBlock = (id: string) => setBlocks((prev) => prev.filter((b) => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
@@ -225,7 +234,6 @@ export default function SearchCard() {
         <div>
             <Card title="Query Builder" actions={<div>schema: <code>{SCHEMA}</code></div>}>
                 <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 16, alignItems: "start"}}>
-                    {/* left rail */}
                     <div style={{position: "sticky", top: 8}}>
                         <button
                             type="button"
@@ -276,9 +284,46 @@ export default function SearchCard() {
                 {!error && !loading && items.length === 0 && (
                     <div style={{padding: 16, color: "#666"}}>No results yet—run a search.</div>
                 )}
+                <div
+                    style={{
+                        position: "sticky",
+                        top: 8,
+                        zIndex: 5,
+                        padding: "0 16px 8px",
+                        display: "flex",
+                        justifyContent: "flex-end",
+                    }}
+                >
+                    <div style={{position: "relative"}}>
+                        <button
+                            type="button"
+                            onClick={() => setFilterOpen(v => !v)}
+                            aria-haspopup="dialog"
+                            aria-expanded={filterOpen}
+                            style={{
+                                height: 36,
+                                borderRadius: 12,
+                                border: "1px solid #ddd",
+                                background: "#fff",
+                                padding: "0 12px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
+                        </button>
+                        <MediaTypeFilter
+                            open={filterOpen}
+                            value={mediaFilter}
+                            counts={counts}
+                            onChange={setMediaFilter}
+                            onClose={() => setFilterOpen(false)}
+                        />
+                    </div>
+                </div>
+
 
                 <div className="results-grid">
-                    {items.slice(0, 16).map(({id, kind, url, rawType}) => {
+                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem

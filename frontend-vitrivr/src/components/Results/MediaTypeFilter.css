@@ -1,0 +1,16 @@
+.mtf__row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 2px;
+    cursor: pointer;
+}
+
+.mtf__btn {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #fafafa;
+    cursor: pointer;
+}
