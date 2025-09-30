@@ -1,18 +1,17 @@
 "use client";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import Card from "./Card";
-import Dropdown, {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
+import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import Button from "./QueryBuilderComponents/Button.tsx";
-import Input from "./QueryBuilderComponents/Input.tsx";
-import RadioGroup, {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
+import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
 import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
-import FileUploader from "./QueryBuilderComponents/FileUploader.tsx";
 import MediaTypeFilter, {type MediaFilter} from "./Results/MediaTypeFilter";
+import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
 
@@ -89,80 +88,6 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             return {id, kind: mapTypeToKind(r.type), rawType: r.type, url};
         })
         .filter((v): v is MediaItem => !!v);
-}
-
-function QueryBlock({
-                        block,
-                        onChange,
-                        onRemove,
-                    }: {
-    block: BlockState;
-    onChange: (patch: Partial<BlockState>) => void;
-    onRemove?: () => void;
-}) {
-    const isEmotion = block.modality === "emotions";
-    const isTextQuery = block.queryType === "text";
-
-    useEffect(() => {
-        if (isTextQuery) {
-            onChange({file: null});
-        } else {
-            onChange({textQuery: ""});
-        }
-    }, [isTextQuery]);
-
-    return (
-        <Card title="Query Building Block" actions={
-            onRemove ? <Button label={"Remove"} onClick={onRemove}/> : null
-        }>
-            <div style={{padding: 16}}>
-                <RadioGroup
-                    label="Modalities"
-                    options={modalityOptions}
-                    value={block.modality}
-                    onChange={(v) => onChange({modality: v, emotion: undefined})}
-                    orientation="horizontal"
-                />
-            </div>
-
-            <div style={{padding: 16}}>
-                {isEmotion ? (
-                    <Dropdown
-                        items={emotionItems}
-                        value={block.emotion}
-                        onChange={(v) => onChange({emotion: v})}
-                        placeholder="Select an Emotion"
-                        label="Emotion"
-                    />
-                ) : (
-                    <Dropdown
-                        items={queryTypeItems}
-                        value={block.queryType}
-                        onChange={(v) => onChange({queryType: v as BlockState["queryType"]})}
-                        placeholder="Select a Query Type"
-                        label="Query Type"
-                    />
-                )}
-            </div>
-
-            <div style={{padding: 16}}>
-                {isTextQuery || isEmotion ? (
-                    <Input
-                        type="text"
-                        value={block.textQuery}
-                        onChange={(val: string) => onChange({textQuery: val})}
-                        placeholder="Type your query…"
-                    />
-                ) : (
-                    <FileUploader
-                        file={block.file}
-                        onChange={(f) => onChange({file: f})}
-                        label="Upload an image"
-                    />
-                )}
-            </div>
-        </Card>
-    );
 }
 
 
@@ -254,14 +179,18 @@ export default function SearchCard() {
                         gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
                         gap: 16
                     }}>
-                        {blocks.map((b, idx) => (
+                        {blocks.map((b) => (
                             <QueryBlock
                                 key={b.id}
                                 block={b}
                                 onChange={(patch) => patchBlock(b.id, patch)}
                                 onRemove={blocks.length > 1 ? () => removeBlock(b.id) : undefined}
+                                modalityOptions={modalityOptions}
+                                queryTypeItems={queryTypeItems}
+                                emotionItems={emotionItems}
                             />
                         ))}
+
                     </div>
                 </div>
 
