@@ -44,9 +44,9 @@ const modalityOptions: RadioOption[] = [
     {value: "asr", label: "ASR"},
 ];
 
-const queryTypeItems: DropdownItem[] = [
-    {value: "text", label: "Textual Query"},
-    {value: "image", label: "Image Query"},
+const queryTypeItems: RadioOption[] = [
+    {value: "text", label: "Text"},
+    {value: "image", label: "Image"},
 ];
 
 const emotionItems: DropdownItem[] = [

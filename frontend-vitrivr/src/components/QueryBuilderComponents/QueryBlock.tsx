@@ -13,7 +13,7 @@ export type QueryBlockProps = {
     onChange: (patch: Partial<BlockState>) => void;
     onRemove: () => void;
     modalityOptions: RadioOption[];
-    queryTypeItems: DropdownItem[];
+    queryTypeItems: RadioOption[];
     emotionItems: DropdownItem[];
 }
 
@@ -27,6 +27,9 @@ export default function QueryBlock({
                                    }: QueryBlockProps) {
     const isEmotion = block.modality === "emotions";
     const isTextQuery = block.queryType === "text";
+    const isOCR = block.modality === "ocr";
+    const isASR = block.modality === "asr";
+    const isCLIP = block.modality === "clip";
 
     // keep text/file mutually exclusive based on queryType
     useEffect(() => {
@@ -54,6 +57,15 @@ export default function QueryBlock({
             </div>
 
             <div style={{padding: 16}}>
+                {isCLIP ? (
+                    <RadioGroup
+                        label="Query Type"
+                        options={queryTypeItems}
+                        value={block.queryType}
+                        onChange={(v) => onChange({queryType: v, textQuery: ""})}
+                        orientation="horizontal"
+                    />
+                ) : null}
                 {isEmotion ? (
                     <Dropdown
                         items={emotionItems}
@@ -62,15 +74,7 @@ export default function QueryBlock({
                         placeholder="Select an Emotion"
                         label="Emotion"
                     />
-                ) : (
-                    <Dropdown
-                        items={queryTypeItems}
-                        value={block.queryType}
-                        onChange={(v) => onChange({queryType: v as BlockState["queryType"]})}
-                        placeholder="Select a Query Type"
-                        label="Query Type"
-                    />
-                )}
+                ) : null}
             </div>
 
             <div style={{padding: 16}}>

@@ -1,31 +1,38 @@
+/* Header.css — replace content */
+.header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
 .header__inner {
-    max-width: 72rem;
+    max-width: var(--max);
     margin: 0 auto;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem var(--gutter);
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    justify-content: center;
+    justify-content: space-between;
+    gap: .75rem;
 }
 
 .header__brand {
     font-weight: 600;
-    font-size: 1.125rem;
-    color: #111827;
+    font-size: 1.05rem;
+    color: var(--text);
+    letter-spacing: .02em;
 }
 
 .header__dot {
-    color: #9ca3af;
+    color: #cbd5e1;
 }
 
 .header__subtitle {
-    color: #4b5563;
+    color: var(--text-2);
+    font-size: .95rem;
 }
 
 .header__actions {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: #6b7280;
+    gap: .5rem;
+    color: var(--text-2);
+    font-size: .9rem;
 }

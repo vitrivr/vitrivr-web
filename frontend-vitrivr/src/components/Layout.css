@@ -1,6 +1,175 @@
+/* Layout.css — minimal, soft, and consistent */
+
+:root {
+    /* scale */
+    --max: 1200px;
+    --gutter: 20px;
+    --s-1: 6px;
+    --s-2: 10px;
+    --s-3: 16px;
+    --s-4: 24px;
+    --s-5: 36px;
+    --rad-1: 10px;
+    --rad-2: 14px;
+
+    /* light theme */
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --muted: #f3f4f6;
+    --text: #0f172a;
+    --text-2: #475569;
+    --line: #e5e7eb;
+    --brand: #2563eb;
+    --brand-ink: #1e40af;
+    --ok: #059669;
+    --warn: #ca8a04;
+    --err: #b91c1c;
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .04);
+    --shadow-2: 0 6px 24px rgba(0, 0, 0, .08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body, #root {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+}
+
+body {
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* page container */
 .layout {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: var(--s-4) var(--gutter);
+    display: grid;
+    gap: var(--s-4);
+}
+
+/* generic spacing utilities */
+.stack {
+    display: grid;
+    gap: var(--s-3);
+}
+
+.stack-xs {
+    display: grid;
+    gap: var(--s-2);
+}
+
+.row {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    align-content: center;
+    gap: var(--s-2);
+}
+
+/* super lightweight “panel” (replaces big cards) */
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--rad-2);
+    box-shadow: var(--shadow-1);
+}
+
+.panel__head {
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.panel__title {
+    margin: 0;
+    font-weight: 600;
+}
+
+.panel__body {
+    padding: var(--s-4);
+}
+
+/* toolbar */
+.toolbar {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: flex;
+    gap: var(--s-2);
+    justify-content: flex-end;
+}
+
+/* grid for results */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--s-3);
+}
+
+/* compact “block” for each query block (not a full card) */
+.block {
+    border: 1px solid var(--line);
+    border-radius: var(--rad-1);
+    background: var(--surface);
+    padding: var(--s-3);
+    box-shadow: var(--shadow-1);
+}
+
+/* inputs: keep yours, but provide a nice default */
+.input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-1);
+    background: #fff;
+}
+
+.input:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+
+/* helper text & chips */
+.muted {
+    color: var(--text-2);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--muted);
+    color: var(--text-2);
+    font-size: 12px;
+}
+
+/* media in results */
+.media {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-1);
+}
+
+/* buttons: your Button.css stays; this just tweaks native buttons you use inline */
+button.plain {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--rad-1);
+    background: #fff;
+    cursor: pointer;
+}
+
+button.plain:hover {
+    background: var(--muted);
 }
