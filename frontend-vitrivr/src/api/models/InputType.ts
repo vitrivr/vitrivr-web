@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+
+// @ts-ignore
 export enum InputType {
     IMAGE = 'IMAGE',
     DATE = 'DATE',
