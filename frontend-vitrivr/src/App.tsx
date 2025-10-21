@@ -1,6 +1,6 @@
 import Layout from "./components/Layout";
 import Card from "./components/Card";
-import SearchCard from "./components/SearchCard";
+import {SearchCard} from "./components/SearchCard";
 
 export default function App() {
     return (

@@ -27,11 +27,11 @@ export default function Input({
     if (type === "image") {
         return (
             <div className={className}>
-                <FileUploader onChange={onImageChange} disabled={disabled}/>
+                <FileUploader onChange={onImageChange}/>
             </div>
         );
     }
-    
+
     return (
         <div>
             <input

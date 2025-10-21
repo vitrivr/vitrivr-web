@@ -109,7 +109,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 }
 
 
-export default function SearchCard() {
+export function SearchCard() {
     const [flash, setFlash] = useState<{ show: boolean; message: string }>({show: false, message: ""});
     const [blocks, setBlocks] = useState<BlockState[]>([makeBlockState()]);
     const [loading, setLoading] = useState(false);
@@ -152,12 +152,16 @@ export default function SearchCard() {
         try {
             if (blocks.length == 1) {
                 const body = buildTextQuery(blocks[0].textQuery.trim());
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
                 const resp = await retrieval.postExecuteQuery(SCHEMA, body);
                 const media = mediaFrom(resp as RetrievablesResponse);
                 setItems(media);
                 return;
             }
             const body = buildTemporalQuery(blocks);
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-expect-error
             const resp = await retrieval.postExecuteQuery(SCHEMA, body);
             console.log(resp)
             const media = mediaFrom(resp as RetrievablesResponse);

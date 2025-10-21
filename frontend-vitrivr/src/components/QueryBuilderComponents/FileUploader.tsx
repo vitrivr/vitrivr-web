@@ -3,8 +3,8 @@ import Flash from "./Flash";
 
 export type FileUploaderProps = {
     label?: string;
-    file?: File | null;                     // <- File (not string)
-    onChange?: (file: File | null) => void; // <- lift changes up
+    file?: File | null;
+    onChange?: (file: File | null) => void;
     className?: string;
 };
 

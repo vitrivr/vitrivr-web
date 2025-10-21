@@ -13,7 +13,7 @@ type Modality = Extract<BlockState["modality"], string>;
 export type QueryBlockProps = {
     block: BlockState;
     onChange: (patch: Partial<BlockState>) => void;
-    onRemove: () => void;
+    onRemove?: () => void;
     modalityOptions: RadioOption<Modality>[];
     queryTypeItems: RadioOption<QueryType>[];
     emotionItems: DropdownItem[];
