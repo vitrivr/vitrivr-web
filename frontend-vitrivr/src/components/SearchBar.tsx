@@ -80,7 +80,6 @@ export default function SearchBar() {
             setItems(media);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
-            // optional: console.error(err);
         } finally {
             setLoading(false);
         }

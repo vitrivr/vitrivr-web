@@ -15,6 +15,15 @@ import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
 
+type QueryType = Extract<BlockState['queryType'], string>;
+type Modality = "clip" | "emotions" | "ocr" | "asr";
+
+const queryTypeItems =
+    [
+        {label: "Text", value: "text"},
+        {label: "Image", value: "image"},
+    ] as const satisfies RadioOption<QueryType>[];
+
 type MediaKind = "image" | "video" | "custom";
 type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
 type RetrievablesResponse = {
@@ -30,20 +39,20 @@ type RetrievablesResponse = {
 
 export type BlockState = {
     id: string;
-    modality: string;
+    modality: Modality;
     emotion?: string;
     queryType: "text" | "image";
     textQuery: string;
     file: File | null;
 };
 
-const modalityOptions: RadioOption[] = [
-    {value: "clip", label: "CLIP"},
-    {value: "emotions", label: "Emotions"},
-    {value: "ocr", label: "OCR"},
-    {value: "asr", label: "ASR"},
-];
-
+const modalityOptions =
+    [
+        {value: "clip", label: "CLIP"},
+        {value: "emotions", label: "Emotions"},
+        {value: "ocr", label: "OCR"},
+        {value: "asr", label: "ASR"},
+    ] as const satisfies RadioOption<Modality>[];
 
 const emotionItems: DropdownItem[] = [
     {value: "sad", label: "sad"},
@@ -57,7 +66,10 @@ const emotionItems: DropdownItem[] = [
 const makeBlockState = (): BlockState => ({
     id: crypto.randomUUID(),
     modality: modalityOptions[0].value,
-    emotion: undefined, queryType: "text", textQuery: "", file: null,
+    emotion: undefined,
+    queryType: "text",
+    textQuery: "",
+    file: null,
 });
 
 function mapTypeToKind(t?: string): MediaKind {
@@ -71,18 +83,14 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
-function mediaFrom(resp: RetrievablesResponse): (null | {
-    id: string;
-    kind: "image" | "video" | "custom";
-    rawType: any;
-    url: string | undefined
-})[] {
+function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
     return list
         .map((r) => {
             const id = r.id?.trim();
             if (!id) return null;
-            const filePath = (r as any).descriptors?.["file.path"];
+            const descriptors = r.descriptors as Record<string, unknown> | undefined;
+            const filePath = typeof descriptors?.["file.path"] === "string" ? descriptors["file.path"] : undefined;
             let url: string | undefined;
             const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
             if (filePath && typeof filePath === "string") {
@@ -90,9 +98,14 @@ function mediaFrom(resp: RetrievablesResponse): (null | {
                 if (relative) url = `${mediaOrigin}/vbs/${relative}`;
             }
 
-            return {id, kind: mapTypeToKind(r.type), rawType: r.type, url};
+            return {
+                id,
+                kind: mapTypeToKind(r.type),
+                rawType: r.type,
+                url,
+            } as MediaItem;
         })
-        .filter((v): v is MediaItem => !!v);
+        .filter((v): v is MediaItem => v !== null);
 }
 
 

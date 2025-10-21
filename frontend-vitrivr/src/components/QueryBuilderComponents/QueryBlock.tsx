@@ -8,14 +8,16 @@ import FileUploader from "./FileUploader.tsx";
 import type {BlockState} from "../SearchCard.tsx";
 
 type QueryType = Extract<BlockState['queryType'], string>;
+type Modality = Extract<BlockState["modality"], string>;
+
 export type QueryBlockProps = {
     block: BlockState;
     onChange: (patch: Partial<BlockState>) => void;
     onRemove: () => void;
-    modalityOptions: RadioOption<QueryType>[];
+    modalityOptions: RadioOption<Modality>[];
     queryTypeItems: RadioOption<QueryType>[];
     emotionItems: DropdownItem[];
-}
+};
 
 export default function QueryBlock({
                                        block,
@@ -45,7 +47,7 @@ export default function QueryBlock({
             actions={onRemove ? <Button label="Remove" onClick={onRemove}/> : null}
         >
             <div style={{padding: 16}}>
-                <RadioGroup
+                <RadioGroup<Modality>
                     label="Modalities"
                     options={modalityOptions}
                     value={block.modality}
