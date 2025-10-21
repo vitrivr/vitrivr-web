@@ -32,16 +32,17 @@ function mapTypeToKind(t?: string): MediaKind {
 
 function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
-    // TODO fix the hard coded schema -> be able to change schema in frontend
     return list
-        .map((r) => {
+        .map((r): MediaItem | null => {
             const id = r.id?.trim();
             if (!id) return null;
-            const filePath = (r as any).descriptors?.["file.path"];
+            const descriptors = r as { descriptors?: Record<string, unknown> };
+            const fp = descriptors.descriptors?.["file.path"];
+            const filePath = typeof fp === "string" ? fp : undefined;
             let url: string | undefined;
             if (filePath) {
                 const relative = filePath.split("/vbs/")[1];
-                url = `/vbs/${relative}`;
+                if (relative) url = `/vbs/${relative}`;
             }
 
             return {
@@ -51,7 +52,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
                 url,
             };
         })
-        .filter((v): v is MediaItem => !!v);
+        .filter((v): v is MediaItem => v !== null);
 }
 
 
