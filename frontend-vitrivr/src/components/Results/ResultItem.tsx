@@ -1,8 +1,19 @@
 import React from "react";
-import {thumbnailUrl, videoUrl} from "../../lib/vitrivr.ts";
+import {Link} from "react-router-dom";
+import {thumbnailUrl, videoUrl} from "../../lib/vitrivr";
 
-type BaseProps = { id: string; caption?: React.ReactNode; className?: string; captionClassName?: string; };
-type ImageProps = { kind?: "image"; getImageSrc?: (id: string) => string; alt?: string; mediaClassName?: string; };
+type BaseProps = {
+    id: string;
+    caption?: React.ReactNode;
+    className?: string;
+    captionClassName?: string;
+};
+type ImageProps = {
+    kind?: "image";
+    getImageSrc?: (id: string) => string;
+    alt?: string;
+    mediaClassName?: string;
+};
 type VideoProps = {
     kind: "video";
     getVideoSrc?: (id: string) => string;
@@ -14,7 +25,7 @@ type VideoProps = {
     preload?: "none" | "metadata" | "auto";
     mediaClassName?: string;
 };
-type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNode; };
+type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNode };
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
 export default function ResultItem(props: ResultItemProps) {
@@ -58,16 +69,22 @@ export default function ResultItem(props: ResultItemProps) {
         media = props.renderMedia(id);
     } else {
         const {getImageSrc, alt = `Image for ${id}`, mediaClassName = "sb__image"} = props;
-        console.log("Image Source" + getImageSrc);
-        //const src = (getImageSrc ?? thumbnailUrl)(id);
-        const src = "/home/andrina/repos/vitrivr-engine/instance/./../sandbox/media/images/00003.mp4_frame_9380.jpg"
+        const src = (getImageSrc ?? thumbnailUrl)(id);
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
     return (
-        <figure className={className}>
-            {media}
-            <figcaption className={captionClassName}>{caption}</figcaption>
-        </figure>
+        <Link
+            to={`/video/${encodeURIComponent(id)}`}
+            style={{
+                textDecoration: "none",
+                color: "inherit",
+            }}
+        >
+            <figure className={className}>
+                {media}
+                <figcaption className={captionClassName}>{caption}</figcaption>
+            </figure>
+        </Link>
     );
 }
