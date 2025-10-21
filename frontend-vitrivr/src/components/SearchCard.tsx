@@ -44,10 +44,6 @@ const modalityOptions: RadioOption[] = [
     {value: "asr", label: "ASR"},
 ];
 
-const queryTypeItems: RadioOption[] = [
-    {value: "text", label: "Text"},
-    {value: "image", label: "Image"},
-];
 
 const emotionItems: DropdownItem[] = [
     {value: "sad", label: "sad"},
@@ -75,7 +71,12 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
-function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
+function mediaFrom(resp: RetrievablesResponse): (null | {
+    id: string;
+    kind: "image" | "video" | "custom";
+    rawType: any;
+    url: string | undefined
+})[] {
     const list = resp.retrievables ?? [];
     return list
         .map((r) => {

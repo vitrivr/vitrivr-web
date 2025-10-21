@@ -6,7 +6,7 @@ export const videoUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/video/$
 export const thumbnailUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/thumbnail/${encodeURIComponent(id)}`;
 type TextInput = { type: "TEXT"; data: string }
 type Inputs = Record<string, TextInput>
-type Operator = Record<string, any>;
+type Operator = Record<string, unknown>;
 
 /**
  * TODO adjust this such that images, emotions and non clip modalities can be entered.
@@ -41,7 +41,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
                     const op = {
                         field: "clip",
                         inputs: {txt: `t${i}`},
-                    } as any;
+                    } as never;
                     return [opName, op];
                 })
             );

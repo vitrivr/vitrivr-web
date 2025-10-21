@@ -7,13 +7,13 @@ import Input from "./Input.tsx";
 import FileUploader from "./FileUploader.tsx";
 import type {BlockState} from "../SearchCard.tsx";
 
-
+type QueryType = Extract<BlockState['queryType'], string>;
 export type QueryBlockProps = {
     block: BlockState;
     onChange: (patch: Partial<BlockState>) => void;
     onRemove: () => void;
-    modalityOptions: RadioOption[];
-    queryTypeItems: RadioOption[];
+    modalityOptions: RadioOption<QueryType>[];
+    queryTypeItems: RadioOption<QueryType>[];
     emotionItems: DropdownItem[];
 }
 
@@ -56,7 +56,7 @@ export default function QueryBlock({
 
             <div style={{padding: 16}}>
                 {isCLIP ? (
-                    <RadioGroup
+                    <RadioGroup<QueryType>
                         label="Query Type"
                         options={queryTypeItems}
                         value={block.queryType}

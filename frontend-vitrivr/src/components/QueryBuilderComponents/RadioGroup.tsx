@@ -2,33 +2,33 @@
 import React from "react";
 import "./RadioGroup.css";
 
-export type RadioOption = {
-    value: string;
+export type RadioOption<T extends string = string> = {
+    value: T;
     label: string;
     disabled?: boolean;
 };
 
-export type RadioGroupProps = {
+export type RadioGroupProps<T extends string = string> = {
     label?: string;
     ariaLabel?: string;
     name?: string;
-    options: RadioOption[];
-    value: string;
-    onChange: (value: string) => void;
+    options: RadioOption<T>[];
+    value: T;
+    onChange: (value: T) => void;
     orientation?: "horizontal" | "vertical";
     className?: string;
 };
 
-export default function RadioGroup({
-                                       label,
-                                       ariaLabel,
-                                       name,
-                                       options,
-                                       value,
-                                       onChange,
-                                       orientation = "horizontal",
-                                       className = "",
-                                   }: RadioGroupProps) {
+export default function RadioGroup<T extends string = string>({
+                                                                  label,
+                                                                  ariaLabel,
+                                                                  name,
+                                                                  options,
+                                                                  value,
+                                                                  onChange,
+                                                                  orientation = "horizontal",
+                                                                  className = "",
+                                                              }: RadioGroupProps<T>) {
     const id = React.useId();
     const groupName = name ?? `${id}-radio`;
 
