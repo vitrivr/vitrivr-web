@@ -13,7 +13,7 @@ import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter, {type MediaFilter} from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 
-const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
+const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
 
 type MediaKind = "image" | "video" | "custom";
 type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
@@ -52,6 +52,9 @@ const queryTypeItems: RadioOption[] = [
 const emotionItems: DropdownItem[] = [
     {value: "sad", label: "sad"},
     {value: "happy", label: "happy"},
+    {value: "disgust", label: "disgust"},
+    {value: "fear", label: "fear"},
+    {value: "surprise", label: "surprise"},
     {value: "neutral", label: "neutral"},
 ];
 
@@ -80,9 +83,10 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             if (!id) return null;
             const filePath = (r as any).descriptors?.["file.path"];
             let url: string | undefined;
+            const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
             if (filePath && typeof filePath === "string") {
-                const relative = filePath.split("/sandbox/")[1];
-                if (relative) url = `/sandbox/${relative}`;
+                const relative = filePath.split("/vbs/")[1];
+                if (relative) url = `${mediaOrigin}/vbs/${relative}`;
             }
 
             return {id, kind: mapTypeToKind(r.type), rawType: r.type, url};
@@ -139,15 +143,13 @@ export default function SearchCard() {
                 setItems(media);
                 return;
             }
-            // Build ONE request body out of many blocks
             const body = buildTemporalQuery(blocks);
-
-            // If you need mixed text+image, split into multiple backend calls here and merge results.
             const resp = await retrieval.postExecuteQuery(SCHEMA, body);
+            console.log(resp)
             const media = mediaFrom(resp as RetrievablesResponse);
             setItems(media);
-            //const pretty = JSON.stringify(resp, null, 2);
-            //setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
+            const pretty = JSON.stringify(resp, null, 2);
+            setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         } finally {

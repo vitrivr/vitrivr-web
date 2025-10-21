@@ -2,11 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { SchemaList } from '../models/SchemaList';
-import type { CancelablePromise } from '../core/CancelablePromise';
-import type { BaseHttpRequest } from '../core/BaseHttpRequest';
+import type {SchemaList} from '../models/SchemaList';
+import type {CancelablePromise} from '../core/CancelablePromise';
+import type {BaseHttpRequest} from '../core/BaseHttpRequest';
+
 export class SchemaManagementService {
-    constructor(public readonly httpRequest: BaseHttpRequest) {}
+    // @ts-ignore
+    constructor(public readonly httpRequest: BaseHttpRequest) {
+    }
+
     /**
      * Lists the names of all available schemas.
      * @returns SchemaList OK

@@ -2,10 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { CancelablePromise } from '../core/CancelablePromise';
-import type { BaseHttpRequest } from '../core/BaseHttpRequest';
+import type {CancelablePromise} from '../core/CancelablePromise';
+import type {BaseHttpRequest} from '../core/BaseHttpRequest';
+
 export class ContentService {
-    constructor(public readonly httpRequest: BaseHttpRequest) {}
+    // @ts-ignore
+    constructor(public readonly httpRequest: BaseHttpRequest) {
+    }
+
     /**
      * Fetch previously exported data.
      * @param schema The schema this operation is for.

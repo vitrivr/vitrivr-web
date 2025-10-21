@@ -2,11 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { IngestStatus } from '../models/IngestStatus';
-import type { CancelablePromise } from '../core/CancelablePromise';
-import type { BaseHttpRequest } from '../core/BaseHttpRequest';
+import type {IngestStatus} from '../models/IngestStatus';
+import type {CancelablePromise} from '../core/CancelablePromise';
+import type {BaseHttpRequest} from '../core/BaseHttpRequest';
+
 export class IngestService {
-    constructor(public readonly httpRequest: BaseHttpRequest) {}
+    // @ts-ignore
+    constructor(public readonly httpRequest: BaseHttpRequest) {
+    }
+
     /**
      * Indexes an item, adding it to the defined schema.
      * @param schema The name of the schema to execute a query for.
@@ -27,6 +31,7 @@ export class IngestService {
             },
         });
     }
+
     /**
      * Queries the status of a given ingest job.
      * @param schema The name of the schema to execute a query for.

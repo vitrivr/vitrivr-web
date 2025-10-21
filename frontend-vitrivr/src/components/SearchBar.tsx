@@ -5,7 +5,7 @@ import "./SearchBar.css";
 import "./Card.css"
 import ResultItem from "./Results/ResultItem.tsx";
 
-const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "sandbox";
+const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
 
 type MediaKind = "image" | "video" | "costum";
 type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
@@ -32,6 +32,7 @@ function mapTypeToKind(t?: string): MediaKind {
 
 function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
+    // TODO fix the hard coded schema -> be able to change schema in frontend
     return list
         .map((r) => {
             const id = r.id?.trim();
@@ -39,8 +40,8 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             const filePath = (r as any).descriptors?.["file.path"];
             let url: string | undefined;
             if (filePath) {
-                const relative = filePath.split("/sandbox/")[1];
-                url = `/sandbox/${relative}`;
+                const relative = filePath.split("/vbs/")[1];
+                url = `/vbs/${relative}`;
             }
 
             return {

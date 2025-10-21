@@ -2,12 +2,16 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { InformationNeedDescription } from '../models/InformationNeedDescription';
-import type { QueryResult } from '../models/QueryResult';
-import type { CancelablePromise } from '../core/CancelablePromise';
-import type { BaseHttpRequest } from '../core/BaseHttpRequest';
+import type {InformationNeedDescription} from '../models/InformationNeedDescription';
+import type {QueryResult} from '../models/QueryResult';
+import type {CancelablePromise} from '../core/CancelablePromise';
+import type {BaseHttpRequest} from '../core/BaseHttpRequest';
+
 export class RetrievalService {
-    constructor(public readonly httpRequest: BaseHttpRequest) {}
+    // @ts-ignore
+    constructor(public readonly httpRequest: BaseHttpRequest) {
+    }
+
     /**
      * Executes a query and returns the query's results.
      * @param schema The name of the schema to execute a query for.
