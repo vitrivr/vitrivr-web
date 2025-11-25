@@ -1,10 +1,19 @@
 "use client";
-import {useNavigate, useParams} from "react-router-dom";
-import {thumbnailUrl, videoUrl} from "../lib/vitrivr";
+import {useNavigate, useParams, useLocation} from "react-router-dom";
+import {thumbnailUrl} from "../lib/vitrivr";
+import {useSearch} from "../state/SearchContext.tsx";
+
+type VideoState = { src?: string; poster?: string } | null;
 
 export default function VideoPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const state = (location.state as VideoState) ?? null;
     const {id} = useParams<{ id: string }>();
+    const {items} = useSearch(); // items: MediaItem[]
+    const item = items.find(it => it.id === id);
+    const src = item?.url;
+    const poster = thumbnailUrl(id);
 
     if (!id) {
         return (
@@ -14,9 +23,6 @@ export default function VideoPage() {
             </div>
         );
     }
-
-    const src = videoUrl(id);
-    const poster = thumbnailUrl(id);
 
     return (
         <div style={{padding: 16, display: "grid", gap: 16}}>
@@ -49,7 +55,7 @@ export default function VideoPage() {
                     borderRadius: 12,
                     boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                     background: "#000",
-                    justifySelf: "start",
+                    justifySelf: "start"
                 }}
             />
 

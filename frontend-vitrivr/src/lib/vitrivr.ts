@@ -2,7 +2,7 @@ import type {BlockState} from "../components/SearchCard.tsx";
 
 export const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
-export const videoUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/video/${encodeURIComponent(id)}`;
+//export const videoUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/video/${encodeURIComponent(id)}`;
 export const thumbnailUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/thumbnail/${encodeURIComponent(id)}`;
 type TextInput = { type: "TEXT"; data: string }
 type Inputs = Record<string, TextInput>
@@ -105,7 +105,7 @@ export function buildTextQuery(prompt: string) {
                 "parameters": {"field": "time", "keys": "start, end"}
             },
             "filelookup": {
-                "factory": "FieldLookup",
+                "factory": "ObjectFieldLookup",
                 "inputs": {"in": "timelookup"},
                 "parameters": {"field": "file", "predicates": "partOf", "keys": "path"}
             }

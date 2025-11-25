@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import Card from "./components/Card";
 import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage";
+import {SearchProvider} from "./state/SearchContext.tsx";
 
 function Home() {
     return (
@@ -24,13 +25,16 @@ function Home() {
 }
 
 export default function App() {
+    const initialBlocks: never[] = [];
     return (
         <Layout>
-            <Routes>
-                <Route path="/" element={<Home/>}/>
-                <Route path="/video/:id" element={<VideoPage/>}/>
-                <Route path="*" element={<Navigate to="/" replace/>}/>
-            </Routes>
+            <SearchProvider initial={{blocks: initialBlocks}}>
+                <Routes>
+                    <Route path="/" element={<Home/>}/>
+                    <Route path="/video/:id" element={<VideoPage/>}/>
+                    <Route path="*" element={<Navigate to="/" replace/>}/>
+                </Routes>
+            </SearchProvider>
         </Layout>
     );
 }

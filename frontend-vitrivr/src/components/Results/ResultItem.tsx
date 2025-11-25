@@ -1,12 +1,13 @@
 import React from "react";
 import {Link} from "react-router-dom";
-import {thumbnailUrl, videoUrl} from "../../lib/vitrivr";
+import {thumbnailUrl} from "../../lib/vitrivr";
 
 type BaseProps = {
     id: string;
     caption?: React.ReactNode;
     className?: string;
     captionClassName?: string;
+    onBeforeOpen?: () => void;
 };
 type ImageProps = {
     kind?: "image";
@@ -16,7 +17,7 @@ type ImageProps = {
 };
 type VideoProps = {
     kind: "video";
-    getVideoSrc?: (id: string) => string;
+    getVideoSrc: (id: string) => string;
     getPosterSrc?: (id: string) => string;
     controls?: boolean;
     autoPlay?: boolean;
@@ -50,7 +51,7 @@ export default function ResultItem(props: ResultItemProps) {
             mediaClassName = "sb__video",
         } = props;
 
-        const src = (getVideoSrc ?? videoUrl)(id);
+        const src = (getVideoSrc)(id);
         const poster = (getPosterSrc ?? thumbnailUrl)(id);
 
         media = (

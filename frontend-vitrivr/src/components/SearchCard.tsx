@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import Card from "./Card";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
@@ -10,8 +10,9 @@ import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
-import MediaTypeFilter, {type MediaFilter} from "./Results/MediaTypeFilter";
+import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
+import {useSearch} from "../state/SearchContext.tsx";
 
 const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
 
@@ -25,7 +26,7 @@ const queryTypeItems =
     ] as const satisfies RadioOption<QueryType>[];
 
 type MediaKind = "image" | "video" | "custom";
-type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
+type MediaItem = { id: string; kind: MediaKind; rawType?: string; url: string };
 type RetrievablesResponse = {
     retrievables?: Array<{
         id?: string;
@@ -72,6 +73,45 @@ const makeBlockState = (): BlockState => ({
     file: null,
 });
 
+type PartOfRel = {
+    descriptors?: Record<string, unknown>;
+};
+type Relationship = {
+    partOf?: PartOfRel;
+};
+
+function pickFilePath(r: {
+    descriptors?: Record<string, unknown>;
+    relationship?: Relationship;
+}): string | undefined {
+    const local = r.descriptors?.["file.path"];
+    console.log("id:", (r as any).id);// this is undefined
+    console.log("local", local); // this is also undefined
+    if (typeof local === "string" && local.trim()) return local;
+
+    const parent = r.relationship?.partOf?.descriptors?.["file.path"];
+    if (typeof parent === "string" && parent.trim()) return parent;
+
+    return undefined;
+}
+
+function toVbsRelative(path: string): string | undefined {
+    const unixy = path.replace(/\\/g, "/");
+    try {
+        const normalized = new URL(unixy, "http://local").pathname;
+        const i = normalized.indexOf("/vbs/");
+        if (i === -1) return undefined;
+        return normalized.slice(i + 1);
+    } catch {
+        return undefined;
+    }
+}
+
+function encodePathSegments(p: string): string {
+    return p.split("/").map(encodeURIComponent).join("/");
+}
+
+
 function mapTypeToKind(t?: string): MediaKind {
     switch (t) {
         case "SOURCE:IMAGE":
@@ -85,17 +125,22 @@ function mapTypeToKind(t?: string): MediaKind {
 
 function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
+    const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
+
     return list
         .map((r) => {
             const id = r.id?.trim();
             if (!id) return null;
-            const descriptors = r.descriptors as Record<string, unknown> | undefined;
-            const filePath = typeof descriptors?.["file.path"] === "string" ? descriptors["file.path"] : undefined;
-            let url: string | undefined;
-            const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
-            if (filePath && typeof filePath === "string") {
-                const relative = filePath.split("/vbs/")[1];
-                if (relative) url = `${mediaOrigin}/vbs/${relative}`;
+
+            const filePath = pickFilePath(r as any);
+            console.log("filePath", filePath); // looks like: /home/andrina/repos/vitrivr-engine/./instance/./../vbs/media/videos/17235.mp4
+            let url: string;
+
+            if (filePath) {
+                const rel = toVbsRelative(filePath);        // e.g. "vbs/media/videos/00041.mp4"
+                if (rel) {
+                    url = `${mediaOrigin}/${encodePathSegments(rel)}`;
+                }
             }
 
             return {
@@ -110,14 +155,31 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
 
 export function SearchCard() {
+    const {
+        blocks, setBlocks,
+        items, setItems,
+        mediaFilter, setMediaFilter,
+        raw, setRaw,
+        setScrollY, scrollY,
+    } = useSearch();
+
+    useEffect(() => {
+        if (scrollY > 0) {
+            requestAnimationFrame(() => window.scrollTo(0, scrollY));
+        }
+    }, [scrollY]);
+
+    function updateBlocks(recipe: (prev: BlockState[]) => BlockState[]) {
+        setBlocks(prev => {
+            const next = recipe(prev);
+            return next.length === 0 ? [makeBlockState()] : next;
+        });
+    }
+
     const [flash, setFlash] = useState<{ show: boolean; message: string }>({show: false, message: ""});
-    const [blocks, setBlocks] = useState<BlockState[]>([makeBlockState()]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [items, setItems] = useState<MediaItem[]>([]);
-    const [raw, setRaw] = useState<string>("");
     const [filterOpen, setFilterOpen] = useState(false);
-    const [mediaFilter, setMediaFilter] = useState<MediaFilter>({image: true, video: true, custom: true});
     const counts = {
         image: items.filter(i => i.kind === "image").length,
         video: items.filter(i => i.kind === "video").length,
@@ -125,11 +187,11 @@ export function SearchCard() {
     };
 
     const filteredItems = items.filter(i => mediaFilter[i.kind]);
-    const addBlock = () => setBlocks((prev) => [makeBlockState(), ...prev]);
-    const removeBlock = (id: string) => setBlocks((prev) => prev.filter((b) => b.id !== id));
+    const addBlock = () => updateBlocks(prev => [makeBlockState(), ...prev]);
+    const removeBlock = (id: string) =>
+        updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
-        setBlocks((prev) => prev.map((b) => (b.id === id ? {...b, ...patch} : b)));
-
+        updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
     const onSearch = async () => {
         for (const b of blocks) {
             const isText = b.queryType === "text" || b.modality === "emotions";
@@ -155,6 +217,11 @@ export function SearchCard() {
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
                 const resp = await retrieval.postExecuteQuery(SCHEMA, body);
+                console.log("resp =", resp);
+                console.log("resp.data =", (resp as any).data);
+                console.log("resp.retrievables =", (resp as any).retrievables);
+
+                console.log("reponse" + resp);
                 const media = mediaFrom(resp as RetrievablesResponse);
                 setItems(media);
                 return;
@@ -169,11 +236,13 @@ export function SearchCard() {
             const pretty = JSON.stringify(resp, null, 2);
             setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
         } catch (err) {
+            console.log(String(err))
             setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }
     };
+    const beforeNavigate = () => setScrollY(window.scrollY);
 
     return (
         <div>
@@ -293,6 +362,8 @@ export function SearchCard() {
                                     id={id}
                                     kind="video"
                                     mediaClassName="ri-media"
+                                    getVideoSrc={() => url}
+                                    onBeforeOpen={beforeNavigate}
                                 />
                             );
                         }
@@ -301,6 +372,7 @@ export function SearchCard() {
                                 key={id}
                                 id={id}
                                 kind="custom"
+                                onBeforeOpen={beforeNavigate}
                                 renderMedia={() => (
                                     <div className="sb__unknown">
                                         <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
