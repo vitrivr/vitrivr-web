@@ -2,11 +2,14 @@ import type {BlockState} from "../components/SearchCard.tsx";
 
 export const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
-//export const videoUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/video/${encodeURIComponent(id)}`;
-export const thumbnailUrl = (id: string) => `${API_BASE}/api/${SCHEMA}/fetch/thumbnail/${encodeURIComponent(id)}`;
+export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
 type TextInput = { type: "TEXT"; data: string }
 type Inputs = Record<string, TextInput>
 type Operator = Record<string, unknown>;
+
+export function thumbnailUrl(id: string): string {
+    return `${THUMBNAIL_BASE}/vbs/thumbnails/${encodeURIComponent(id)}.jpg`;
+}
 
 /**
  * TODO adjust this such that images, emotions and non clip modalities can be entered.

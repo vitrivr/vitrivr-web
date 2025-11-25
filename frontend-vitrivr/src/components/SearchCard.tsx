@@ -26,7 +26,16 @@ const queryTypeItems =
     ] as const satisfies RadioOption<QueryType>[];
 
 type MediaKind = "image" | "video" | "custom";
-type MediaItem = { id: string; kind: MediaKind; rawType?: string; url: string };
+
+type MediaItem = {
+    id: string;
+    kind: MediaKind;
+    rawType?: string;
+    url: string;
+    start: number;
+    end: number;
+};
+
 type RetrievablesResponse = {
     retrievables?: Array<{
         id?: string;
@@ -80,6 +89,24 @@ type Relationship = {
     partOf?: PartOfRel;
 };
 
+function pickStartTime(r: {
+    descriptors?: Record<string, unknown>;
+}): string | undefined {
+    const start = r.descriptors?.["time.start"];
+    console.log("start time: " + start);
+    if (typeof start === "string" && start.trim()) return start;
+    return undefined;
+}
+
+function pickEndTime(r: {
+    descriptors?: Record<string, unknown>;
+}): string | undefined {
+    const end = r.descriptors?.["time.end"];
+    console.log("start time: " + end);
+    if (typeof end === "string" && end.trim()) return end;
+    return undefined;
+}
+
 function pickFilePath(r: {
     descriptors?: Record<string, unknown>;
     relationship?: Relationship;
@@ -95,6 +122,7 @@ function pickFilePath(r: {
     return undefined;
 }
 
+// TODO: change this to schema relative
 function toVbsRelative(path: string): string | undefined {
     const unixy = path.replace(/\\/g, "/");
     try {
@@ -133,6 +161,11 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             if (!id) return null;
 
             const filePath = pickFilePath(r as any);
+            const startString = pickStartTime(r);
+            const start = Number.parseFloat(startString ?? "0") / 1_000_000_000;
+            const endString = pickEndTime(r);
+            const end = Number.parseFloat(endString ?? "0") / 1_000_000_000;
+
             console.log("filePath", filePath); // looks like: /home/andrina/repos/vitrivr-engine/./instance/./../vbs/media/videos/17235.mp4
             let url: string;
 
@@ -143,12 +176,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
                 }
             }
 
-            return {
-                id,
-                kind: mapTypeToKind(r.type),
-                rawType: r.type,
-                url,
-            } as MediaItem;
+            return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, start, end};
         })
         .filter((v): v is MediaItem => v !== null);
 }
@@ -343,7 +371,7 @@ export function SearchCard() {
 
 
                 <div className="results-grid">
-                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
+                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType, start, end}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem
@@ -363,6 +391,8 @@ export function SearchCard() {
                                     kind="video"
                                     mediaClassName="ri-media"
                                     getVideoSrc={() => url}
+                                    start={start}
+                                    end={end}
                                     onBeforeOpen={beforeNavigate}
                                 />
                             );

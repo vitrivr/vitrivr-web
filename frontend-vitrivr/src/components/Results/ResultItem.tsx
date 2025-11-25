@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useRef} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailUrl} from "../../lib/vitrivr";
 
@@ -17,6 +17,8 @@ type ImageProps = {
 };
 type VideoProps = {
     kind: "video";
+    start: number;
+    end: number;
     getVideoSrc: (id: string) => string;
     getPosterSrc?: (id: string) => string;
     controls?: boolean;
@@ -30,6 +32,7 @@ type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNod
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
 export default function ResultItem(props: ResultItemProps) {
+    const videoRef = useRef<HTMLVideoElement | null>(null);
     const {
         id,
         caption = id,
@@ -41,6 +44,7 @@ export default function ResultItem(props: ResultItemProps) {
 
     if (props.kind === "video") {
         const {
+            start,
             getVideoSrc,
             getPosterSrc,
             controls = true,
@@ -54,8 +58,16 @@ export default function ResultItem(props: ResultItemProps) {
         const src = (getVideoSrc)(id);
         const poster = (getPosterSrc ?? thumbnailUrl)(id);
 
+        const handleLoadedMetadata = () => {
+            if (videoRef.current && start != null) {
+                videoRef.current.currentTime = start;
+            }
+        };
+
+
         media = (
             <video
+                ref={videoRef}
                 className={mediaClassName}
                 src={src}
                 poster={poster}
@@ -64,6 +76,7 @@ export default function ResultItem(props: ResultItemProps) {
                 loop={loop}
                 muted={muted}
                 preload={preload}
+                onLoadedMetadata={handleLoadedMetadata}
             />
         );
     } else if (props.kind === "custom") {
@@ -77,6 +90,16 @@ export default function ResultItem(props: ResultItemProps) {
     return (
         <Link
             to={`/video/${encodeURIComponent(id)}`}
+            state={
+                props.kind === "video"
+                    ? {
+                        src: (props as any).getVideoSrc?.(id),      // or reuse `src` variable
+                        poster: thumbnailUrl(id),
+                        start: (props as any).start,
+                        end: (props as any).end,
+                    }
+                    : undefined
+            }
             style={{
                 textDecoration: "none",
                 color: "inherit",
@@ -88,4 +111,5 @@ export default function ResultItem(props: ResultItemProps) {
             </figure>
         </Link>
     );
+
 }

@@ -2,8 +2,9 @@
 import {useNavigate, useParams, useLocation} from "react-router-dom";
 import {thumbnailUrl} from "../lib/vitrivr";
 import {useSearch} from "../state/SearchContext.tsx";
+import React, {useRef, useCallback} from "react";
 
-type VideoState = { src?: string; poster?: string } | null;
+type VideoState = { src?: string; poster?: string; start?: number, end?: number } | null;
 
 export default function VideoPage() {
     const navigate = useNavigate();
@@ -11,9 +12,7 @@ export default function VideoPage() {
     const state = (location.state as VideoState) ?? null;
     const {id} = useParams<{ id: string }>();
     const {items} = useSearch(); // items: MediaItem[]
-    const item = items.find(it => it.id === id);
-    const src = item?.url;
-    const poster = thumbnailUrl(id);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
 
     if (!id) {
         return (
@@ -23,6 +22,20 @@ export default function VideoPage() {
             </div>
         );
     }
+
+    const item = items.find(it => it.id === id);
+    const src = state?.src ?? item?.url;
+    const poster = state?.poster ?? thumbnailUrl(id);
+    const start = state?.start ?? 0;
+    const end = state?.end ?? 0;
+
+    const handleLoadedMetadata = useCallback(() => {
+        if (videoRef.current == null) return;
+        if (start != null && !Number.isNaN(start)) {
+            videoRef.current.currentTime = start;
+        }
+    }, [start]);
+
 
     return (
         <div style={{padding: 16, display: "grid", gap: 16}}>
@@ -44,10 +57,12 @@ export default function VideoPage() {
             </header>
 
             <video
+                ref={videoRef}
                 src={src}
                 poster={poster}
                 controls
                 preload="metadata"
+                onLoadedMetadata={handleLoadedMetadata}
                 style={{
                     width: "100%",
                     maxWidth: 960,
@@ -87,7 +102,7 @@ export default function VideoPage() {
                     }}
                 >
                     <h3 style={{marginTop: 0}}>Nearest neighbors</h3>
-                    <div style={{color: "#666"}}>Not yet implemented :)</div>
+                    <div style={{color: "#666"}}> {start}, {end}, {id}</div>
                 </div>
             </section>
         </div>
