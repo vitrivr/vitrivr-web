@@ -265,7 +265,7 @@ export function SearchCard() {
     return (
         <div>
             <Card title="Query Builder" actions={<div>schema: <code>{SCHEMA}</code></div>}>
-                <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 16, alignItems: "start"}}>
+                <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 2, alignItems: "start"}}>
                     <div style={{position: "sticky", top: 8}}>
                         <button
                             type="button"
@@ -284,7 +284,7 @@ export function SearchCard() {
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
-                        gap: 16
+                        gap: 2
                     }}>
                         {blocks.map((b) => (
                             <QueryBlock
@@ -340,7 +340,7 @@ export function SearchCard() {
                                 aria-expanded={filterOpen}
                                 style={{
                                     height: 36,
-                                    borderRadius: 12,
+                                    borderRadius: 2,
                                     border: "1px solid #ddd",
                                     background: "#fff",
                                     padding: "0 12px",
@@ -359,7 +359,7 @@ export function SearchCard() {
                         </div>
                     )}
                 </div>
-                
+
                 <div className="results-grid">
                     {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
                         if (kind === "image") {
@@ -401,7 +401,7 @@ export function SearchCard() {
                 </div>
 
                 {raw && (
-                    <pre style={{padding: 16, background: "#fafafa", borderTop: "1px solid #eee", overflow: "auto"}}>
+                    <pre style={{padding: 2, background: "#fafafa", borderTop: "1px solid #eee", overflow: "auto"}}>
             {raw}
         </pre>
                 )}

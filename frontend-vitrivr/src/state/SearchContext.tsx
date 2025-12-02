@@ -3,7 +3,11 @@ import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
 
 type MediaKind = "image" | "video" | "custom";
-export type MediaItem = { id: string; kind: MediaKind; rawType?: string; url?: string };
+export type MediaItem = {
+    start: number;
+    end: number;
+    id: string; kind: MediaKind; rawType?: string; url?: string
+};
 
 type MediaFilter = { image: boolean; video: boolean; custom: boolean };
 

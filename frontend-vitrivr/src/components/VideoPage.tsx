@@ -1,18 +1,16 @@
 "use client";
-import {useNavigate, useParams, useLocation} from "react-router-dom";
+import {useNavigate, useParams} from "react-router-dom";
 import {thumbnailUrl} from "../lib/vitrivr";
 import {useSearch} from "../state/SearchContext.tsx";
-import React, {useRef, useCallback} from "react";
-
-type VideoState = { src?: string; poster?: string; start?: number, end?: number } | null;
+import {useEffect, useRef} from "react";
 
 export default function VideoPage() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const state = (location.state as VideoState) ?? null;
     const {id} = useParams<{ id: string }>();
-    const {items} = useSearch(); // items: MediaItem[]
     const videoRef = useRef<HTMLVideoElement | null>(null);
+    const {items} = useSearch();
+    const item = items.find(it => it.id === id);
+
 
     if (!id) {
         return (
@@ -23,17 +21,32 @@ export default function VideoPage() {
         );
     }
 
-    const item = items.find(it => it.id === id);
-    const src = state?.src ?? item?.url;
-    const poster = state?.poster ?? thumbnailUrl(id);
-    const start = state?.start ?? 0;
-    const end = state?.end ?? 0;
+    const src = item?.url ?? "";
+    const poster = thumbnailUrl(id) ?? "";
+    const start = item?.start ?? 0;
+    const end = item?.end ?? 0;
 
-    const handleLoadedMetadata = useCallback(() => {
-        if (videoRef.current == null) return;
-        if (start != null && !Number.isNaN(start)) {
-            videoRef.current.currentTime = start;
-        }
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handleLoadedMetadata = () => {
+            if (start > 0) {
+                // clamp to valid range just in case
+                const safeStart =
+                    video.duration && video.duration > 0
+                        ? Math.min(Math.max(0, start), video.duration)
+                        : Math.max(0, start);
+
+                video.currentTime = safeStart;
+            }
+        };
+
+        video.addEventListener("loadedmetadata", handleLoadedMetadata);
+        return () => {
+            video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        };
     }, [start]);
 
 
@@ -62,7 +75,6 @@ export default function VideoPage() {
                 poster={poster}
                 controls
                 preload="metadata"
-                onLoadedMetadata={handleLoadedMetadata}
                 style={{
                     width: "100%",
                     maxWidth: 960,
@@ -70,7 +82,7 @@ export default function VideoPage() {
                     borderRadius: 12,
                     boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
                     background: "#000",
-                    justifySelf: "start"
+                    justifySelf: "start",
                 }}
             />
 
@@ -91,7 +103,11 @@ export default function VideoPage() {
                     }}
                 >
                     <h3 style={{marginTop: 0}}>Metadata</h3>
-                    <div style={{color: "#666"}}>Still trying to understand the API lol.</div>
+                    <div style={{color: "#666"}}>
+                        Start: {start.toFixed(2)}s <br/>
+                        End: {end.toFixed(2)}s <br/>
+                        Video Name: {src.split("/")[6]} <br/>
+                    </div>
                 </div>
                 <div
                     style={{
@@ -102,7 +118,7 @@ export default function VideoPage() {
                     }}
                 >
                     <h3 style={{marginTop: 0}}>Nearest neighbors</h3>
-                    <div style={{color: "#666"}}> {start}, {end}, {id}</div>
+                    <div style={{color: "#666"}}>Not yet implemented :)</div>
                 </div>
             </section>
         </div>
