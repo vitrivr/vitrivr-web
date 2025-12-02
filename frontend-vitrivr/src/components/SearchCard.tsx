@@ -320,6 +320,7 @@ export function SearchCard() {
                 {!error && !loading && items.length === 0 && (
                     <div style={{padding: 16, color: "#666"}}>No results yet—run a search.</div>
                 )}
+
                 <div
                     style={{
                         position: "sticky",
@@ -358,35 +359,31 @@ export function SearchCard() {
                         </div>
                     )}
                 </div>
-
-
+                
                 <div className="results-grid">
-                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType, start, end}) => {
+                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem
                                     key={id}
                                     id={id}
-                                    kind="image"
                                     mediaClassName="ri-media"
                                     getImageSrc={() => url ?? ""}
                                 />
                             );
                         }
+
                         if (kind === "video") {
                             return (
                                 <ResultItem
                                     key={id}
                                     id={id}
-                                    kind="video"
                                     mediaClassName="ri-media"
-                                    getVideoSrc={() => url}
-                                    start={start}
-                                    end={end}
                                     onBeforeOpen={beforeNavigate}
                                 />
                             );
                         }
+
                         return (
                             <ResultItem
                                 key={id}
@@ -406,9 +403,10 @@ export function SearchCard() {
                 {raw && (
                     <pre style={{padding: 16, background: "#fafafa", borderTop: "1px solid #eee", overflow: "auto"}}>
             {raw}
-          </pre>
+        </pre>
                 )}
             </Card>
+
         </div>
     );
 }
