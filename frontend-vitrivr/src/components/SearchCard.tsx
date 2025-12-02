@@ -240,29 +240,19 @@ export function SearchCard() {
         setFlash({show: false, message: ""});
 
         try {
+            let resp;
+
             if (blocks.length == 1) {
                 const body = buildTextQuery(blocks[0].textQuery.trim());
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-expect-error
-                const resp = await retrieval.postExecuteQuery(SCHEMA, body);
-                console.log("resp =", resp);
-                console.log("resp.data =", (resp as any).data);
-                console.log("resp.retrievables =", (resp as any).retrievables);
-
-                console.log("reponse" + resp);
-                const media = mediaFrom(resp as RetrievablesResponse);
-                setItems(media);
-                return;
+                resp = await retrieval.postExecuteQuery(SCHEMA, body);
+            } else {
+                const body = buildTemporalQuery(blocks);
+                resp = await retrieval.postExecuteQuery(SCHEMA, body);
+                const pretty = JSON.stringify(resp, null, 2);
+                setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
             }
-            const body = buildTemporalQuery(blocks);
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-expect-error
-            const resp = await retrieval.postExecuteQuery(SCHEMA, body);
-            console.log(resp)
             const media = mediaFrom(resp as RetrievablesResponse);
             setItems(media);
-            const pretty = JSON.stringify(resp, null, 2);
-            setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
         } catch (err) {
             console.log(String(err))
             setError(err instanceof Error ? err.message : String(err));

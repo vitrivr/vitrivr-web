@@ -93,7 +93,7 @@ export default function ResultItem(props: ResultItemProps) {
             state={
                 props.kind === "video"
                     ? {
-                        src: (props as any).getVideoSrc?.(id),      // or reuse `src` variable
+                        src: (props as any).getVideoSrc?.(id),
                         poster: thumbnailUrl(id),
                         start: (props as any).start,
                         end: (props as any).end,
