@@ -13,8 +13,9 @@ import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {useSearch} from "../state/SearchContext.tsx";
+import SchemaSelector from "./SchemaSelector.tsx";
 
-const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
+const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
 
 type QueryType = Extract<BlockState['queryType'], string>;
 type Modality = "clip" | "emotions" | "ocr" | "asr";
@@ -208,11 +209,23 @@ export function SearchCard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [schema, setSchema] = useState<string>(DEFAULT_SCHEMA);
     const counts = {
         image: items.filter(i => i.kind === "image").length,
         video: items.filter(i => i.kind === "video").length,
         custom: items.filter(i => i.kind === "custom").length,
     };
+
+    useEffect(() => {
+        try {
+            const stored = window.localStorage.getItem("vitrivr_schema");
+            if (stored) {
+                setSchema(stored);
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
 
     const filteredItems = items.filter(i => mediaFilter[i.kind]);
     const addBlock = () => updateBlocks(prev => [makeBlockState(), ...prev]);
@@ -244,10 +257,10 @@ export function SearchCard() {
 
             if (blocks.length == 1) {
                 const body = buildTextQuery(blocks[0].textQuery.trim());
-                resp = await retrieval.postExecuteQuery(SCHEMA, body);
+                resp = await retrieval.postExecuteQuery(schema, body);
             } else {
                 const body = buildTemporalQuery(blocks);
-                resp = await retrieval.postExecuteQuery(SCHEMA, body);
+                resp = await retrieval.postExecuteQuery(schema, body);
                 const pretty = JSON.stringify(resp, null, 2);
                 setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
             }
@@ -264,7 +277,15 @@ export function SearchCard() {
 
     return (
         <div>
-            <Card title="Query Builder" actions={<div>schema: <code>{SCHEMA}</code></div>}>
+            <Card
+                title="Query Builder"
+                actions={
+                    <SchemaSelector
+                        value={schema}
+                        onChange={setSchema}
+                    />
+                }
+            >
                 <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 2, alignItems: "start"}}>
                     <div style={{position: "sticky", top: 8}}>
                         <button

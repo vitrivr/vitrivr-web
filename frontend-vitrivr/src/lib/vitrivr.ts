@@ -6,9 +6,51 @@ export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
 type TextInput = { type: "TEXT"; data: string }
 type Inputs = Record<string, TextInput>
 type Operator = Record<string, unknown>;
+type RawSchema = string | { name?: string; [key: string]: unknown };
+const stored = window.localStorage.getItem("vitrivr_schema");
+
+const schema = stored ?? SCHEMA;
+
 
 export function thumbnailUrl(id: string): string {
-    return `${THUMBNAIL_BASE}/vbs/thumbnails/${encodeURIComponent(id)}.jpg`;
+    return `${THUMBNAIL_BASE}/${schema}/thumbnails/${encodeURIComponent(id)}.jpg`;
+}
+
+export async function fetchSchemas(): Promise<string[]> {
+    const url = `${API_BASE}/api/schema/list`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch schemas (HTTP ${res.status})`);
+    }
+
+    const data = await res.json() as unknown;
+    let rawList: unknown;
+
+    if (Array.isArray(data)) {
+        rawList = data;
+    } else if (data && typeof data === "object") {
+        const obj = data as Record<string, unknown>;
+        if (Array.isArray(obj.schemas)) {
+            rawList = obj.schemas;
+        } else if (Array.isArray(obj.result)) {
+            rawList = obj.result;
+        }
+    }
+
+    if (!Array.isArray(rawList)) {
+        return [];
+    }
+
+    const names = (rawList as RawSchema[])
+        .map((item) =>
+            typeof item === "string"
+                ? item
+                : item?.name ?? undefined
+        )
+        .filter((name): name is string => typeof name === "string" && name.length > 0);
+
+    return names;
 }
 
 /**
