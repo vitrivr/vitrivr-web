@@ -1,0 +1,29 @@
+.card--with-header .card-header {
+    display: flex;
+    align-items: center;
+    gap: inherit;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.card--with-header .card-header-text {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.card--with-header .card-title {
+    margin: 0;
+    font-size: 1.125rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #111827;
+}
+
+.card--with-header .card-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+

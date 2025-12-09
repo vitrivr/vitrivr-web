@@ -11,7 +11,6 @@ export default function VideoPage() {
     const {items} = useSearch();
     const item = items.find(it => it.id === id);
 
-
     if (!id) {
         return (
             <div style={{padding: 16}}>
@@ -21,10 +20,19 @@ export default function VideoPage() {
         );
     }
 
-    const src = item?.url ?? "";
+    if (!item || !item.url) {
+        return (
+            <div style={{padding: 16}}>
+                <button onClick={() => navigate(-1)} aria-label="Back">← Back</button>
+                <p>No video URL found for id: {id}</p>
+            </div>
+        );
+    }
+
+    const src = item.url;
     const poster = thumbnailUrl(id) ?? "";
-    const start = item?.start ?? 0;
-    const end = item?.end ?? 0;
+    const start = item.start ?? 0;
+    const end = item.end ?? 0;
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
@@ -33,7 +41,6 @@ export default function VideoPage() {
 
         const handleLoadedMetadata = () => {
             if (start > 0) {
-                // clamp to valid range just in case
                 const safeStart =
                     video.duration && video.duration > 0
                         ? Math.min(Math.max(0, start), video.duration)

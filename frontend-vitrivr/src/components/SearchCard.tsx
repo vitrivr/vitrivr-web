@@ -1,5 +1,6 @@
 "use client";
 import {useEffect, useState} from "react";
+import CardHeader from "./CardHeader";
 import Card from "./Card";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
@@ -167,11 +168,10 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             const endString = pickEndTime(r);
             const end = Number.parseFloat(endString ?? "0") / 1_000_000_000;
 
-            console.log("filePath", filePath); // looks like: /home/andrina/repos/vitrivr-engine/./instance/./../vbs/media/videos/17235.mp4
-            let url: string;
+            let url = "";
 
             if (filePath) {
-                const rel = toVbsRelative(filePath);        // e.g. "vbs/media/videos/00041.mp4"
+                const rel = toVbsRelative(filePath);
                 if (rel) {
                     url = `${mediaOrigin}/${encodePathSegments(rel)}`;
                 }
@@ -179,9 +179,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
             return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, start, end};
         })
-        .filter((v): v is MediaItem => {
-            return v !== null;
-        });
+        .filter((v): v is MediaItem => v !== null && !!v.url);
 }
 
 
@@ -280,8 +278,7 @@ export function SearchCard() {
 
     return (
         <div>
-            <Card
-                title="Query Builder"
+            <CardHeader
                 actions={
                     <SchemaSelector
                         value={schema}
@@ -336,9 +333,9 @@ export function SearchCard() {
                 <div style={{padding: 16}}>
                     <Button label={loading ? "Searching…" : "Search"} disabled={loading} onClick={onSearch}/>
                 </div>
-            </Card>
+            </CardHeader>
 
-            <Card title="Results">
+            <CardHeader title="Results">
                 {error && <div style={{color: "crimson", padding: 16}}>{error}</div>}
                 {!error && loading && <div style={{padding: 16}}>Searching…</div>}
                 {!error && !loading && items.length === 0 && (
@@ -407,7 +404,7 @@ export function SearchCard() {
                                     start={start}
                                     end={end}
                                     getVideoSrc={() => url ?? ""}
-                                    getPosterSrc={thumbnailUrl}   // same signature (id: string) => string
+                                    getPosterSrc={thumbnailUrl}
                                     mediaClassName="ri-media"
                                     onBeforeOpen={beforeNavigate}
                                 />
@@ -435,7 +432,7 @@ export function SearchCard() {
             {raw}
         </pre>
                 )}
-            </Card>
+            </CardHeader>
 
         </div>
     );

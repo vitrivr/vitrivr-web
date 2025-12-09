@@ -1,6 +1,4 @@
 import {useEffect} from "react";
-import Card from "../Card.tsx";
-import Button from "./Button.tsx";
 import RadioGroup, {type RadioOption} from "./RadioGroup.tsx";
 import Dropdown, {type DropdownItem} from "./Dropdown.tsx";
 import Input from "./Input.tsx";
@@ -31,7 +29,6 @@ export default function QueryBlock({
     const isTextQuery = block.queryType === "text";
     const isCLIP = block.modality === "clip";
 
-    // keep text/file mutually exclusive based on queryType
     useEffect(() => {
         if (isTextQuery) {
             onChange({file: null});
@@ -42,12 +39,45 @@ export default function QueryBlock({
     }, [isTextQuery]);
 
     return (
-        <Card
-            title="Query Building Block"
-            actions={onRemove ? <Button label="Remove" onClick={onRemove}/> : null}
+        <div
+            style={{
+                position: "relative",
+                background: "#ffffff",
+                borderRadius: "20px",
+                padding: "16px",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                minWidth: 0,
+                maxWidth: "300px",
+                maxHeight: "190px",
+            }}
         >
-            <div style={{padding: 16}}>
-                <RadioGroup<Modality>
+            {onRemove && (
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    aria-label="Remove block"
+                    style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        border: "1px solid #ccc",
+                        background: "#fff",
+                        cursor: "pointer",
+                        fontSize: 18,
+                        lineHeight: "24px",
+                        textAlign: "center",
+                        padding: 0,
+                    }}
+                >
+                    ×
+                </button>
+            )}
+
+            <div style={{marginBottom: 16}}>
+                <RadioGroup
                     label="Modalities"
                     options={modalityOptions}
                     value={block.modality}
@@ -56,17 +86,18 @@ export default function QueryBlock({
                 />
             </div>
 
-            <div style={{padding: 16}}>
-                {isCLIP ? (
-                    <RadioGroup<QueryType>
+            <div style={{marginBottom: 16}}>
+                {isCLIP && (
+                    <RadioGroup
                         label="Query Type"
                         options={queryTypeItems}
                         value={block.queryType}
                         onChange={(v) => onChange({queryType: v, textQuery: ""})}
                         orientation="horizontal"
                     />
-                ) : null}
-                {isEmotion ? (
+                )}
+
+                {isEmotion && (
                     <Dropdown
                         items={emotionItems}
                         value={block.emotion}
@@ -74,11 +105,11 @@ export default function QueryBlock({
                         placeholder="Select an Emotion"
                         label="Emotion"
                     />
-                ) : null}
+                )}
             </div>
 
-            <div style={{padding: 16}}>
-                {isTextQuery || isEmotion ? (
+            <div>
+                {(isTextQuery || isEmotion) ? (
                     <Input
                         type="text"
                         value={block.textQuery}
@@ -93,6 +124,7 @@ export default function QueryBlock({
                     />
                 )}
             </div>
-        </Card>
+        </div>
     );
 }
+

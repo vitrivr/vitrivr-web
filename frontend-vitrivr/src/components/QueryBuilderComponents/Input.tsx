@@ -33,7 +33,7 @@ export default function Input({
     }
 
     return (
-        <div>
+        <div style={{minHeight: 80}}>
             <input
                 id={id}
                 name={name}

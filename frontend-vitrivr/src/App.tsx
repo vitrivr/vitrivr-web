@@ -1,6 +1,6 @@
 import {Routes, Route, Navigate} from "react-router-dom";
 import Layout from "./components/Layout";
-import Card from "./components/Card";
+import CardHeader from "./components/CardHeader";
 import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage";
 import {SearchProvider} from "./state/SearchContext.tsx";
@@ -8,7 +8,7 @@ import {SearchProvider} from "./state/SearchContext.tsx";
 function Home() {
     return (
         <>
-            <Card
+            <CardHeader
                 title="Welcome to vitrivr"
                 subtitle="This is a very cool and extremely helpful subtitle."
                 className="mb-6"
@@ -18,7 +18,7 @@ function Home() {
                     videos with the help of CLIP. Emotions, 3D objects and more will at some point also be possible.
                     Stay tuned.
                 </p>
-            </Card>
+            </CardHeader>
             <SearchCard/>
         </>
     );
