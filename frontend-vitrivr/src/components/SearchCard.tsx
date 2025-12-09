@@ -228,7 +228,8 @@ export function SearchCard() {
     }, []);
 
     const filteredItems = items.filter(i => mediaFilter[i.kind]);
-    const addBlock = () => updateBlocks(prev => [makeBlockState(), ...prev]);
+    const addBlock = () =>
+        updateBlocks(prev => [...prev, makeBlockState()]);
     const removeBlock = (id: string) =>
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
@@ -286,7 +287,7 @@ export function SearchCard() {
                     />
                 }
             >
-                <div style={{display: "grid", gridTemplateColumns: "56px 1fr", gap: 2, alignItems: "start"}}>
+                <div style={{display: "grid", gridTemplateColumns: "56px 3fr", gap: 2, alignItems: "start"}}>
                     <div style={{position: "sticky", top: 8}}>
                         <button
                             type="button"
@@ -304,8 +305,8 @@ export function SearchCard() {
 
                     <div style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
-                        gap: 2
+                        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                        gap: 1
                     }}>
                         {blocks.map((b) => (
                             <QueryBlock
