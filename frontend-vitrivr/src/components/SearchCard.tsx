@@ -382,13 +382,12 @@ export function SearchCard() {
                 </div>
 
                 <div className="results-grid">
-                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType, start, end}) => {
+                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem
                                     key={id}
                                     id={id}
-                                    kind="image"
                                     mediaClassName="ri-media"
                                     getImageSrc={() => url ?? ""}
                                 />
@@ -400,11 +399,6 @@ export function SearchCard() {
                                 <ResultItem
                                     key={id}
                                     id={id}
-                                    kind="video"
-                                    start={start}
-                                    end={end}
-                                    getVideoSrc={() => url ?? ""}
-                                    getPosterSrc={thumbnailUrl}
                                     mediaClassName="ri-media"
                                     onBeforeOpen={beforeNavigate}
                                 />

@@ -10,7 +10,7 @@ export default function VideoPage() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const {items} = useSearch();
     const item = items.find(it => it.id === id);
-
+    
     if (!id) {
         return (
             <div style={{padding: 16}}>
@@ -20,19 +20,10 @@ export default function VideoPage() {
         );
     }
 
-    if (!item || !item.url) {
-        return (
-            <div style={{padding: 16}}>
-                <button onClick={() => navigate(-1)} aria-label="Back">← Back</button>
-                <p>No video URL found for id: {id}</p>
-            </div>
-        );
-    }
-
-    const src = item.url;
+    const src = item?.url ?? "";
     const poster = thumbnailUrl(id) ?? "";
-    const start = item.start ?? 0;
-    const end = item.end ?? 0;
+    const start = item?.start ?? 0;
+    const end = item?.end ?? 0;
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
