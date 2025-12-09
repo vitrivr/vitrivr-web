@@ -234,15 +234,29 @@ export function SearchCard() {
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
+
     const onSearch = async () => {
         for (const b of blocks) {
-            const isText = b.queryType === "text" || b.modality === "emotions";
-            if (isText && !b.textQuery.trim()) {
-                setFlash({show: true, message: "Please fill all text queries before searching."});
-                return;
+            const isTextQuery = b.queryType === "text";
+            const isEmotion = b.modality === "emotions";
+            const needsText = isTextQuery || isEmotion;
+            
+            if (needsText) {
+                const txt = (b.textQuery ?? "").trim();
+                if (txt.length === 0) {
+                    setFlash({
+                        show: true,
+                        message: "Please fill in all text queries before searching."
+                    });
+                    return;
+                }
             }
-            if (!isText && !b.file) {
-                setFlash({show: true, message: "Please attach images for image query blocks."});
+
+            if (!needsText && !b.file) {
+                setFlash({
+                    show: true,
+                    message: "Please attach images for image query blocks."
+                });
                 return;
             }
         }

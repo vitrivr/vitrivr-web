@@ -33,16 +33,20 @@ export default function Input({
     }
 
     return (
-        <div style={{minHeight: 80}}>
-            <input
+        <div style={{minHeight: 120}}>
+            <textarea
                 id={id}
                 name={name}
-                type="text"
                 placeholder={placeholder}
                 value={value}
                 onChange={(e) => onChange?.(e.target.value)}
                 disabled={disabled}
                 className={className}
+                style={{
+                    width: "95%",
+                    height: "100%",
+                    boxSizing: "border-box"
+                }}
             />
         </div>
     );

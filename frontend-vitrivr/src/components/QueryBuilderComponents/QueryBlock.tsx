@@ -48,7 +48,7 @@ export default function QueryBlock({
                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
                 minWidth: 0,
                 maxWidth: "300px",
-                maxHeight: "190px",
+                maxHeight: "210px",
             }}
         >
             {onRemove && (
