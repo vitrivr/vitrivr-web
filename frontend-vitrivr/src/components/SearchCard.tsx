@@ -6,7 +6,7 @@ import "./QueryBuilderComponents/Dropdown.css";
 import Button from "./QueryBuilderComponents/Button.tsx";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery, thumbnailUrl} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -179,7 +179,9 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
             return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, start, end};
         })
-        .filter((v): v is MediaItem => v !== null);
+        .filter((v): v is MediaItem => {
+            return v !== null;
+        });
 }
 
 
@@ -266,6 +268,7 @@ export function SearchCard() {
             }
             const media = mediaFrom(resp as RetrievablesResponse);
             setItems(media);
+            setLoading(false);
         } catch (err) {
             console.log(String(err))
             setError(err instanceof Error ? err.message : String(err));
@@ -382,12 +385,13 @@ export function SearchCard() {
                 </div>
 
                 <div className="results-grid">
-                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
+                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType, start, end}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem
                                     key={id}
                                     id={id}
+                                    kind="image"
                                     mediaClassName="ri-media"
                                     getImageSrc={() => url ?? ""}
                                 />
@@ -399,6 +403,11 @@ export function SearchCard() {
                                 <ResultItem
                                     key={id}
                                     id={id}
+                                    kind="video"
+                                    start={start}
+                                    end={end}
+                                    getVideoSrc={() => url ?? ""}
+                                    getPosterSrc={thumbnailUrl}   // same signature (id: string) => string
                                     mediaClassName="ri-media"
                                     onBeforeOpen={beforeNavigate}
                                 />

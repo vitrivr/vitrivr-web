@@ -55,7 +55,7 @@ export default function ResultItem(props: ResultItemProps) {
             mediaClassName = "sb__video",
         } = props;
 
-        const src = (getVideoSrc)(id);
+        const src = getVideoSrc(id);
         const poster = (getPosterSrc ?? thumbnailUrl)(id);
 
         const handleLoadedMetadata = () => {
