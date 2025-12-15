@@ -8,9 +8,10 @@ export default function VideoPage() {
     const navigate = useNavigate();
     const {id} = useParams<{ id: string }>();
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const {items} = useSearch();
+    const {items, schema} = useSearch();
     const item = items.find(it => it.id === id);
-    
+    const poster = thumbnailUrl(schema, id) ?? "";
+
     if (!id) {
         return (
             <div style={{padding: 16}}>
@@ -21,7 +22,6 @@ export default function VideoPage() {
     }
 
     const src = item?.url ?? "";
-    const poster = thumbnailUrl(id) ?? "";
     const start = item?.start ?? 0;
     const end = item?.end ?? 0;
 

@@ -7,7 +7,6 @@ type TextInput = { type: "TEXT"; data: string }
 type Inputs = Record<string, TextInput>
 type Operator = Record<string, unknown>;
 type RawSchema = string | { name?: string; [key: string]: unknown };
-const stored = window.localStorage.getItem("vitrivr_schema");
 
 
 export function thumbnailUrl(schema: string, id: string): string {

@@ -12,6 +12,8 @@ export type MediaItem = {
 type MediaFilter = { image: boolean; video: boolean; custom: boolean };
 
 type SearchState = {
+    schema: string;
+    setSchema: (s: string) => void;
     blocks: BlockState[];
     setBlocks: React.Dispatch<React.SetStateAction<BlockState[]>>;
 
@@ -39,12 +41,35 @@ export function SearchProvider({children, initial}: {
     const [mediaFilter, setMediaFilter] = useState<MediaFilter>({image: true, video: true, custom: true});
     const [raw, setRaw] = useState("");
     const [scrollY, _setScrollY] = useState(0);
+    const [schema, setSchema] = useState<string>(() => {
+        try {
+            return localStorage.getItem("vitrivr_schema")
+                ?? import.meta.env.VITE_VITRIVR_SCHEMA
+                ?? "";
+        } catch {
+            return import.meta.env.VITE_VITRIVR_SCHEMA ?? "";
+        }
+    });
+
 
     const setScrollY = (y: number) => _setScrollY(y);
 
     return (
         <SearchCtx.Provider
-            value={{blocks, setBlocks, items, setItems, mediaFilter, setMediaFilter, raw, setRaw, scrollY, setScrollY}}
+            value={{
+                schema,
+                setSchema,
+                blocks,
+                setBlocks,
+                items,
+                setItems,
+                mediaFilter,
+                setMediaFilter,
+                raw,
+                setRaw,
+                scrollY,
+                setScrollY
+            }}
         >
             {children}
         </SearchCtx.Provider>
