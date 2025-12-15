@@ -9,10 +9,8 @@ type Operator = Record<string, unknown>;
 type RawSchema = string | { name?: string; [key: string]: unknown };
 const stored = window.localStorage.getItem("vitrivr_schema");
 
-const schema = stored ?? SCHEMA;
 
-
-export function thumbnailUrl(id: string): string {
+export function thumbnailUrl(schema: string, id: string): string {
     return `${THUMBNAIL_BASE}/${schema}/thumbnails/${encodeURIComponent(id)}.jpg`;
 }
 
@@ -131,13 +129,13 @@ export function buildTemporalQuery(blocks: BlockState[]) {
  * Builds the query for vitrivr-engine for textual queries
  * @param prompt
  */
-export function buildTextQuery(prompt: string) {
+export function buildTextQuery(field: string, prompt: string) {
     return {
         "inputs": {
             "txt": {"type": "TEXT", "data": prompt}
         },
         "operations": {
-            "clip": {"field": "clip", "inputs": {"txt": "txt"}, "parameters": {"limit": "1000"}},
+            "clip": {"field": field, "inputs": {"txt": "txt"}, "parameters": {"limit": "1000"}},
             "relations": {
                 "factory": "RelationExpander",
                 "inputs": {"in": "clip"},

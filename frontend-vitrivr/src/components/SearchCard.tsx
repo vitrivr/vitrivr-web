@@ -1,13 +1,12 @@
 "use client";
 import {useEffect, useState} from "react";
 import CardHeader from "./CardHeader";
-import Card from "./Card";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import Button from "./QueryBuilderComponents/Button.tsx";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery, thumbnailUrl} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -16,7 +15,7 @@ import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 
-const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA || "vbs";
+const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 
 type QueryType = Extract<BlockState['queryType'], string>;
 type Modality = "clip" | "emotions" | "ocr" | "asr";
@@ -125,11 +124,11 @@ function pickFilePath(r: {
 }
 
 // TODO: change this to schema relative
-function toVbsRelative(path: string): string | undefined {
+function toVbsRelative(schema: string, path: string): string | undefined {
     const unixy = path.replace(/\\/g, "/");
     try {
         const normalized = new URL(unixy, "http://local").pathname;
-        const i = normalized.indexOf("/vbs/");
+        const i = normalized.indexOf(`/${schema}/`);
         if (i === -1) return undefined;
         return normalized.slice(i + 1);
     } catch {
@@ -153,7 +152,7 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
-function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
+function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
     const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
 
@@ -171,7 +170,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             let url = "";
 
             if (filePath) {
-                const rel = toVbsRelative(filePath);
+                const rel = toVbsRelative(schema, filePath);
                 if (rel) {
                     url = `${mediaOrigin}/${encodePathSegments(rel)}`;
                 }
@@ -209,7 +208,15 @@ export function SearchCard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
-    const [schema, setSchema] = useState<string>(DEFAULT_SCHEMA);
+    const [schema, setSchema] = useState<string>(() => {
+        try {
+            return window.localStorage.getItem("vitrivr_schema")
+                ?? DEFAULT_SCHEMA
+                ?? "";
+        } catch {
+            return DEFAULT_SCHEMA ?? "";
+        }
+    });
     const counts = {
         image: items.filter(i => i.kind === "image").length,
         video: items.filter(i => i.kind === "video").length,
@@ -240,7 +247,7 @@ export function SearchCard() {
             const isTextQuery = b.queryType === "text";
             const isEmotion = b.modality === "emotions";
             const needsText = isTextQuery || isEmotion;
-            
+
             if (needsText) {
                 const txt = (b.textQuery ?? "").trim();
                 if (txt.length === 0) {
@@ -271,7 +278,7 @@ export function SearchCard() {
             let resp;
 
             if (blocks.length == 1) {
-                const body = buildTextQuery(blocks[0].textQuery.trim());
+                const body = buildTextQuery(blocks[0].modality.trim(), blocks[0].textQuery.trim());
                 resp = await retrieval.postExecuteQuery(schema, body);
             } else {
                 const body = buildTemporalQuery(blocks);
@@ -279,7 +286,7 @@ export function SearchCard() {
                 const pretty = JSON.stringify(resp, null, 2);
                 setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
             }
-            const media = mediaFrom(resp as RetrievablesResponse);
+            const media = mediaFrom(schema, resp as RetrievablesResponse);
             setItems(media);
             setLoading(false);
         } catch (err) {
