@@ -10,7 +10,10 @@ export default function VideoPage() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const {items, schema} = useSearch();
     const item = items.find(it => it.id === id);
-    const poster = thumbnailUrl(schema, id) ?? "";
+    let poster = "";
+    if (id != null) {
+        poster = thumbnailUrl(schema, id) ?? "";
+    }
 
     if (!id) {
         return (

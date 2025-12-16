@@ -1,6 +1,7 @@
 import React, {useRef} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailUrl} from "../../lib/vitrivr";
+import {useSearch} from "../../state/SearchContext.tsx";
 
 type BaseProps = {
     id: string;
@@ -32,6 +33,7 @@ type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNod
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
 export default function ResultItem(props: ResultItemProps) {
+    const {schema} = useSearch();
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const {
         id,
@@ -56,7 +58,7 @@ export default function ResultItem(props: ResultItemProps) {
         } = props;
 
         const src = getVideoSrc(id);
-        const poster = (getPosterSrc ?? thumbnailUrl)(id);
+        const poster = (getPosterSrc ?? thumbnailUrl)(schema, id);
 
         const handleLoadedMetadata = () => {
             if (videoRef.current && start != null) {
@@ -83,7 +85,7 @@ export default function ResultItem(props: ResultItemProps) {
         media = props.renderMedia(id);
     } else {
         const {getImageSrc, alt = `Image for ${id}`, mediaClassName = "sb__image"} = props;
-        const src = (getImageSrc ?? thumbnailUrl)(id);
+        const src = (getImageSrc ?? thumbnailUrl)(schema, id);
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
@@ -94,7 +96,7 @@ export default function ResultItem(props: ResultItemProps) {
                 props.kind === "video"
                     ? {
                         src: (props as any).getVideoSrc?.(id),
-                        poster: thumbnailUrl(id),
+                        poster: thumbnailUrl(schema, id),
                         start: (props as any).start,
                         end: (props as any).end,
                     }
