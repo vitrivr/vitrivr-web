@@ -16,6 +16,7 @@ import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
+const PAGE_SIZE = 32;
 
 type QueryType = Extract<BlockState['queryType'], string>;
 type Modality = "clip" | "emotions" | "ocr" | "asr";
@@ -183,6 +184,7 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
 
 
 export function SearchCard() {
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const {
         blocks, setBlocks,
         items, setItems,
@@ -243,6 +245,7 @@ export function SearchCard() {
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
 
     const onSearch = async () => {
+        setVisibleCount(PAGE_SIZE);
         for (const b of blocks) {
             const isTextQuery = b.queryType === "text";
             const isEmotion = b.modality === "emotions";
@@ -383,9 +386,11 @@ export function SearchCard() {
                                 aria-expanded={filterOpen}
                                 style={{
                                     height: 36,
-                                    borderRadius: 2,
-                                    border: "1px solid #ddd",
-                                    background: "#fff",
+                                    borderRadius: "0.75rem",
+                                    border: 0,
+                                    fontSize: "0.95rem",
+                                    background: "#1f2937",
+                                    color: "#fff",
                                     padding: "0 12px",
                                     cursor: "pointer",
                                 }}
@@ -404,7 +409,7 @@ export function SearchCard() {
                 </div>
 
                 <div className="results-grid">
-                    {filteredItems.slice(0, 16).map(({id, kind, url, rawType}) => {
+                    {filteredItems.slice(0, visibleCount).map(({id, kind, url, rawType, start, end}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem
@@ -448,6 +453,28 @@ export function SearchCard() {
             {raw}
         </pre>
                 )}
+
+                {filteredItems.length > visibleCount && (
+                    <div style={{padding: 16, display: "flex", justifyContent: "center"}}>
+                        <Button
+                            label={"Show more"}
+                            onClick={() => setVisibleCount(v => v + PAGE_SIZE)}/>
+                    </div>
+                )}
+
+                {filteredItems.length > PAGE_SIZE && (
+                    <div style={{padding: "0 16px 16px", display: "flex", gap: 8, justifyContent: "center"}}>
+                        {filteredItems.length > visibleCount && (
+                            <Button backgroundColor={"#808080"} label="Show all"
+                                    onClick={() => setVisibleCount(filteredItems.length)}/>
+                        )}
+                        {visibleCount > PAGE_SIZE && (
+                            <Button backgroundColor={"#808080"} label={"Show less"}
+                                    onClick={() => setVisibleCount(PAGE_SIZE)}/>
+                        )}
+                    </div>
+                )}
+
             </CardHeader>
 
         </div>

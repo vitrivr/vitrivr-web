@@ -5,16 +5,19 @@ export type ButtonProps = {
     onClick?: () => void;
     disabled?: boolean;
     className?: string;
+    backgroundColor?: string;
+    children?: React.ReactNode;
 };
 
-function Button({label, onClick, disabled = false, className = ""}: ButtonProps) {
+function Button({label, onClick, disabled = false, className = "", backgroundColor = "", children,}: ButtonProps) {
     return (
         <button
             className={`btn ${className}`}
             onClick={onClick}
             disabled={disabled}
+            style={backgroundColor ? {backgroundColor} : undefined}
         >
-            {label}
+            {children ?? label}
         </button>
     );
 }
