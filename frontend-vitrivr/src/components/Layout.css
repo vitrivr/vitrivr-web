@@ -69,7 +69,6 @@ body {
     gap: var(--s-2);
 }
 
-/* super lightweight “panel” (replaces big cards) */
 .panel {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -85,90 +84,6 @@ body {
     justify-content: space-between;
 }
 
-.panel__title {
-    margin: 0;
-    font-weight: 600;
-}
-
-.panel__body {
-    padding: var(--s-4);
-}
-
-/* toolbar */
-.toolbar {
-    position: sticky;
-    top: 8px;
-    z-index: 5;
-    display: flex;
-    gap: var(--s-2);
-    justify-content: flex-end;
-}
-
-/* grid for results */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--s-3);
-}
-
-/* compact “block” for each query block (not a full card) */
-.block {
-    border: 1px solid var(--line);
-    border-radius: var(--rad-1);
-    background: var(--surface);
-    padding: var(--s-3);
-    box-shadow: var(--shadow-1);
-}
-
-/* inputs: keep yours, but provide a nice default */
-.input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--rad-1);
-    background: #fff;
-}
-
-.input:focus {
-    outline: 2px solid var(--brand);
-    outline-offset: 1px;
-}
-
-/* helper text & chips */
-.muted {
-    color: var(--text-2);
-}
-
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--muted);
-    color: var(--text-2);
-    font-size: 12px;
-}
-
-/* media in results */
-.media {
-    width: 100%;
-    aspect-ratio: 16/9;
-    object-fit: cover;
-    border: 1px solid var(--line);
-    border-radius: var(--rad-1);
-}
-
-/* buttons: your Button.css stays; this just tweaks native buttons you use inline */
-button.plain {
-    height: 36px;
-    padding: 0 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--rad-1);
-    background: #fff;
-    cursor: pointer;
-}
 
 button.plain:hover {
     background: var(--muted);

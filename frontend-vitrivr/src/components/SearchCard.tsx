@@ -6,7 +6,7 @@ import "./QueryBuilderComponents/Dropdown.css";
 import Button from "./QueryBuilderComponents/Button.tsx";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery, fileToBase64} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -281,8 +281,15 @@ export function SearchCard() {
             let resp;
 
             if (blocks.length == 1) {
-                const body = buildTextQuery(blocks[0].modality.trim(), blocks[0].textQuery.trim());
-                resp = await retrieval.postExecuteQuery(schema, body);
+                if (blocks[0].queryType === "image") {
+                    // build image query body from b.file (and maybe modality)
+                    const base64image = await fileToBase64(blocks[0].file)
+                    const body = await buildTextQuery(blocks[0].modality, base64image);
+                    resp = await retrieval.postExecuteQuery(schema, body);
+                } else {
+                    const body = buildTextQuery(blocks[0].modality.trim(), blocks[0].textQuery.trim());
+                    resp = await retrieval.postExecuteQuery(schema, body);
+                }
             } else {
                 const body = buildTemporalQuery(blocks);
                 resp = await retrieval.postExecuteQuery(schema, body);
@@ -409,7 +416,7 @@ export function SearchCard() {
                 </div>
 
                 <div className="results-grid">
-                    {filteredItems.slice(0, visibleCount).map(({id, kind, url, rawType, start, end}) => {
+                    {filteredItems.slice(0, visibleCount).map(({id, kind, url, rawType}) => {
                         if (kind === "image") {
                             return (
                                 <ResultItem

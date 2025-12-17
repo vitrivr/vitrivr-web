@@ -2,7 +2,7 @@ import {useEffect} from "react";
 import RadioGroup, {type RadioOption} from "./RadioGroup.tsx";
 import Dropdown, {type DropdownItem} from "./Dropdown.tsx";
 import Input from "./Input.tsx";
-import FileUploader from "./FileUploader.tsx";
+//import FileUploader from "./FileUploader.tsx";
 import type {BlockState} from "../SearchCard.tsx";
 
 type QueryType = Extract<BlockState['queryType'], string>;
@@ -46,9 +46,10 @@ export default function QueryBlock({
                 borderRadius: "20px",
                 padding: "16px",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                minWidth: 0,
-                maxWidth: "300px",
-                maxHeight: "210px",
+                width: "100%",     // fill grid column
+                minWidth: 0,       // allow shrinking inside grid
+                height: "auto",    // grow with content
+                // remove maxWidth/maxHeight
             }}
         >
             {onRemove && (
@@ -117,10 +118,10 @@ export default function QueryBlock({
                         placeholder="Type your query…"
                     />
                 ) : (
-                    <FileUploader
-                        file={block.file}
-                        onChange={(f) => onChange({file: f})}
-                        label="Upload an image"
+                    <Input
+                        type="image"
+                        onImageChange={(file) => onChange({file})}
+                        className=""
                     />
                 )}
             </div>

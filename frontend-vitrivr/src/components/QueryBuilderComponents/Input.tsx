@@ -1,5 +1,5 @@
 "use client";
-import FileUploader from "./FileUploader.tsx";
+import ImageDropInput from "./ImageDropInput.tsx";
 
 export type InputProps = {
     type?: "text" | "image";
@@ -27,7 +27,7 @@ export default function Input({
     if (type === "image") {
         return (
             <div className={className}>
-                <FileUploader onChange={onImageChange}/>
+                <ImageDropInput disabled={disabled} onChange={onImageChange}/>
             </div>
         );
     }
