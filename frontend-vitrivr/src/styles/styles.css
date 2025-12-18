@@ -327,3 +327,32 @@ a:hover {
     margin-left: auto;
     margin-right: auto;
 }
+
+.btn-tooltip {
+    position: relative;
+}
+
+.btn-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 10px);
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+
+    font-size: 12px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px 10px;
+    box-shadow: var(--shadow-2);
+    opacity: 0;
+    transition: opacity 140ms var(--ease);
+    z-index: 20;
+}
+
+.btn-tooltip:hover::after {
+    opacity: 1;
+}

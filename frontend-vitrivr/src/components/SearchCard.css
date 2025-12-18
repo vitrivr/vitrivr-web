@@ -36,3 +36,12 @@
 .sc-page .panel {
     width: 100%;
 }
+
+.sc-queryPanel {
+    overflow: visible;
+}
+
+/* BUT keep the body clipped if you need it (optional) */
+.sc-queryPanel .panel__body {
+    overflow: visible;
+}

@@ -1,9 +1,7 @@
 "use client";
 import {useEffect, useState} from "react";
-import CardHeader from "./CardHeader";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
-import Button from "./QueryBuilderComponents/Button.tsx";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
 import {buildTextQuery, buildTemporalQuery, fileToBase64} from "../lib/vitrivr.ts";
@@ -15,6 +13,7 @@ import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 import "./SearchCard.css"
+import "../styles/styles.css"
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 const PAGE_SIZE = 32;
@@ -351,7 +350,7 @@ export function SearchCard() {
                     </section>
 
                     {/* Query card */}
-                    <section className="panel">
+                    <section className="panel sc-queryPanel">
                         <div className="panel__head row-between">
                             <div className="stack-xs">
                                 <h3 className="panel__title">Query Builder</h3>
@@ -361,14 +360,16 @@ export function SearchCard() {
                             </div>
 
                             <button
-                                className="btn icon-btn"
+                                className="btn icon-btn btn-tooltip"
                                 type="button"
                                 onClick={addBlock}
                                 aria-label="Add query block"
-                                title="Add query block"
+                                title="Add a new query block"
+                                data-tooltip="Add a new query block"
                             >
                                 +
                             </button>
+
                         </div>
 
                         <div className="panel__body stack">
