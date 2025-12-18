@@ -2,22 +2,53 @@
 
 .results-grid {
     display: grid;
-    gap: 10px; /* small but not 0; looks more premium */
-    padding: 6px;
+    gap: 5px; /* small but not 0; looks more premium */
+    padding: 3px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media (min-width: 900px) {
+/* Results grid — dense, stable, up to 6 columns */
+.results-grid {
+    display: grid;
+    gap: 8px; /* 👈 smaller gap */
+    padding: 4px; /* 👈 tighter edge spacing */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 3 columns */
+@media (min-width: 800px) {
     .results-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
-@media (min-width: 1300px) {
+/* 4 columns */
+@media (min-width: 1050px) {
     .results-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
+
+/* 5 columns */
+@media (min-width: 1300px) {
+    .results-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+/* 6 columns */
+@media (min-width: 1550px) {
+    .results-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+/* Safety: prevent intrinsic sizing issues */
+.results-grid,
+.results-grid > * {
+    min-width: 0;
+}
+
 
 /* Make each ResultItem tile feel like a modern card */
 .sb__card {
@@ -109,4 +140,14 @@
 
 .sb__card:hover .sb__video::before {
     transform: translate(-45%, -50%) scale(1.06);
+}
+
+.sb__card {
+    margin: 0; /* remove accidental margins */
+    border-radius: 14px;
+}
+
+.sb__caption {
+    padding: 8px 10px;
+    font-size: 11.5px;
 }
