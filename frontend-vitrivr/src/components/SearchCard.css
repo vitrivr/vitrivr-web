@@ -32,9 +32,9 @@
 }
 
 .sc-page {
-    layout: centered;
-    width: min(1200px, calc(100vw - 50px)); /* 50px each side */
-    margin: 0 auto;
+    width: min(1400px, calc(100vw - 40px)); /* 20px left + 20px right */
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* cards fill the column */

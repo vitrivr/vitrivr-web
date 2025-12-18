@@ -8,17 +8,9 @@ import "./styles/styles.css"
 
 function Home() {
     return (
-        <>
-            <CardHeader
-                title="Welcome to VITRIVR-WEB"
-                subtitle="Search for multimedia content."
-                className="mb-6"
-            >
-                <p className="text-sm text-neutral-600 leading-relaxed">
-                </p>
-            </CardHeader>
+        <div className="sc-page">
             <SearchCard/>
-        </>
+        </div>
     );
 }
 

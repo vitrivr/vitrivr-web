@@ -400,7 +400,6 @@ export function SearchCard() {
                                 </button>
 
                                 <span className="muted" style={{fontSize: 12}}>
-              Page size {PAGE_SIZE}
             </span>
                             </div>
                         </div>
@@ -412,9 +411,6 @@ export function SearchCard() {
                             <div className="panel__head row-between">
                                 <div className="stack-xs">
                                     <h3 className="panel__title">Results</h3>
-                                    <p className="panel__subtitle">
-                                        {`${filteredItems.length} shown • ${items.length} total`}
-                                    </p>
                                 </div>
 
                                 <div style={{position: "relative"}}>
