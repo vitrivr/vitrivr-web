@@ -4,13 +4,14 @@ import CardHeader from "./components/CardHeader";
 import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage";
 import {SearchProvider} from "./state/SearchContext.tsx";
+import "./styles/styles.css"
 
 function Home() {
     return (
         <>
             <CardHeader
                 title="Welcome to VITRIVR-WEB"
-                subtitle="This is a very cool and extremely helpful subtitle."
+                subtitle="Search for multimedia content."
                 className="mb-6"
             >
                 <p className="text-sm text-neutral-600 leading-relaxed">

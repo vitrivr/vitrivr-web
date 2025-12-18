@@ -14,6 +14,7 @@ import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
+import "./SearchCard.css"
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 const PAGE_SIZE = 32;
@@ -34,6 +35,7 @@ type MediaItem = {
     kind: MediaKind;
     rawType?: string;
     url: string;
+    thumbUrl?: string;
     start: number;
     end: number;
 };
@@ -153,6 +155,19 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
+function toThumbUrlFromId(id: string, schema: string): string {
+    const thumbOrigin = import.meta.env.VITE_THUMBNAIL_ORIGIN || "";
+    if (!thumbOrigin) return "";
+    try {
+        const u = new URL(`${thumbOrigin}/${schema}/thumbnails/${id}.jpg`);
+        console.log(u.toString());
+        return u.toString();
+    } catch {
+        return "";
+    }
+}
+
+
 function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
     const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
@@ -177,7 +192,13 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
                 }
             }
 
-            return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, start, end};
+            let thumbUrl: string | undefined;
+
+            if (mapTypeToKind(r.type) === "video" && url) {
+                thumbUrl = toThumbUrlFromId(id, schema);
+            }
+
+            return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, thumbUrl, start, end};
         })
         .filter((v): v is MediaItem => v !== null && !!v.url);
 }
@@ -309,181 +330,209 @@ export function SearchCard() {
     const beforeNavigate = () => setScrollY(window.scrollY);
 
     return (
-        <div>
-            <CardHeader
-                actions={
-                    <SchemaSelector
-                        value={schema}
-                        onChange={setSchema}
-                    />
-                }
-            >
-                <div style={{display: "grid", gridTemplateColumns: "56px 3fr", gap: 2, alignItems: "start"}}>
-                    <div style={{position: "sticky", top: 8}}>
-                        <button
-                            type="button"
-                            onClick={addBlock}
-                            title="Add query block"
-                            aria-label="Add query block"
-                            style={{
-                                width: 48, height: 48, borderRadius: 12, border: "1px solid #ddd",
-                                fontSize: 24, cursor: "pointer", background: "#fff"
-                            }}
-                        >
-                            +
-                        </button>
-                    </div>
+        <div className="layout">
+            <div className="sc-page">
+                <div className="stack">
+                    {/* Title card */}
+                    <section className="panel">
+                        <div className="panel__head row-between">
+                            <div className="stack-xs">
+                                <h2 className="panel__title">Search</h2>
+                                <p className="panel__subtitle">
+                                    Build a query and retrieve items from the selected schema.
+                                </p>
+                            </div>
 
-                    <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                        gap: 1
-                    }}>
-                        {blocks.map((b) => (
-                            <QueryBlock
-                                key={b.id}
-                                block={b}
-                                onChange={(patch) => patchBlock(b.id, patch)}
-                                onRemove={blocks.length > 1 ? () => removeBlock(b.id) : undefined}
-                                modalityOptions={modalityOptions}
-                                queryTypeItems={queryTypeItems}
-                                emotionItems={emotionItems}
-                            />
-                        ))}
-
-                    </div>
-                </div>
-
-                <Flash
-                    show={flash.show}
-                    kind="error"
-                    onClose={() => setFlash({show: false, message: ""})}
-                >
-                    {flash.message}
-                </Flash>
-
-                <div style={{padding: 16}}>
-                    <Button label={loading ? "Searching…" : "Search"} disabled={loading} onClick={onSearch}/>
-                </div>
-            </CardHeader>
-
-            <CardHeader title="Results">
-                {error && <div style={{color: "crimson", padding: 16}}>{error}</div>}
-                {!error && loading && <div style={{padding: 16}}>Searching…</div>}
-                {!error && !loading && items.length === 0 && (
-                    <div style={{padding: 16, color: "#666"}}>No results yet—run a search.</div>
-                )}
-
-                <div
-                    style={{
-                        position: "sticky",
-                        top: 8,
-                        zIndex: 5,
-                        padding: "0 16px 8px",
-                        display: "flex",
-                        justifyContent: "flex-end",
-                    }}
-                >
-                    {items.length > 0 && (
-                        <div style={{position: "relative"}}>
-                            <button
-                                type="button"
-                                onClick={() => setFilterOpen(v => !v)}
-                                aria-haspopup="dialog"
-                                aria-expanded={filterOpen}
-                                style={{
-                                    height: 36,
-                                    borderRadius: "0.75rem",
-                                    border: 0,
-                                    fontSize: "0.95rem",
-                                    background: "#1f2937",
-                                    color: "#fff",
-                                    padding: "0 12px",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
-                            </button>
-                            <MediaTypeFilter
-                                open={filterOpen}
-                                value={mediaFilter}
-                                counts={counts}
-                                onChange={setMediaFilter}
-                                onClose={() => setFilterOpen(false)}
-                            />
+                            <div className="row">
+                                <span className="muted" style={{fontSize: 12}}>Schema</span>
+                                <SchemaSelector value={schema} onChange={setSchema}/>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    </section>
 
-                <div className="results-grid">
-                    {filteredItems.slice(0, visibleCount).map(({id, kind, url, rawType}) => {
-                        if (kind === "image") {
-                            return (
-                                <ResultItem
-                                    key={id}
-                                    id={id}
-                                    mediaClassName="ri-media"
-                                    getImageSrc={() => url ?? ""}
-                                />
-                            );
-                        }
+                    {/* Query card */}
+                    <section className="panel">
+                        <div className="panel__head row-between">
+                            <div className="stack-xs">
+                                <h3 className="panel__title">Query Builder</h3>
+                                <p className="panel__subtitle">
+                                    {blocks.length} block{blocks.length === 1 ? "" : "s"}
+                                </p>
+                            </div>
 
-                        if (kind === "video") {
-                            return (
-                                <ResultItem
-                                    key={id}
-                                    id={id}
-                                    mediaClassName="ri-media"
-                                    onBeforeOpen={beforeNavigate}
-                                />
-                            );
-                        }
+                            <button
+                                className="btn icon-btn"
+                                type="button"
+                                onClick={addBlock}
+                                aria-label="Add query block"
+                                title="Add query block"
+                            >
+                                +
+                            </button>
+                        </div>
 
-                        return (
-                            <ResultItem
-                                key={id}
-                                id={id}
-                                kind="custom"
-                                onBeforeOpen={beforeNavigate}
-                                renderMedia={() => (
-                                    <div className="sb__unknown">
-                                        <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
+                        <div className="panel__body stack">
+                            <div className="sc-blockGrid">
+                                {blocks.map((b) => (
+                                    <QueryBlock
+                                        key={b.id}
+                                        block={b}
+                                        onChange={(patch) => patchBlock(b.id, patch)}
+                                        onRemove={blocks.length > 1 ? () => removeBlock(b.id) : undefined}
+                                        modalityOptions={modalityOptions}
+                                        queryTypeItems={queryTypeItems}
+                                        emotionItems={emotionItems}
+                                    />
+                                ))}
+                            </div>
+
+                            <Flash
+                                show={flash.show}
+                                kind="error"
+                                onClose={() => setFlash({show: false, message: ""})}
+                            >
+                                {flash.message}
+                            </Flash>
+
+                            <div className="row-between">
+                                <button className="btn btn-primary" disabled={loading} onClick={onSearch}>
+                                    {loading ? "Searching…" : "Search"}
+                                </button>
+
+                                <span className="muted" style={{fontSize: 12}}>
+              Page size {PAGE_SIZE}
+            </span>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Results card (ONLY when there are results) */}
+                    {filteredItems.length > 0 && (
+                        <section className="panel">
+                            <div className="panel__head row-between">
+                                <div className="stack-xs">
+                                    <h3 className="panel__title">Results</h3>
+                                    <p className="panel__subtitle">
+                                        {`${filteredItems.length} shown • ${items.length} total`}
+                                    </p>
+                                </div>
+
+                                <div style={{position: "relative"}}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFilterOpen((v) => !v)}
+                                        aria-haspopup="dialog"
+                                        aria-expanded={filterOpen}
+                                        className="btn"
+                                    >
+                                        Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
+                                    </button>
+
+                                    <MediaTypeFilter
+                                        open={filterOpen}
+                                        value={mediaFilter}
+                                        counts={counts}
+                                        onChange={setMediaFilter}
+                                        onClose={() => setFilterOpen(false)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="panel__body stack">
+                                {error && <div className="alert alert--error">{error}</div>}
+
+                                <div className="results-grid sc-resultsGrid">
+                                    {filteredItems.slice(0, visibleCount).map(({
+                                                                                   id,
+                                                                                   kind,
+                                                                                   url,
+                                                                                   thumbUrl,
+                                                                                   rawType,
+                                                                                   start,
+                                                                                   end
+                                                                               }) => {
+                                        if (kind === "image") {
+                                            return (
+                                                <ResultItem
+                                                    key={id}
+                                                    id={id}
+                                                    kind="image"
+                                                    mediaClassName="ri-media"
+                                                    getImageSrc={() => url}
+                                                    onBeforeOpen={beforeNavigate}
+                                                />
+                                            );
+                                        }
+
+                                        if (kind === "video") {
+                                            return (
+                                                <ResultItem
+                                                    key={id}
+                                                    id={id}
+                                                    kind="video"
+                                                    start={start}
+                                                    end={end}
+                                                    preload="none"
+                                                    mediaClassName="ri-media"
+                                                    getPosterSrc={() => thumbUrl ?? ""}
+                                                    getVideoSrc={() => url}
+                                                    onBeforeOpen={beforeNavigate}
+                                                />
+                                            );
+                                        }
+
+                                        return (
+                                            <ResultItem
+                                                key={id}
+                                                id={id}
+                                                kind="custom"
+                                                onBeforeOpen={beforeNavigate}
+                                                renderMedia={() => (
+                                                    <div className="sb__unknown">
+                                                        <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
+                                                    </div>
+                                                )}
+                                            />
+                                        );
+                                    })}
+                                </div>
+
+                                {filteredItems.length > visibleCount && (
+                                    <div className="row" style={{justifyContent: "center"}}>
+                                        <button className="btn" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+                                            Show more
+                                        </button>
                                     </div>
                                 )}
-                            />
-                        );
-                    })}
+
+                                {filteredItems.length > PAGE_SIZE && (
+                                    <div className="row" style={{justifyContent: "center"}}>
+                                        {filteredItems.length > visibleCount && (
+                                            <button className="btn btn-ghost"
+                                                    onClick={() => setVisibleCount(filteredItems.length)}>
+                                                Show all
+                                            </button>
+                                        )}
+                                        {visibleCount > PAGE_SIZE && (
+                                            <button className="btn btn-ghost"
+                                                    onClick={() => setVisibleCount(PAGE_SIZE)}>
+                                                Show less
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {raw && (
+                                    <details className="sc-raw">
+                                        <summary>Raw response</summary>
+                                        <pre>{raw}</pre>
+                                    </details>
+                                )}
+                            </div>
+                        </section>
+                    )}
                 </div>
-
-                {raw && (
-                    <pre style={{padding: 2, background: "#fafafa", borderTop: "1px solid #eee", overflow: "auto"}}>
-            {raw}
-        </pre>
-                )}
-
-                {filteredItems.length > visibleCount && (
-                    <div style={{padding: 16, display: "flex", justifyContent: "center"}}>
-                        <Button
-                            label={"Show more"}
-                            onClick={() => setVisibleCount(v => v + PAGE_SIZE)}/>
-                    </div>
-                )}
-
-                {filteredItems.length > PAGE_SIZE && (
-                    <div style={{padding: "0 16px 16px", display: "flex", gap: 8, justifyContent: "center"}}>
-                        {filteredItems.length > visibleCount && (
-                            <Button backgroundColor={"#808080"} label="Show all"
-                                    onClick={() => setVisibleCount(filteredItems.length)}/>
-                        )}
-                        {visibleCount > PAGE_SIZE && (
-                            <Button backgroundColor={"#808080"} label={"Show less"}
-                                    onClick={() => setVisibleCount(PAGE_SIZE)}/>
-                        )}
-                    </div>
-                )}
-
-            </CardHeader>
-
+            </div>
         </div>
     );
 }

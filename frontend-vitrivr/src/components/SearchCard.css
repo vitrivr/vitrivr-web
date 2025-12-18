@@ -1,262 +1,43 @@
-:root {
-    --sc-bg: #0b1220;
-    --sc-surface: rgba(255, 255, 255, 0.06);
-    --sc-surface-2: rgba(255, 255, 255, 0.08);
-    --sc-border: rgba(255, 255, 255, 0.12);
-    --sc-text: rgba(255, 255, 255, 0.92);
-    --sc-muted: rgba(255, 255, 255, 0.68);
-    --sc-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
-}
-
-.sc-page {
-    min-height: 100vh;
-    background: radial-gradient(1200px 600px at 10% 0%, rgba(99, 102, 241, 0.22), transparent 55%),
-    radial-gradient(1000px 500px at 90% 15%, rgba(16, 185, 129, 0.16), transparent 60%),
-    var(--sc-bg);
-    color: var(--sc-text);
-}
-
-.sc-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    backdrop-filter: blur(14px);
-    background: rgba(10, 15, 28, 0.72);
-    border-bottom: 1px solid var(--sc-border);
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.sc-brand__title {
-    font-weight: 800;
-    letter-spacing: 0.2px;
-    font-size: 18px;
-    line-height: 1.1;
-}
-
-.sc-brand__subtitle {
-    color: var(--sc-muted);
-    font-size: 12px;
-    margin-top: 2px;
-}
-
-.sc-schema {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border: 1px solid var(--sc-border);
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-}
-
-.sc-schema__label {
-    color: var(--sc-muted);
-    font-size: 12px;
-}
-
-.sc-shell {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 18px;
+.sc-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: var(--s-4);
+    align-items: start;
 }
 
-@media (min-width: 980px) {
-    .sc-shell {
-        grid-template-columns: 1fr 1.1fr;
-        align-items: start;
+/* Desktop: 3 cards in one row */
+@media (min-width: 1100px) {
+    .sc-grid {
+        grid-template-columns: 0.9fr 1.05fr 1.6fr; /* title | query | results */
     }
 }
 
-.sc-panel {
-    border: 1px solid var(--sc-border);
-    background: var(--sc-surface);
-    border-radius: 18px;
-    box-shadow: var(--sc-shadow);
-    overflow: hidden;
+/* Make the title card feel like a header card */
+.sc-titleCard .panel__head {
+    border-bottom: 0;
 }
 
-.sc-panel__header {
-    padding: 14px 14px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--sc-border);
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.06), transparent);
-}
-
-.sc-panel__header--sticky {
-    position: sticky;
-    top: 58px;
-    z-index: 10;
-    backdrop-filter: blur(12px);
-    background: rgba(10, 15, 28, 0.68);
-}
-
-.sc-panel__title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 750;
-    letter-spacing: 0.2px;
-}
-
-.sc-panel__subtitle {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: var(--sc-muted);
-}
-
-.sc-panel__body {
-    padding: 14px;
+/* Sticky query panel on desktop */
+@media (min-width: 1100px) {
+    .sc-panelSticky {
+        position: sticky;
+        top: var(--s-4);
+    }
 }
 
 .sc-blockGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--s-3);
 }
 
-.sc-actionsRow {
-    margin-top: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+.sc-page {
+    layout: centered;
+    width: min(1200px, calc(100vw - 50px)); /* 50px each side */
+    margin: 0 auto;
 }
 
-.sc-actionsRow__hint {
-    font-size: 12px;
-    color: var(--sc-muted);
-}
-
-.sc-iconBtn {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    border: 1px solid var(--sc-border);
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--sc-text);
-    font-size: 22px;
-    cursor: pointer;
-}
-
-.sc-iconBtn:hover {
-    background: rgba(255, 255, 255, 0.12);
-}
-
-.sc-primaryBtn {
-    height: 42px;
-    padding: 0 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(99, 102, 241, 0.55);
-    background: rgba(99, 102, 241, 0.22);
-    color: var(--sc-text);
-    font-weight: 650;
-    cursor: pointer;
-}
-
-.sc-primaryBtn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.sc-secondaryBtn {
-    height: 40px;
-    padding: 0 12px;
-    border-radius: 14px;
-    border: 1px solid var(--sc-border);
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--sc-text);
-    cursor: pointer;
-}
-
-.sc-secondaryBtn:hover {
-    background: rgba(255, 255, 255, 0.12);
-}
-
-.sc-ghostBtn {
-    height: 40px;
-    padding: 0 12px;
-    border-radius: 14px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--sc-muted);
-    cursor: pointer;
-}
-
-.sc-ghostBtn:hover {
-    color: var(--sc-text);
-    background: rgba(255, 255, 255, 0.06);
-    border-color: var(--sc-border);
-}
-
-.sc-error {
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 1px solid rgba(220, 38, 38, 0.5);
-    background: rgba(220, 38, 38, 0.12);
-    color: rgba(255, 255, 255, 0.92);
-    margin-bottom: 12px;
-}
-
-.sc-muted {
-    color: var(--sc-muted);
-    padding: 6px 0 12px;
-}
-
-.sc-moreRow {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    padding: 12px 0 2px;
-}
-
-/* ResultItem polish (your ResultItem already supports className/captionClassName) */
-.sc-resultCard {
-    border-radius: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.10) !important;
-    background: rgba(255, 255, 255, 0.06) !important;
-    overflow: hidden;
-    transform: translateZ(0);
-    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
-}
-
-.sc-resultCard:hover {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-}
-
-.sc-resultCaption {
-    color: rgba(255, 255, 255, 0.78) !important;
-}
-
-.sc-raw {
-    margin-top: 12px;
-    border-top: 1px solid var(--sc-border);
-    padding-top: 10px;
-}
-
-.sc-raw summary {
-    cursor: pointer;
-    color: var(--sc-muted);
-    font-size: 12px;
-    user-select: none;
-}
-
-.sc-raw pre {
-    margin: 10px 0 0;
-    max-height: 420px;
-    overflow: auto;
-    border-radius: 14px;
-    border: 1px solid var(--sc-border);
-    background: rgba(0, 0, 0, 0.28);
-    padding: 12px;
+/* cards fill the column */
+.sc-page .panel {
+    width: 100%;
 }

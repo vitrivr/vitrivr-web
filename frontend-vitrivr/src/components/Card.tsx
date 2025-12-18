@@ -1,5 +1,5 @@
 import type {PropsWithChildren, ReactNode} from "react";
-import "./Card.css";
+import "../styles/styles.css";
 
 type CardProps = PropsWithChildren<{
     subtitle?: ReactNode;

@@ -1,6 +1,6 @@
 import type {PropsWithChildren} from "react";
 import Header from "./Header";
-import "./Layout.css"
+import "../styles/styles.css"
 
 function Layout({children}: PropsWithChildren) {
     return (

@@ -1,0 +1,292 @@
+/* global.css — tokens + base + utilities (hybrid foundation) */
+
+:root {
+    /* layout */
+    --max: 1600px;
+    --gutter: 18px;
+
+    /* spacing */
+    --s-1: 6px;
+    --s-2: 10px;
+    --s-3: 16px;
+    --s-4: 22px;
+    --s-5: 32px;
+
+    /* radius */
+    --rad-1: 10px;
+    --rad-2: 14px;
+    --rad-3: 18px;
+
+    /* colors (light) */
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-2: #fcfcfd;
+    --muted: #f3f4f6;
+
+    --text: #0f172a;
+    --text-2: #475569;
+    --text-3: #64748b;
+
+    /* make borders feel lighter (smaller + softer) */
+    --line: rgba(15, 23, 42, 0.10); /* subtle border */
+    --line-2: rgba(15, 23, 42, 0.16); /* hover border */
+
+    --brand: #2563eb;
+    --brand-ink: #1e40af;
+
+    --ok: #059669;
+    --warn: #ca8a04;
+    --err: #b91c1c;
+
+    /* shadows */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+    /* focus ring */
+    --ring: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+/* reset-ish */
+* {
+    box-sizing: border-box;
+}
+
+html, body, #root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+img, video {
+    max-width: 100%;
+    display: block;
+}
+
+button, input, select, textarea {
+    font: inherit;
+}
+
+/* links */
+a {
+    color: var(--brand);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Layout helpers ---------- */
+.layout {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: var(--s-4) 50px; /* 👈 fixed 50px side gap */
+    display: grid;
+    gap: var(--s-4);
+}
+
+.stack {
+    display: grid;
+    gap: var(--s-3);
+}
+
+.stack-xs {
+    display: grid;
+    gap: var(--s-2);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+}
+
+.row-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2);
+}
+
+.grid {
+    display: grid;
+    gap: var(--s-3);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s-3);
+}
+
+@media (min-width: 980px) {
+    .grid-2 {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ---------- Panels / cards (subtle borders) ---------- */
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--line); /* lighter border */
+    border-radius: var(--rad-3);
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+}
+
+.panel__head {
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--line); /* lighter border */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), transparent);
+}
+
+.panel__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.panel__subtitle {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--text-3);
+}
+
+.panel__body {
+    padding: var(--s-4);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+    height: 40px;
+    padding: 0 12px;
+    border-radius: var(--rad-2);
+    border: 1px solid var(--line); /* subtle */
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: var(--shadow-1);
+    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.btn:hover {
+    background: var(--surface-2);
+    border-color: var(--line-2);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    border-color: rgba(37, 99, 235, 0.35);
+    background: rgba(37, 99, 235, 0.10);
+    color: var(--brand-ink);
+}
+
+.btn-primary:hover {
+    background: rgba(37, 99, 235, 0.14);
+    border-color: rgba(37, 99, 235, 0.45);
+}
+
+.btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--text-2);
+}
+
+.btn-ghost:hover {
+    background: var(--muted);
+    border-color: var(--line);
+}
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: var(--rad-2);
+    display: inline-grid;
+    place-items: center;
+}
+
+/* ---------- Inputs ---------- */
+.field {
+    display: grid;
+    gap: 6px;
+}
+
+.label {
+    font-size: 12px;
+    color: var(--text-3);
+}
+
+.input, .select, .textarea {
+    width: 100%;
+    border-radius: var(--rad-2);
+    border: 1px solid var(--line); /* subtle */
+    background: var(--surface);
+    padding: 10px 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+    border-color: rgba(37, 99, 235, 0.45);
+    box-shadow: var(--ring);
+}
+
+/* ---------- Badges / alerts ---------- */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    font-size: 12px;
+    color: var(--text-2);
+}
+
+.alert {
+    border-radius: var(--rad-2);
+    border: 1px solid var(--line);
+    background: var(--muted);
+    padding: 10px 12px;
+    color: var(--text);
+}
+
+.alert--error {
+    border-color: rgba(185, 28, 28, 0.25);
+    background: rgba(185, 28, 28, 0.06);
+}
+
+/* ---------- Utility ---------- */
+.muted {
+    color: var(--text-3);
+}
+
+.hr {
+    height: 1px;
+    background: var(--line);
+    border: 0;
+    margin: 0;
+}
