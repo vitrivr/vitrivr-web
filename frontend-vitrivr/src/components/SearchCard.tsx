@@ -469,6 +469,7 @@ export function SearchCard() {
                                                     start={start}
                                                     end={end}
                                                     preload="none"
+                                                    controls={false}
                                                     mediaClassName="ri-media"
                                                     getPosterSrc={() => thumbUrl ?? ""}
                                                     getVideoSrc={() => url}

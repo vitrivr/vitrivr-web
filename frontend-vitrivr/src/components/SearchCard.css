@@ -1,3 +1,5 @@
+/* SearchCard.css — keep layout; polish visuals */
+
 .sc-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -5,10 +7,9 @@
     align-items: start;
 }
 
-/* Desktop: 3 cards in one row */
 @media (min-width: 1100px) {
     .sc-grid {
-        grid-template-columns: 0.9fr 1.05fr 1.6fr; /* title | query | results */
+        grid-template-columns: 0.9fr 1.05fr 1.6fr; /* unchanged */
     }
 }
 
@@ -17,7 +18,6 @@
     border-bottom: 0;
 }
 
-/* Sticky query panel on desktop */
 @media (min-width: 1100px) {
     .sc-panelSticky {
         position: sticky;
@@ -25,19 +25,14 @@
     }
 }
 
+/* Make block grid breathe a bit more while staying same logic */
 .sc-blockGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: var(--s-3);
 }
 
-.sc-page {
-    width: min(1400px, calc(100vw - 40px)); /* 20px left + 20px right */
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* cards fill the column */
+/* Panels fill column (keep) */
 .sc-page .panel {
     width: 100%;
 }
