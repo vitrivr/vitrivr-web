@@ -149,31 +149,106 @@ export function fileToBase64(file: File): Promise<string> {
 /**
  * Builds the query for vitrivr-engine for textual queries
  * @param prompt
+ * @param field
+ * @param emotions
  */
-export function buildTextQuery(field: string, prompt: string) {
-    return {
-        "inputs": {
-            "txt": {"type": "TEXT", "data": prompt}
-        },
-        "operations": {
-            "clip": {"field": field, "inputs": {"txt": "txt"}, "parameters": {"limit": "1000"}},
-            "relations": {
-                "factory": "RelationExpander",
-                "inputs": {"in": "clip"},
-                "parameters": {"outgoing": "partOf"}
+export function buildTextQuery(field: string, prompt: string, emotions: string = "") {
+    if (field === "emotions") {
+        const emotionsVector = emotionsToVector(emotions);
+        return {
+            "inputs": {
+                "emotion": {
+                    "type": "FLOATVECTOR",
+                    "data": emotionsVector,
+                }
             },
-            "aggregator": {"factory": "ScoreAggregator", "inputs": {"in": "relations"}},
-            "timelookup": {
-                "factory": "FieldLookup",
-                "inputs": {"in": "aggregator"},
-                "parameters": {"field": "time", "keys": "start, end"}
+            "operations": {
+                "emotions": {
+                    "field": "emotionsface",
+                    "inputs": {
+                        "vec": "emotion"
+                    },
+                    "parameters": {
+                        "limit": "1000"
+                    }
+                },
+                "relations": {
+                    "factory": "RelationExpander",
+                    "inputs": {
+                        "in": "emotions"
+                    },
+                    "parameters": {
+                        "outgoing": "partOf"
+                    }
+                },
+                "aggregator": {
+                    "factory": "ScoreAggregator",
+                    "inputs": {
+                        "in": "relations"
+                    }
+                },
+                "timelookup": {
+                    "factory": "FieldLookup",
+                    "inputs": {
+                        "in": "aggregator"
+                    },
+                    "parameters": {
+                        "field": "time",
+                        "keys": "start, end"
+                    }
+                },
+                "filelookup": {
+                    "factory": "ObjectFieldLookup",
+                    "inputs": {
+                        "in": "timelookup"
+                    },
+                    "parameters": {
+                        "field": "file",
+                        "predicates": "partOf",
+                        "keys": "path"
+                    }
+                }
             },
-            "filelookup": {
-                "factory": "ObjectFieldLookup",
-                "inputs": {"in": "timelookup"},
-                "parameters": {"field": "file", "predicates": "partOf", "keys": "path"}
-            }
-        },
-        "output": "filelookup"
-    } as const;
+            "output": "filelookup"
+        } as const;
+    } else {
+        return {
+            "inputs": {
+                "txt": {"type": "TEXT", "data": prompt}
+            },
+            "operations": {
+                "clip": {"field": field, "inputs": {"txt": "txt"}, "parameters": {"limit": "1000"}},
+                "relations": {
+                    "factory": "RelationExpander",
+                    "inputs": {"in": "clip"},
+                    "parameters": {"outgoing": "partOf"}
+                },
+                "aggregator": {"factory": "ScoreAggregator", "inputs": {"in": "relations"}},
+                "timelookup": {
+                    "factory": "FieldLookup",
+                    "inputs": {"in": "aggregator"},
+                    "parameters": {"field": "time", "keys": "start, end"}
+                },
+                "filelookup": {
+                    "factory": "ObjectFieldLookup",
+                    "inputs": {"in": "timelookup"},
+                    "parameters": {"field": "file", "predicates": "partOf", "keys": "path"}
+                }
+            },
+            "output": "filelookup"
+        } as const;
+    }
 }
+
+export function emotionsToVector(emotion: string | undefined | null): number[] {
+    const orderingEmotions = ["anger", "disgust", "fear", "happy", "neutral", "sad", "surprise"];
+
+    if (!emotion) {
+        return new Array(orderingEmotions.length).fill(0);
+    }
+
+    const normalized = emotion.toLowerCase().trim();
+
+    return orderingEmotions.map(e => (e === normalized ? 1 : 0));
+}
+

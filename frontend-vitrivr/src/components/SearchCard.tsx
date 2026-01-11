@@ -70,12 +70,13 @@ const modalityOptions =
     ] as const satisfies RadioOption<Modality>[];
 
 const emotionItems: DropdownItem[] = [
-    {value: "sad", label: "sad"},
-    {value: "happy", label: "happy"},
+    {value: "anger", label: "anger"},
     {value: "disgust", label: "disgust"},
     {value: "fear", label: "fear"},
-    {value: "surprise", label: "surprise"},
+    {value: "happy", label: "happy"},
     {value: "neutral", label: "neutral"},
+    {value: "sad", label: "sad"},
+    {value: "surprise", label: "surprise"},
 ];
 
 const makeBlockState = (): BlockState => ({
@@ -349,16 +350,31 @@ export function SearchCard() {
             let resp;
 
             if (blocks.length == 1) {
-                if (blocks[0].queryType === "image") {
-                    const base64image = await fileToBase64(blocks[0].file);
-                    const body = await buildTextQuery(blocks[0].modality, base64image);
+                const b = blocks[0];
+
+                if (b.modality === "emotions") {
+                    // emotion selected from dropdown (e.g. "happy")
+                    const chosen = (b.emotion ?? "").trim();
+                    if (!chosen) {
+                        setFlash({show: true, message: "Please select an emotion."});
+                        return;
+                    }
+                    const body = buildTextQuery("emotions", "", chosen);
                     resp = await retrieval.postExecuteQuery(schema, body);
+
+                } else if (b.queryType === "image") {
+                    const base64image = await fileToBase64(b.file);
+                    const body = buildTextQuery(b.modality, base64image);
+                    resp = await retrieval.postExecuteQuery(schema, body);
+
                 } else {
-                    const body = buildTextQuery(blocks[0].modality.trim(), blocks[0].textQuery.trim());
+                    const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
                     resp = await retrieval.postExecuteQuery(schema, body);
                 }
+
             } else {
                 const body = buildTemporalQuery(blocks);
+                console.log("creating temporal query");
                 resp = await retrieval.postExecuteQuery(schema, body);
             }
 
