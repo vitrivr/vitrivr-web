@@ -95,6 +95,40 @@ type Relationship = {
     partOf?: PartOfRel;
 };
 
+function videoDedupeKey(item: MediaItem): string {
+    // your urls look like: https://origin/<schema>/media/<filename>
+    try {
+        const u = new URL(item.url);
+        const parts = u.pathname.split("/");
+        return parts[parts.length - 1] ?? item.id; // filename
+    } catch {
+        // if item.url isn't absolute for some reason
+        const parts = (item.url ?? "").split("/");
+        return parts[parts.length - 1] ?? item.id;
+    }
+}
+
+function dedupeVideos(list: MediaItem[]): MediaItem[] {
+    const seen = new Set<string>();
+    const out: MediaItem[] = [];
+
+    for (const it of list) {
+        if (it.kind !== "video") {
+            out.push(it);
+            continue;
+        }
+
+        const key = videoDedupeKey(it);
+        if (seen.has(key)) continue;
+
+        seen.add(key);
+        out.push(it);
+    }
+
+    return out;
+}
+
+
 function pickStartTime(r: {
     descriptors?: Record<string, unknown>;
 }): string | undefined {
@@ -319,7 +353,11 @@ export function SearchCard() {
         }
     }, []);
 
-    const filteredItems = items.filter(i => mediaFilter[i.kind]);
+    let filteredItems = items.filter(i => mediaFilter[i.kind]);
+
+    if (mediaFilter.uniqueVideos) {
+        filteredItems = dedupeVideos(filteredItems);
+    }
     const addBlock = () =>
         updateBlocks(prev => [...prev, makeBlockState()]);
     const removeBlock = (id: string) =>

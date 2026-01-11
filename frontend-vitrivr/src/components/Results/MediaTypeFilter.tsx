@@ -2,7 +2,7 @@
 import React, {useEffect, useRef} from "react";
 import "./MediaTypeFilter.css"
 
-export type MediaFilter = { image: boolean; video: boolean; custom: boolean };
+export type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVideos: boolean };
 
 export type MediaTypeFilterProps = {
     open: boolean;
@@ -42,11 +42,13 @@ export default function MediaTypeFilter({
         return () => window.removeEventListener("mousedown", onClick);
     }, [open, onClose]);
 
-    const setKey = (k: keyof MediaFilter) => (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange({...value, [k]: e.target.checked});
+    const setKey =
+        (k: keyof MediaFilter) =>
+            (e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange({...value, [k]: e.target.checked});
 
-    const selectAll = () => onChange({image: true, video: true, custom: true});
-    const clear = () => onChange({image: false, video: false, custom: false});
+    const selectAll = () => onChange({image: true, video: true, custom: true, uniqueVideos: true});
+    const clear = () => onChange({image: false, video: false, custom: false, uniqueVideos: false});
 
     if (!open) return null;
 
@@ -93,6 +95,15 @@ export default function MediaTypeFilter({
             <label className="mtf__row">
                 <input type="checkbox" checked={value.custom} onChange={setKey("custom")}/>
                 <span>Other ({counts.custom})</span>
+            </label>
+
+            <label className="mtf__row" style={{marginTop: 6}}>
+                <input
+                    type="checkbox"
+                    checked={value.uniqueVideos}
+                    onChange={setKey("uniqueVideos")}
+                />
+                <span>Hide duplicate videos</span>
             </label>
 
             <div style={{display: "flex", gap: 8, marginTop: 10}}>

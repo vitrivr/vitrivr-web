@@ -9,7 +9,7 @@ export type MediaItem = {
     id: string; kind: MediaKind; rawType?: string; url?: string
 };
 
-type MediaFilter = { image: boolean; video: boolean; custom: boolean };
+type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVideos: boolean };
 
 type SearchState = {
     schema: string;
@@ -38,7 +38,12 @@ export function SearchProvider({children, initial}: {
 }) {
     const [blocks, setBlocks] = useState(initial.blocks);
     const [items, setItems] = useState<SearchState["items"]>([]);
-    const [mediaFilter, setMediaFilter] = useState<MediaFilter>({image: true, video: true, custom: true});
+    const [mediaFilter, setMediaFilter] = useState<MediaFilter>({
+        image: true,
+        video: true,
+        custom: true,
+        uniqueVideos: true,
+    });
     const [raw, setRaw] = useState("");
     const [scrollY, _setScrollY] = useState(0);
     const [schema, setSchema] = useState<string>(() => {
