@@ -4,7 +4,7 @@ import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery, fileToBase64} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery, fileToBase64, thumbnailUrl} from "../lib/vitrivr.ts";
 import {retrieval} from "../api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -17,6 +17,8 @@ import "../styles/styles.css"
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 const PAGE_SIZE = 32;
+const DEBUG = (import.meta.env.VITE_DEBUG ?? "").toString() === "1";
+const RAW_TRUNCATE = 100_000;
 
 type QueryType = Extract<BlockState['queryType'], string>;
 type Modality = "clip" | "emotions" | "ocr" | "asr";
@@ -110,6 +112,19 @@ function pickEndTime(r: {
     return undefined;
 }
 
+function debugLog(...args: any[]) {
+    if (DEBUG) console.log("[SearchCard]", ...args);
+}
+
+function truncateJson(x: unknown, limit = RAW_TRUNCATE): string {
+    try {
+        const s = JSON.stringify(x, null, 2);
+        return s.length > limit ? s.slice(0, limit) + "\n…truncated…" : s;
+    } catch (e) {
+        return `<<failed to stringify: ${String(e)}>>`;
+    }
+}
+
 function pickFilePath(r: {
     descriptors?: Record<string, unknown>;
     relationship?: Relationship;
@@ -125,23 +140,19 @@ function pickFilePath(r: {
     return undefined;
 }
 
-// TODO: change this to schema relative
-function toVbsRelative(schema: string, path: string): string | undefined {
-    const unixy = path.replace(/\\/g, "/");
-    try {
-        const normalized = new URL(unixy, "http://local").pathname;
-        const i = normalized.indexOf(`/${schema}/`);
-        if (i === -1) return undefined;
-        return normalized.slice(i + 1);
-    } catch {
-        return undefined;
-    }
+function basenameFromPath(p: string): string {
+    const unixy = p.replace(/\\/g, "/");
+    const parts = unixy.split("/");
+    return parts[parts.length - 1] ?? "";
 }
 
-function encodePathSegments(p: string): string {
-    return p.split("/").map(encodeURIComponent).join("/");
+function toServedVideoUrl(schema: string, filePath: string): string {
+    const origin = import.meta.env.VITE_MEDIA_ORIGIN || "";
+    if (!origin) return "";
+    const filename = basenameFromPath(filePath); // "10781.mp4"
+    if (!filename) return "";
+    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, origin).toString();
 }
-
 
 function mapTypeToKind(t?: string): MediaKind {
     switch (t) {
@@ -159,9 +170,10 @@ function toThumbUrlFromId(id: string, schema: string): string {
     if (!thumbOrigin) return "";
     try {
         const u = new URL(`${thumbOrigin}/${schema}/thumbnails/${id}.jpg`);
-        console.log(u.toString());
+        debugLog("thumb url", {id, schema, url: u.toString()});
         return u.toString();
-    } catch {
+    } catch (e) {
+        debugLog("thumb url build failed", {id, schema, thumbOrigin, err: String(e)});
         return "";
     }
 }
@@ -171,35 +183,71 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
     const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
 
-    return list
-        .map((r) => {
-            const id = r.id?.trim();
-            if (!id) return null;
+    debugLog("mediaFrom()", {
+        schema,
+        mediaOrigin,
+        totalRetrievables: list.length,
+        sample: list[0],
+    });
 
-            const filePath = pickFilePath(r as any);
-            const startString = pickStartTime(r);
-            const start = Number.parseFloat(startString ?? "0") / 1_000_000_000;
-            const endString = pickEndTime(r);
-            const end = Number.parseFloat(endString ?? "0") / 1_000_000_000;
+    const out = list.map((r, idx) => {
+        const id = r.id?.trim();
+        if (!id) {
+            debugLog("drop: missing id", {idx, r});
+            return null;
+        }
 
-            let url = "";
+        const kind = mapTypeToKind(r.type);
+        const filePath = pickFilePath(r as any);
 
-            if (filePath) {
-                const rel = toVbsRelative(schema, filePath);
-                if (rel) {
-                    url = `${mediaOrigin}/${encodePathSegments(rel)}`;
-                }
+        const startString = pickStartTime(r);
+        const start = Number.parseFloat(startString ?? "0") / 1_000_000_000;
+        const endString = pickEndTime(r);
+        const end = Number.parseFloat(endString ?? "0") / 1_000_000_000;
+
+        let url = "";
+        if (!mediaOrigin) {
+            debugLog("mediaOrigin missing", {idx, id, kind});
+        }
+
+        if (filePath) {
+            if (!filePath) {
+                debugLog("drop: missing filePath for video", {idx, id});
+                return null;
             }
+            url = toServedVideoUrl(schema, filePath);
+        } else {
+            debugLog("drop: missing filePath (descriptors/relationship)", {
+                idx,
+                id,
+                kind,
+                type: r.type,
+                descriptorsKeys: Object.keys(r.descriptors ?? {}),
+                parentKeys: Object.keys(((r as any).relationship?.partOf?.descriptors ?? {}) as Record<string, unknown>),
+            });
+        }
 
-            let thumbUrl: string | undefined;
+        let thumbUrl: string | undefined;
 
-            if (mapTypeToKind(r.type) === "video" && url) {
-                thumbUrl = toThumbUrlFromId(id, schema);
-            }
+        if (kind === "video") {
+            thumbUrl = toThumbUrlFromId(id, schema);
+            debugLog("video mapped", {idx, id, url, thumbUrl, start, end});
+        } else {
+            debugLog("non-video mapped", {idx, id, kind, url});
+        }
 
-            return {id, kind: mapTypeToKind(r.type), rawType: r.type, url, thumbUrl, start, end};
-        })
-        .filter((v): v is MediaItem => v !== null && !!v.url);
+        if (!url) {
+            debugLog("drop: empty url after mapping", {idx, id, kind, filePath});
+            return null;
+        }
+
+        return {id, kind, rawType: r.type, url, thumbUrl, start, end};
+    });
+
+    const filtered = out.filter((v): v is MediaItem => v !== null);
+    debugLog("mediaFrom() result", {kept: filtered.length, dropped: out.length - filtered.length});
+
+    return filtered;
 }
 
 
@@ -302,8 +350,7 @@ export function SearchCard() {
 
             if (blocks.length == 1) {
                 if (blocks[0].queryType === "image") {
-                    // build image query body from b.file (and maybe modality)
-                    const base64image = await fileToBase64(blocks[0].file)
+                    const base64image = await fileToBase64(blocks[0].file);
                     const body = await buildTextQuery(blocks[0].modality, base64image);
                     resp = await retrieval.postExecuteQuery(schema, body);
                 } else {
@@ -313,9 +360,13 @@ export function SearchCard() {
             } else {
                 const body = buildTemporalQuery(blocks);
                 resp = await retrieval.postExecuteQuery(schema, body);
-                const pretty = JSON.stringify(resp, null, 2);
-                setRaw(pretty.length > 100_000 ? pretty.slice(0, 100_000) + "\n…truncated…" : pretty);
             }
+
+            const pretty = truncateJson(resp);
+            setRaw(pretty);
+
+            debugLog("query response (truncated)", pretty);
+
             const media = mediaFrom(schema, resp as RetrievablesResponse);
             setItems(media);
             setLoading(false);

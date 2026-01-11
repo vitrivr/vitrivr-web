@@ -37,7 +37,7 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
             cancelled = true;
         };
     }, []);
-    
+
     useEffect(() => {
         if (schemas.length === 0) return;
 
@@ -50,6 +50,7 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
             try {
                 window.localStorage.setItem("vitrivr_schema", next);
             } catch {
+                //
             }
         }
     }, [schemas, value, onChange]);
@@ -60,6 +61,7 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
         try {
             window.localStorage.setItem("vitrivr_schema", next);
         } catch {
+            //
         }
     };
 
@@ -69,9 +71,8 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
 
     return (
         <label style={{fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6}}>
-            <span>Schema:</span>
             <select
-                value={(value && schemas.includes(value)) ? value : schemas[0]} // ✅ always controlled
+                value={(value && schemas.includes(value)) ? value : schemas[0]}
                 onChange={handleChange}
                 style={{
                     fontSize: 13,
