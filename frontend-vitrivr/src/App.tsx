@@ -1,6 +1,5 @@
 import {Routes, Route, Navigate} from "react-router-dom";
 import Layout from "./components/Layout";
-import CardHeader from "./components/CardHeader";
 import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage";
 import {SearchProvider} from "./state/SearchContext.tsx";

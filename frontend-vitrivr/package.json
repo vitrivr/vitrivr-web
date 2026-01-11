@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "gen:api": "openapi-generator-cli generate -i ./oas.json -g typescript-axios -o ./src/dres/generated/api",
+    "gen:api:fetch": "openapi-generator-cli generate -i ./openapi.yaml -g typescript-fetch -o ./src/dres/generated/api"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",

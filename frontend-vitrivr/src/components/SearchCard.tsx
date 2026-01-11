@@ -5,7 +5,7 @@ import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
 import {buildTextQuery, buildTemporalQuery, fileToBase64, thumbnailUrl} from "../lib/vitrivr.ts";
-import {retrieval} from "../api/client";
+import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter from "./Results/MediaTypeFilter";
