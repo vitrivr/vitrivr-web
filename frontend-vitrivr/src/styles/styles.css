@@ -2,7 +2,7 @@
 
 :root {
     /* layout */
-    --max: 1600px;
+    --max: 2000px;
     --gutter: 18px;
 
     /* spacing */
@@ -323,7 +323,7 @@ a:hover {
 
 /* keep your centered width helper */
 .sc-page {
-    width: min(1400px, calc(100vw - 40px));
+    width: 100%;
     margin-left: auto;
     margin-right: auto;
 }

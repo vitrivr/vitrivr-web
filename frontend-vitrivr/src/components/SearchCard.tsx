@@ -16,7 +16,7 @@ import "./SearchCard.css"
 import "../styles/styles.css"
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
-const PAGE_SIZE = 32;
+const PAGE_SIZE = 100;
 const DEBUG = (import.meta.env.VITE_DEBUG ?? "").toString() === "1";
 const RAW_TRUNCATE = 100_000;
 
