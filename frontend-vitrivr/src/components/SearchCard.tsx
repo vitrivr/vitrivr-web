@@ -117,6 +117,20 @@ function debugLog(...args: any[]) {
     if (DEBUG) console.log("[SearchCard]", ...args);
 }
 
+function printVitrivrRequest(body: unknown) {
+    try {
+        const json = JSON.stringify(body, null, 2);
+        console.log(
+            "%c[Vitrivr Request]",
+            "color: #4CAF50; font-weight: bold;"
+        );
+        console.log(json);
+    } catch (e) {
+        console.warn("[Vitrivr Request] failed to stringify", e, body);
+    }
+}
+
+
 function truncateJson(x: unknown, limit = RAW_TRUNCATE): string {
     try {
         const s = JSON.stringify(x, null, 2);
@@ -375,6 +389,7 @@ export function SearchCard() {
             } else {
                 const body = buildTemporalQuery(blocks);
                 console.log("creating temporal query");
+                printVitrivrRequest(body);
                 resp = await retrieval.postExecuteQuery(schema, body);
             }
 
