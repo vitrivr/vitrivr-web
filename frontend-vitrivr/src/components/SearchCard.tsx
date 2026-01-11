@@ -129,22 +129,26 @@ function dedupeVideos(list: MediaItem[]): MediaItem[] {
 }
 
 
-function pickStartTime(r: {
-    descriptors?: Record<string, unknown>;
-}): string | undefined {
-    const start = r.descriptors?.["time.start"];
-    console.log("start time: " + start);
-    if (typeof start === "string" && start.trim()) return start;
+function pickDescriptorScalar(
+    r: { descriptors?: Record<string, unknown> },
+    key: string
+): number | undefined {
+    const v = r.descriptors?.[key];
+
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "bigint") return Number(v);
+    if (typeof v === "string") {
+        const s = v.trim();
+        if (!s) return undefined;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : undefined;
+    }
+
     return undefined;
 }
 
-function pickEndTime(r: {
-    descriptors?: Record<string, unknown>;
-}): string | undefined {
-    const end = r.descriptors?.["time.end"];
-    console.log("start time: " + end);
-    if (typeof end === "string" && end.trim()) return end;
-    return undefined;
+function nsToSecondsMaybe(x: number): number {
+    return x / 1_000_000_000;
 }
 
 function debugLog(...args: any[]) {
@@ -249,10 +253,11 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
         const kind = mapTypeToKind(r.type);
         const filePath = pickFilePath(r as any);
 
-        const startString = pickStartTime(r);
-        const start = Number.parseFloat(startString ?? "0") / 1_000_000_000;
-        const endString = pickEndTime(r);
-        const end = Number.parseFloat(endString ?? "0") / 1_000_000_000;
+        const startRaw = pickDescriptorScalar(r, "time.start") ?? 0;
+        const endRaw = pickDescriptorScalar(r, "time.end") ?? 0;
+
+        const start = nsToSecondsMaybe(startRaw);
+        const end = nsToSecondsMaybe(endRaw);
 
         let url = "";
         if (!mediaOrigin) {

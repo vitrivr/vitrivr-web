@@ -33,21 +33,12 @@ export default function VideoPage() {
         const video = videoRef.current;
         if (!video) return;
 
-        const handleLoadedMetadata = () => {
-            if (start > 0) {
-                const safeStart =
-                    video.duration && video.duration > 0
-                        ? Math.min(Math.max(0, start), video.duration)
-                        : Math.max(0, start);
-
-                video.currentTime = safeStart;
-            }
+        const onLoaded = () => {
+            video.currentTime = Math.min(start, video.duration || start);
         };
 
-        video.addEventListener("loadedmetadata", handleLoadedMetadata);
-        return () => {
-            video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-        };
+        video.addEventListener("loadedmetadata", onLoaded);
+        return () => video.removeEventListener("loadedmetadata", onLoaded);
     }, [start]);
 
 
