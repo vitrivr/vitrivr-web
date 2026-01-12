@@ -2,9 +2,13 @@
 
 import React, {useState} from "react";
 import {useAuth} from "../state/AuthContext";
-import "./LoginModal.css"
+import "./LoginModal.css";
 
-export default function LoginModal() {
+type LoginModalProps = {
+    onClose?: () => void;
+};
+
+export default function LoginModal({onClose}: LoginModalProps) {
     const {login} = useAuth();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -18,6 +22,7 @@ export default function LoginModal() {
 
         try {
             await login({username: username.trim(), password});
+            onClose?.();
         } catch (err: any) {
             setError(err?.response?.data?.description ?? err?.message ?? "Login failed.");
         } finally {
@@ -28,6 +33,17 @@ export default function LoginModal() {
     return (
         <div className="lm-backdrop" role="dialog" aria-modal="true" aria-label="Login">
             <div className="lm-modal">
+                {onClose && (
+                    <button
+                        type="button"
+                        className="lm-close"
+                        aria-label="Close login"
+                        onClick={onClose}
+                    >
+                        ×
+                    </button>
+                )}
+
                 <div className="lm-head">
                     <div className="lm-title">Login</div>
                     <div className="lm-subtitle">Sign in to DRES to continue.</div>

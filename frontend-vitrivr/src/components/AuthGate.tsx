@@ -4,13 +4,8 @@ import {useAuth} from "../state/AuthContext";
 import LoginModal from "./LoginModal";
 
 export default function AuthGate() {
-    const {status, loginOpen, closeLogin} = useAuth();
+    const {loginOpen, closeLogin} = useAuth();
 
-    if (status === "loading") return null;
-
-    if (status !== "loggedIn" || loginOpen) {
-        return <LoginModal onClose={status === "loggedIn" ? closeLogin : undefined}/>;
-    }
-
-    return null;
+    if (!loginOpen) return null;
+    return <LoginModal onClose={closeLogin}/>;
 }

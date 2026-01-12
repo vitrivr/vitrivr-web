@@ -17,14 +17,13 @@ function Header() {
                     {status === "loggedIn" ? (
                         <div className="header__auth">
                             <span className="header__user">{username}</span>
-                            <button className="header__btn" onClick={logout} type="button">
-                                Logout
-                            </button>
+                            <button className="header__btn" onClick={logout}>Logout</button>
                         </div>
                     ) : (
-                        <button className="header__btn" onClick={openLogin} type="button">
-                            Login
-                        </button>
+                        <div className="header__auth">
+                            <span className="header__user">Guest</span>
+                            <button className="header__btn" onClick={openLogin}>Login</button>
+                        </div>
                     )}
                 </div>
             </div>
