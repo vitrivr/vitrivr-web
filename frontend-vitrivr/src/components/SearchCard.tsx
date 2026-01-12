@@ -4,7 +4,7 @@ import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery, fileToBase64, thumbnailUrl} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery, fileToBase64} from "../lib/vitrivr.ts";
 import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -580,7 +580,7 @@ export function SearchCard() {
                                                     id={id}
                                                     kind="image"
                                                     mediaClassName="ri-media"
-                                                    getImageSrc={() => url}
+                                                    // getImageSrc={() => url}
                                                     onBeforeOpen={beforeNavigate}
                                                 />
                                             );

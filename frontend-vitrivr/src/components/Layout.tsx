@@ -5,12 +5,11 @@ import AuthGate from "./AuthGate.tsx";
 
 function Layout({children}: PropsWithChildren) {
     return (
-        <AuthGate>
-            <div>
-                <Header/>
-                <main className="layout">{children}</main>
-            </div>
-        </AuthGate>
+        <div>
+            <Header/>
+            <main>{children}</main>
+            <AuthGate/>
+        </div>
     );
 }
 

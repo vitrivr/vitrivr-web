@@ -1,14 +1,16 @@
 "use client";
 
-import React from "react";
 import {useAuth} from "../state/AuthContext";
 import LoginModal from "./LoginModal";
 
-export default function AuthGate({children}: { children: React.ReactNode }) {
-    const {status} = useAuth();
+export default function AuthGate() {
+    const {status, loginOpen, closeLogin} = useAuth();
 
-    if (status === "loading") return null; // or a splash screen
-    if (status !== "loggedIn") return <LoginModal/>;
+    if (status === "loading") return null;
 
-    return <>{children}</>;
+    if (status !== "loggedIn" || loginOpen) {
+        return <LoginModal onClose={status === "loggedIn" ? closeLogin : undefined}/>;
+    }
+
+    return null;
 }

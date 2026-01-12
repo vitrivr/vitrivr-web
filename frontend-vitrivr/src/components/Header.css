@@ -36,3 +36,31 @@
     color: var(--text-2);
     font-size: .9rem;
 }
+
+.header__actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header__auth {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header__user {
+    color: #444;
+    font-size: 13px;
+}
+
+.header__btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+}
+

@@ -1,8 +1,8 @@
 "use client";
 
 import React, {createContext, useContext, useEffect, useMemo, useState} from "react";
-import type {ApiUser, LoginRequest} from "../dres/generated/api"; // adjust import path to your generated client types
-import {UserApiFactory} from "../dres/generated/api";             // adjust import path to your generated client
+import type {ApiUser, LoginRequest} from "../dres/generated/api";
+import {UserApiFactory} from "../dres/generated/api";
 import {dresAxios} from "../dres/generated/api/dresAxios";
 
 type AuthState = {
@@ -11,6 +11,9 @@ type AuthState = {
     session: string | null;
     login: (req: LoginRequest) => Promise<void>;
     logout: () => Promise<void>;
+    loginOpen: boolean;
+    openLogin: () => void;
+    closeLogin: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -21,10 +24,13 @@ const LS_USER = "dres_user";
 export function AuthProvider({children}: { children: React.ReactNode }) {
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
     const userApi = useMemo(() => UserApiFactory(undefined, basePath, dresAxios), [basePath]);
-
     const [status, setStatus] = useState<AuthState["status"]>("loading");
     const [session, setSession] = useState<string | null>(null);
     const [user, setUser] = useState<ApiUser | null>(null);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const openLogin = () => setLoginOpen(true);
+    const closeLogin = () => setLoginOpen(false);
+
 
     // restore from localStorage
     useEffect(() => {
@@ -51,6 +57,8 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         setUser(loggedInUser);
         setSession(sessionId);
         setStatus("loggedIn");
+
+        setLoginOpen(false);
 
         try {
             window.localStorage.setItem(LS_SESSION, sessionId);
@@ -81,7 +89,7 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         }
     };
 
-    const value: AuthState = {status, user, session, login, logout};
+    const value: AuthState = {status, user, session, login, logout, loginOpen, openLogin, closeLogin};
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
