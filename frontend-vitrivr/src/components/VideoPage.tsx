@@ -188,6 +188,7 @@ export default function VideoPage() {
             </header>
 
             <video
+                ref={videoRef}
                 src={src}
                 poster={poster}
                 controls
