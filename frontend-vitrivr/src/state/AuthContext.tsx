@@ -14,12 +14,14 @@ type AuthState = {
     loginOpen: boolean;
     openLogin: () => void;
     closeLogin: () => void;
+    evaluationId: string | null;
+    setEvaluationId: (id: string | null) => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
-
 const LS_SESSION = "dres_session";
 const LS_USER = "dres_user";
+const LS_EVAL = "dres_evaluation_id";
 
 export function AuthProvider({children}: { children: React.ReactNode }) {
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
@@ -30,7 +32,26 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     const [loginOpen, setLoginOpen] = useState(false);
     const openLogin = () => setLoginOpen(true);
     const closeLogin = () => setLoginOpen(false);
+    const [evaluationId, _setEvaluationId] = useState<string | null>(null);
 
+    useEffect(() => {
+        try {
+            const evalId = window.localStorage.getItem(LS_EVAL);
+            if (evalId) _setEvaluationId(evalId);
+        } catch {
+            //
+        }
+    }, []);
+
+    const setEvaluationId = (id: string | null) => {
+        _setEvaluationId(id);
+        try {
+            if (id) window.localStorage.setItem(LS_EVAL, id);
+            else window.localStorage.removeItem(LS_EVAL);
+        } catch {
+            //
+        }
+    };
 
     // restore from localStorage
     useEffect(() => {
@@ -58,6 +79,9 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         setSession(sessionId);
         setStatus("loggedIn");
 
+        setLoginOpen(false);
+
+        setEvaluationId(null);
         setLoginOpen(false);
 
         try {
@@ -89,11 +113,23 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         }
     };
 
-    const value: AuthState = {status, user, session, login, logout, loginOpen, openLogin, closeLogin};
+    const value: AuthState = {
+        status,
+        user,
+        session,
+        login,
+        logout,
+        loginOpen,
+        openLogin,
+        closeLogin,
+        evaluationId,
+        setEvaluationId
+    };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const ctx = useContext(AuthContext);
     if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");

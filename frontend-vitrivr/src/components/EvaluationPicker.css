@@ -1,0 +1,88 @@
+.ep-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: grid;
+    place-items: center;
+    z-index: 9999;
+    padding: 16px;
+}
+
+.ep-panel {
+    width: min(720px, 100%);
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #eee;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding: 18px;
+    display: grid;
+    gap: 12px;
+}
+
+.ep-title {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.ep-subtitle {
+    color: #666;
+    font-size: 13px;
+}
+
+.ep-muted {
+    color: #666;
+}
+
+.ep-error {
+    color: #b00020;
+    font-size: 13px;
+}
+
+.ep-list {
+    display: grid;
+    gap: 10px;
+    max-height: 55vh;
+    overflow: auto;
+    padding: 6px 0;
+}
+
+.ep-item {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.ep-itemName {
+    font-weight: 600;
+}
+
+.ep-itemMeta {
+    color: #666;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.ep-itemId {
+    color: #999;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.ep-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ep-btn {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background: #fff;
+    cursor: pointer;
+}

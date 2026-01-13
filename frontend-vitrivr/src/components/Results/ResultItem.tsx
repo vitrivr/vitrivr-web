@@ -1,7 +1,9 @@
-import React, {useRef} from "react";
+import React, {useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailUrl} from "../../lib/vitrivr";
 import {useSearch} from "../../state/SearchContext.tsx";
+import {submitVideoAnswer} from "../../dres/generated/api/dresSubmit.ts";
+import {useAuth} from "../../state/AuthContext.tsx";
 
 type BaseProps = {
     id: string;
@@ -41,6 +43,9 @@ export default function ResultItem(props: ResultItemProps) {
         className = "sb__card",
         captionClassName = "sb__caption",
     } = props;
+    const [submitting, setSubmitting] = useState(false);
+    const {session, openLogin} = useAuth();
+    const {evaluationId} = useAuth();
 
     let media: React.ReactNode;
 
@@ -89,29 +94,87 @@ export default function ResultItem(props: ResultItemProps) {
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
-    return (
-        <Link
-            to={`/video/${encodeURIComponent(id)}`}
-            state={
-                props.kind === "video"
-                    ? {
-                        src: (props as any).getVideoSrc?.(id),
-                        poster: thumbnailUrl(schema, id),
-                        start: (props as any).start,
-                        end: (props as any).end,
-                    }
-                    : undefined
+    const onSubmit = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!session) {
+            openLogin();
+            return;
+        }
+
+        if (!evaluationId) {
+            openLogin();
+            return;
+        }
+
+        if (props.kind !== "video") return;
+
+        setSubmitting(true);
+        try {
+            const startMs = Math.max(0, Math.round(props.start * 1000));
+            const endMs = Math.max(0, Math.round(props.end * 1000));
+            const splitLen = props.getVideoSrc(props.id).split("/").length
+            const videoName = props.getVideoSrc(id).split("/")[splitLen - 1].split(".")[0]
+
+            await submitVideoAnswer({
+                session,
+                mediaItemName: videoName,
+                evaluationId,
+                startMs: startMs > 0 ? startMs : undefined,
+                endMs: endMs > 0 ? endMs : undefined,
+            });
+
+            // minimal feedback
+            alert("Submitted!");
+        } catch (err: any) {
+            alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const linkState =
+        props.kind === "video"
+            ? {
+                src: (props as any).getVideoSrc?.(id),
+                poster: thumbnailUrl(schema, id),
+                start: (props as any).start,
+                end: (props as any).end,
             }
-            style={{
-                textDecoration: "none",
-                color: "inherit",
-            }}
-        >
-            <figure className={className}>
+            : undefined;
+
+    return (
+        <figure className={className} style={{position: "relative"}}>
+            <Link
+                to={`/video/${encodeURIComponent(id)}`}
+                state={linkState}
+                style={{textDecoration: "none", color: "inherit", display: "block"}}
+            >
                 {media}
                 <figcaption className={captionClassName}>{caption}</figcaption>
-            </figure>
-        </Link>
-    );
+            </Link>
 
+            {props.kind === "video" && (
+                <button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={submitting}
+                    style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        zIndex: 2,
+                        border: "1px solid #ddd",
+                        borderRadius: 10,
+                        padding: "6px 10px",
+                        background: "#FF00FF",
+                        cursor: "pointer",
+                    }}
+                >
+                    {submitting ? "Submitting…" : "Submit"}
+                </button>
+            )}
+        </figure>
+    );
 }

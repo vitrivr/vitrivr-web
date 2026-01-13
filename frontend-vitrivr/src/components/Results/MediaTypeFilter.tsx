@@ -47,8 +47,8 @@ export default function MediaTypeFilter({
             (e: React.ChangeEvent<HTMLInputElement>) =>
                 onChange({...value, [k]: e.target.checked});
 
-    const selectAll = () => onChange({image: true, video: true, custom: true, uniqueVideos: true});
-    const clear = () => onChange({image: false, video: false, custom: false, uniqueVideos: false});
+    //const selectAll = () => onChange({image: true, video: true, custom: true, uniqueVideos: true});
+    //const clear = () => onChange({image: false, video: false, custom: false, uniqueVideos: false});
 
     if (!open) return null;
 
@@ -105,11 +105,6 @@ export default function MediaTypeFilter({
                 />
                 <span>Hide duplicate videos</span>
             </label>
-
-            <div style={{display: "flex", gap: 8, marginTop: 10}}>
-                <button onClick={selectAll} className="mtf__btn">Select all</button>
-                <button onClick={clear} className="mtf__btn">Clear</button>
-            </div>
         </div>
     );
 }
