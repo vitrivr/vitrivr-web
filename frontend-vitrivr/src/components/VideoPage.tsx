@@ -4,7 +4,8 @@ import {thumbnailUrl} from "../lib/vitrivr";
 import {useSearch} from "../state/SearchContext.tsx";
 import {useEffect, useRef, useState} from "react";
 import {useAuth} from "../state/AuthContext.tsx";
-import {submitVideoAnswer} from "../dres/generated/api/dresSubmit.ts";
+import {submitVideo, submitText} from "../dres/generated/api/dresSubmit.ts";
+import {getCurrentSubmissionKind} from "../dres/generated/api/taskTypeHelper.ts";
 
 
 type VideoState = { src?: string; poster?: string; start?: number; end?: number } | null;
@@ -50,34 +51,55 @@ export default function VideoPage() {
     }, [start]);
 
     const onSubmit = async () => {
-        if (!session) {
-            openLogin();
-            return;
-        }
+            if (!session) {
+                openLogin();
+                return;
+            }
 
-        if (!evaluationId) {
-            openLogin();
-            return;
-        }
+            if (!evaluationId) {
+                openLogin();
+                return;
+            }
 
-        const splitLen = src.split("/").length
-        const videoName = src.split("/")[splitLen - 1].split(".")[0]
-        setSubmitting(true);
-        try {
-            await submitVideoAnswer({
-                session,
-                mediaItemName: videoName,
-                evaluationId,
-                startMs: start > 0 ? Math.round(start * 1000) : undefined,
-                endMs: end > 0 ? Math.round(end * 1000) : undefined,
-            });
-            alert("Submitted!");
-        } catch (err: any) {
-            alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-        } finally {
-            setSubmitting(false);
+            const kind = await getCurrentSubmissionKind({session, evaluationId});
+            console.log("kind" + kind)
+
+            if (kind === "text") {
+                setSubmitting(true);
+                try {
+                    await submitText({
+                        session,
+                        evaluationId,
+                        text: "test"
+                    });
+                    alert("Submitted text!");
+                } catch (err: any) {
+                    alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+                } finally {
+                    setSubmitting(false);
+                }
+            }
+            if (kind === "item") {
+                const splitLen = src.split("/").length
+                const videoName = src.split("/")[splitLen - 1].split(".")[0]
+                setSubmitting(true);
+                try {
+                    await submitVideo({
+                        session,
+                        mediaItemName: videoName,
+                        evaluationId,
+                        start: start > 0 ? Math.round(start * 1000) : undefined,
+                        end: end > 0 ? Math.round(end * 1000) : undefined,
+                    });
+                    alert("Submitted!");
+                } catch (err: any) {
+                    alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+                } finally {
+                    setSubmitting(false);
+                }
+            }
         }
-    };
+    ;
 
 
     return (

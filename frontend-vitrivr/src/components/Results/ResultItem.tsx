@@ -2,8 +2,9 @@ import React, {useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailUrl} from "../../lib/vitrivr";
 import {useSearch} from "../../state/SearchContext.tsx";
-import {submitVideoAnswer} from "../../dres/generated/api/dresSubmit.ts";
+import {submitText, submitVideo} from "../../dres/generated/api/dresSubmit.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
+import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 
 type BaseProps = {
     id: string;
@@ -110,29 +111,47 @@ export default function ResultItem(props: ResultItemProps) {
 
         if (props.kind !== "video") return;
 
-        setSubmitting(true);
-        try {
-            const startMs = Math.max(0, Math.round(props.start * 1000));
-            const endMs = Math.max(0, Math.round(props.end * 1000));
+        const kind = await getCurrentSubmissionKind({session, evaluationId});
+        console.log("kind" + kind)
+
+        if (kind === "text") {
+            setSubmitting(true);
+            try {
+                await submitText({
+                    session,
+                    evaluationId,
+                    text: "test"
+                });
+                alert("Submitted text!");
+            } catch (err: any) {
+                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+            } finally {
+                setSubmitting(false);
+            }
+        }
+        if (kind === "item") {
+            setSubmitting(true);
+            const start = Math.max(0, Math.round(props.start * 1000));
+            const end = Math.max(0, Math.round(props.end * 1000));
             const splitLen = props.getVideoSrc(props.id).split("/").length
             const videoName = props.getVideoSrc(id).split("/")[splitLen - 1].split(".")[0]
-
-            await submitVideoAnswer({
-                session,
-                mediaItemName: videoName,
-                evaluationId,
-                startMs: startMs > 0 ? startMs : undefined,
-                endMs: endMs > 0 ? endMs : undefined,
-            });
-
-            // minimal feedback
-            alert("Submitted!");
-        } catch (err: any) {
-            alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-        } finally {
-            setSubmitting(false);
+            setSubmitting(true);
+            try {
+                await submitVideo({
+                    session,
+                    mediaItemName: videoName,
+                    evaluationId,
+                    start: start > 0 ? Math.round(start * 1000) : undefined,
+                    end: end > 0 ? Math.round(end * 1000) : undefined,
+                });
+                alert("Submitted!");
+            } catch (err: any) {
+                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+            } finally {
+                setSubmitting(false);
+            }
         }
-    };
+    }
 
     const linkState =
         props.kind === "video"
