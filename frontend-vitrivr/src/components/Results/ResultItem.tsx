@@ -1,10 +1,10 @@
-import React, {useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailUrl} from "../../lib/vitrivr";
 import {useSearch} from "../../state/SearchContext.tsx";
 import {submitText, submitVideo} from "../../dres/generated/api/dresSubmit.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
-import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
+import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 
 type BaseProps = {
     id: string;
@@ -47,7 +47,9 @@ export default function ResultItem(props: ResultItemProps) {
     const [submitting, setSubmitting] = useState(false);
     const {session, openLogin} = useAuth();
     const {evaluationId} = useAuth();
-
+    const [kind, setKind] = useState<SubmissionKind>("unknown");
+    const [textAnswer, setTextAnswer] = useState("");
+    const [hovered, setHovered] = useState(false);
     let media: React.ReactNode;
 
     if (props.kind === "video") {
@@ -95,6 +97,28 @@ export default function ResultItem(props: ResultItemProps) {
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadKind() {
+            if (!session || !evaluationId) {
+                setKind("unknown");
+                return;
+            }
+            try {
+                const k = await getCurrentSubmissionKind({session, evaluationId});
+                if (!cancelled) setKind(k);
+            } catch {
+                if (!cancelled) setKind("unknown");
+            }
+        }
+
+        loadKind();
+        return () => {
+            cancelled = true;
+        };
+    }, [session, evaluationId]);
+
     const onSubmit = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -115,20 +139,29 @@ export default function ResultItem(props: ResultItemProps) {
         console.log("kind" + kind)
 
         if (kind === "text") {
+            const text = textAnswer.trim();
+            if (!text) {
+                alert("Please enter a text answer.");
+                return;
+            }
+
             setSubmitting(true);
             try {
                 await submitText({
                     session,
                     evaluationId,
-                    text: "test"
+                    text,
                 });
                 alert("Submitted text!");
+                setTextAnswer("");
             } catch (err: any) {
                 alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
             } finally {
                 setSubmitting(false);
             }
+            return;
         }
+
         if (kind === "item") {
             setSubmitting(true);
             const start = Math.max(0, Math.round(props.start * 1000));
@@ -164,36 +197,52 @@ export default function ResultItem(props: ResultItemProps) {
             : undefined;
 
     return (
-        <figure className={className} style={{position: "relative"}}>
-            <Link
-                to={`/video/${encodeURIComponent(id)}`}
-                state={linkState}
-                style={{textDecoration: "none", color: "inherit", display: "block"}}
-            >
-                {media}
-                <figcaption className={captionClassName}>{caption}</figcaption>
-            </Link>
-
-            {props.kind === "video" && (
-                <button
-                    type="button"
-                    onClick={onSubmit}
-                    disabled={submitting}
-                    style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        zIndex: 2,
-                        border: "1px solid #ddd",
-                        borderRadius: 10,
-                        padding: "6px 10px",
-                        background: "#FF00FF",
-                        cursor: "pointer",
+        <div
+            className="ri-wrap"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            {props.kind === "video" && hovered && kind === "text" && (
+                <div
+                    className="ri-floatText"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                     }}
                 >
-                    {submitting ? "Submitting…" : "Submit"}
-                </button>
+                    <input
+                        value={textAnswer}
+                        onChange={(e) => setTextAnswer(e.target.value)}
+                        placeholder="Type answer…"
+                        className="ri-textInput"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") onSubmit(e as any);
+                        }}
+                    />
+                </div>
             )}
-        </figure>
+
+            <figure className={className} style={{position: "relative"}}>
+                <Link
+                    to={`/video/${encodeURIComponent(id)}`}
+                    state={linkState}
+                    style={{textDecoration: "none", color: "inherit", display: "block"}}
+                >
+                    {media}
+                    <figcaption className={captionClassName}>{caption}</figcaption>
+                </Link>
+
+                {props.kind === "video" && (
+                    <button
+                        type="button"
+                        onClick={onSubmit}
+                        disabled={submitting}
+                        className="ri-submitBtn"
+                    >
+                        {submitting ? "Submitting…" : "Submit"}
+                    </button>
+                )}
+            </figure>
+        </div>
     );
 }
