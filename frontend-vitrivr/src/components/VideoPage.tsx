@@ -19,6 +19,32 @@ export default function VideoPage() {
     const {session, openLogin} = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const {evaluationId} = useAuth()
+    const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
+    const [textAnswer, setTextAnswer] = useState("");
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadKind() {
+            if (!session || !evaluationId) {
+                setKind("unknown");
+                return;
+            }
+            try {
+                const k = await getCurrentSubmissionKind({session, evaluationId});
+                if (!cancelled) setKind(k);
+            } catch {
+                if (!cancelled) setKind("unknown");
+            }
+        }
+
+        loadKind();
+        return () => {
+            cancelled = true;
+        };
+    }, [session, evaluationId]);
+
+
     let poster = "";
     if (id != null) {
         poster = thumbnailUrl(schema, id) ?? "";
@@ -51,55 +77,62 @@ export default function VideoPage() {
     }, [start]);
 
     const onSubmit = async () => {
-            if (!session) {
-                openLogin();
+        if (!session) {
+            openLogin();
+            return;
+        }
+
+        if (!evaluationId) {
+            openLogin();
+            return;
+        }
+
+        const kind = await getCurrentSubmissionKind({session, evaluationId});
+        console.log("kind" + kind)
+
+        if (kind === "text") {
+            const text = textAnswer.trim();
+            if (!text) {
+                alert("Please enter a text answer.");
                 return;
             }
 
-            if (!evaluationId) {
-                openLogin();
-                return;
-            }
-
-            const kind = await getCurrentSubmissionKind({session, evaluationId});
-            console.log("kind" + kind)
-
-            if (kind === "text") {
-                setSubmitting(true);
-                try {
-                    await submitText({
-                        session,
-                        evaluationId,
-                        text: "test"
-                    });
-                    alert("Submitted text!");
-                } catch (err: any) {
-                    alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-                } finally {
-                    setSubmitting(false);
-                }
-            }
-            if (kind === "item") {
-                const splitLen = src.split("/").length
-                const videoName = src.split("/")[splitLen - 1].split(".")[0]
-                setSubmitting(true);
-                try {
-                    await submitVideo({
-                        session,
-                        mediaItemName: videoName,
-                        evaluationId,
-                        start: start > 0 ? Math.round(start * 1000) : undefined,
-                        end: end > 0 ? Math.round(end * 1000) : undefined,
-                    });
-                    alert("Submitted!");
-                } catch (err: any) {
-                    alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-                } finally {
-                    setSubmitting(false);
-                }
+            setSubmitting(true);
+            try {
+                await submitText({
+                    session,
+                    evaluationId,
+                    text,
+                });
+                alert("Submitted text!");
+                setTextAnswer("");
+            } catch (err: any) {
+                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+            } finally {
+                setSubmitting(false);
             }
         }
-    ;
+
+        if (kind === "item") {
+            const splitLen = src.split("/").length
+            const videoName = src.split("/")[splitLen - 1].split(".")[0]
+            setSubmitting(true);
+            try {
+                await submitVideo({
+                    session,
+                    mediaItemName: videoName,
+                    evaluationId,
+                    start: start > 0 ? Math.round(start * 1000) : undefined,
+                    end: end > 0 ? Math.round(end * 1000) : undefined,
+                });
+                alert("Submitted!");
+            } catch (err: any) {
+                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+            } finally {
+                setSubmitting(false);
+            }
+        }
+    };
 
 
     return (
@@ -117,7 +150,26 @@ export default function VideoPage() {
 
                 <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {id}</h2>
 
-                <div style={{marginLeft: "auto"}}>
+                <div style={{marginLeft: "auto", display: "flex", gap: 10, alignItems: "center"}}>
+                    {kind === "text" && (
+                        <input
+                            value={textAnswer}
+                            onChange={(e) => setTextAnswer(e.target.value)}
+                            placeholder="Type answer (DRES)…"
+                            style={{
+                                width: 260,
+                                maxWidth: "50vw",
+                                border: "1px solid #ddd",
+                                borderRadius: 10,
+                                padding: "8px 10px",
+                                background: "#fff",
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") onSubmit();
+                            }}
+                        />
+                    )}
+
                     <button
                         type="button"
                         onClick={onSubmit}

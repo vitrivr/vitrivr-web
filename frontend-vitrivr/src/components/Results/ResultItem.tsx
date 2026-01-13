@@ -213,7 +213,7 @@ export default function ResultItem(props: ResultItemProps) {
                     <input
                         value={textAnswer}
                         onChange={(e) => setTextAnswer(e.target.value)}
-                        placeholder="Type answer…"
+                        placeholder="Type answer (DRES)…"
                         className="ri-textInput"
                         onKeyDown={(e) => {
                             if (e.key === "Enter") onSubmit(e as any);
