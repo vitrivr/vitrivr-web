@@ -39,6 +39,7 @@ type MediaItem = {
     thumbUrl?: string;
     start: number;
     end: number;
+    clipVector?: number[];
 };
 
 type RetrievablesResponse = {
@@ -46,8 +47,11 @@ type RetrievablesResponse = {
         id?: string;
         type?: string;
         score?: number;
-        parts?: unknown[];
-        properties?: Record<string, unknown>;
+        relationship?: {
+            partOf?: {
+                descriptors?: Record<string, unknown>;
+            };
+        };
         descriptors?: Record<string, unknown>;
     }>;
 };
@@ -125,6 +129,23 @@ function dedupeVideos(list: MediaItem[]): MediaItem[] {
         out.push(it);
     }
 
+    return out;
+}
+
+function pickFloatArray(
+    r: { descriptors?: Record<string, unknown> },
+    key: string
+): number[] | undefined {
+    const v = r.descriptors?.[key];
+
+    if (!Array.isArray(v)) return undefined;
+
+    // ensure all entries are finite numbers
+    const out: number[] = [];
+    for (const x of v) {
+        if (typeof x !== "number" || !Number.isFinite(x)) return undefined;
+        out.push(x);
+    }
     return out;
 }
 
@@ -245,6 +266,7 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
 
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
+        const clipVector = pickFloatArray(r, "clip.vector");
         if (!id) {
             debugLog("drop: missing id", {idx, r});
             return null;
@@ -295,7 +317,7 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
             return null;
         }
 
-        return {id, kind, rawType: r.type, url, thumbUrl, start, end};
+        return {id, kind, rawType: r.type, url, thumbUrl, start, end, clipVector};
     });
 
     const filtered = out.filter((v): v is MediaItem => v !== null);
@@ -313,6 +335,7 @@ export function SearchCard() {
         mediaFilter, setMediaFilter,
         raw, setRaw,
         setScrollY, scrollY,
+        vectorsById, setVectorsById,
     } = useSearch();
 
     useEffect(() => {
@@ -442,6 +465,17 @@ export function SearchCard() {
             debugLog("query response (truncated)", pretty);
 
             const media = mediaFrom(schema, resp as RetrievablesResponse);
+
+            setVectorsById((prev) => {
+                const next = {...prev};
+                for (const m of media) {
+                    if (m.clipVector && m.clipVector.length > 0) {
+                        next[m.id] = m.clipVector;
+                    }
+                }
+                return next;
+            });
+
             setItems(media);
             setLoading(false);
         } catch (err) {

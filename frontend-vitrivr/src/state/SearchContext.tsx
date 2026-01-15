@@ -14,6 +14,7 @@ type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVide
 type SearchState = {
     schema: string;
     setSchema: (s: string) => void;
+
     blocks: BlockState[];
     setBlocks: React.Dispatch<React.SetStateAction<BlockState[]>>;
 
@@ -28,6 +29,9 @@ type SearchState = {
 
     scrollY: number;
     setScrollY: (y: number) => void;
+
+    vectorsById: Record<string, number[]>;
+    setVectorsById: React.Dispatch<React.SetStateAction<Record<string, number[]>>>;
 };
 
 const SearchCtx = createContext<SearchState | null>(null);
@@ -58,6 +62,8 @@ export function SearchProvider({children, initial}: {
 
 
     const setScrollY = (y: number) => _setScrollY(y);
+    const [vectorsById, setVectorsById] = useState<Record<string, number[]>>({});
+
 
     return (
         <SearchCtx.Provider
@@ -73,7 +79,9 @@ export function SearchProvider({children, initial}: {
                 raw,
                 setRaw,
                 scrollY,
-                setScrollY
+                setScrollY,
+                vectorsById,
+                setVectorsById,
             }}
         >
             {children}
@@ -81,6 +89,7 @@ export function SearchProvider({children, initial}: {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSearch() {
     const ctx = useContext(SearchCtx);
     if (!ctx) throw new Error("useSearch must be used within SearchProvider");

@@ -52,7 +52,7 @@ export async function fetchSchemas(): Promise<string[]> {
 }
 
 /**
- * TODO adjust this such that images, emotions and non clip modalities can be entered.
+ * TODO make this for more like this
  * @param blocks
  */
 export function buildTemporalQuery(blocks: BlockState[]) {
@@ -72,7 +72,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
             case "ocr":
                 return "ocr";
             case "emotions":
-                return "emotionsface"; // your existing emotions operator field
+                return "emotionsface";
             default:
                 return m;
         }
@@ -85,7 +85,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     let opIdx = 0;
 
     for (const b of blocks) {
-        const opName = opIdx === 0 ? "op" : `op${opIdx}`; // stable unique op names
+        const opName = opIdx === 0 ? "op" : `op${opIdx}`;
         const inName = `in${opIdx}`;
 
         // Emotions block
@@ -207,91 +207,79 @@ export function fileToBase64(file: File): Promise<string> {
  * @param emotions
  */
 export function buildTextQuery(field: string, prompt: string, emotions: string = "") {
+    const LIMIT = "1000";
+
     if (field === "emotions") {
         const emotionsVector = emotionsToVector(emotions);
-        return {
-            "inputs": {
-                "emotion": {
-                    "type": "FLOATVECTOR",
-                    "data": emotionsVector,
-                }
+
+        const inputs: Inputs = {
+            emotion: {type: "FLOATVECTOR", data: emotionsVector},
+        };
+
+        const operations: Record<string, unknown> = {
+            emotions: {
+                field: "emotionsface",
+                inputs: {vec: "emotion"},
+                parameters: {limit: LIMIT},
             },
-            "operations": {
-                "emotions": {
-                    "field": "emotionsface",
-                    "inputs": {
-                        "vec": "emotion"
-                    },
-                    "parameters": {
-                        "limit": "1000"
-                    }
-                },
-                "relations": {
-                    "factory": "RelationExpander",
-                    "inputs": {
-                        "in": "emotions"
-                    },
-                    "parameters": {
-                        "outgoing": "partOf"
-                    }
-                },
-                "aggregator": {
-                    "factory": "ScoreAggregator",
-                    "inputs": {
-                        "in": "relations"
-                    }
-                },
-                "timelookup": {
-                    "factory": "FieldLookup",
-                    "inputs": {
-                        "in": "aggregator"
-                    },
-                    "parameters": {
-                        "field": "time",
-                        "keys": "start, end"
-                    }
-                },
-                "filelookup": {
-                    "factory": "ObjectFieldLookup",
-                    "inputs": {
-                        "in": "timelookup"
-                    },
-                    "parameters": {
-                        "field": "file",
-                        "predicates": "partOf",
-                        "keys": "path"
-                    }
-                }
-            },
-            "output": "filelookup"
-        } as const;
-    } else {
-        return {
-            "inputs": {
-                "txt": {"type": "TEXT", "data": prompt}
-            },
-            "operations": {
-                "clip": {"field": field, "inputs": {"txt": "txt"}, "parameters": {"limit": "1000"}},
-                "relations": {
-                    "factory": "RelationExpander",
-                    "inputs": {"in": "clip"},
-                    "parameters": {"outgoing": "partOf"}
-                },
-                "aggregator": {"factory": "ScoreAggregator", "inputs": {"in": "relations"}},
-                "timelookup": {
-                    "factory": "FieldLookup",
-                    "inputs": {"in": "aggregator"},
-                    "parameters": {"field": "time", "keys": "start, end"}
-                },
-                "filelookup": {
-                    "factory": "ObjectFieldLookup",
-                    "inputs": {"in": "timelookup"},
-                    "parameters": {"field": "file", "predicates": "partOf", "keys": "path"}
-                }
-            },
-            "output": "filelookup"
-        } as const;
+        };
+
+        const output = addSegmentToFileLookups(operations, "emotions");
+
+        return {inputs, operations, output} as const;
     }
+    const inputs: Inputs = {
+        txt: {type: "TEXT", data: prompt},
+    };
+
+    const operations: Record<string, unknown> = {
+        clip: {
+            field,
+            inputs: {txt: "txt"},
+            parameters: {limit: LIMIT},
+        },
+    };
+
+    const output = addSegmentToFileLookups(operations, "clip");
+
+    return {inputs, operations, output} as const;
+}
+
+
+export function buildVectorQuery(vector: [], limit: number) {
+    return {
+        "inputs": {
+            "txt": {
+                "type": "FLOATVECTOR", "data": vector
+            }
+        },
+        "operations": {
+            "clip": {"field": "clip", "inputs": {"txt": "txt"}, "parameters": {"limit": limit.toString()}},
+
+            "relations": {
+                "factory": "RelationExpander",
+                "inputs": {"in": "clip"},
+                "parameters": {"outgoing": "partOf"}
+            },
+            "aggregator": {"factory": "ScoreAggregator", "inputs": {"in": "relations"}},
+            "timelookup": {
+                "factory": "FieldLookup",
+                "inputs": {"in": "aggregator"},
+                "parameters": {"field": "time", "keys": "start, end"}
+            },
+            "desclookup": {
+                "factory": "FieldLookup",
+                "inputs": {"in": "timelookup"},
+                "parameters": {"field": "clip", "keys": "descriptord"}
+            },
+            "filelookup": {
+                "factory": "ObjectFieldLookup",
+                "inputs": {"in": "desclookup"},
+                "parameters": {"field": "file", "predicates": "partOf", "keys": "path"}
+            }
+        },
+        "output": "filelookup"
+    } as const
 }
 
 export function emotionsToVector(emotion: string | undefined | null): number[] {
@@ -305,4 +293,41 @@ export function emotionsToVector(emotion: string | undefined | null): number[] {
 
     return orderingEmotions.map(e => (e === normalized ? 1 : 0));
 }
+
+
+type Ops = Record<string, unknown>;
+
+function addSegmentToFileLookups(operations: Ops, inputOp: string) {
+    operations["relations"] = {
+        factory: "RelationExpander",
+        inputs: {in: inputOp},
+        parameters: {outgoing: "partOf"},
+    };
+
+    operations["aggregator"] = {
+        factory: "ScoreAggregator",
+        inputs: {in: "relations"},
+    };
+
+    operations["timelookup"] = {
+        factory: "FieldLookup",
+        inputs: {in: "aggregator"},
+        parameters: {field: "time", keys: "start, end"},
+    };
+
+    operations["desclookup"] = {
+        factory: "FieldLookup",
+        inputs: {in: "timelookup"},
+        parameters: {field: "clip", keys: "descriptord"},
+    };
+
+    operations["filelookup"] = {
+        factory: "ObjectFieldLookup",
+        inputs: {in: "desclookup"},
+        parameters: {field: "file", predicates: "partOf", keys: "path"},
+    };
+
+    return "filelookup" as const;
+}
+
 

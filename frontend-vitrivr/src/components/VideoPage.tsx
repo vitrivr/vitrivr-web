@@ -1,26 +1,173 @@
 "use client";
 import {useNavigate, useParams} from "react-router-dom";
-import {thumbnailUrl} from "../lib/vitrivr";
-import {useSearch} from "../state/SearchContext.tsx";
-import {useEffect, useRef, useState} from "react";
-import {useAuth} from "../state/AuthContext.tsx";
-import {submitVideo, submitText} from "../dres/generated/api/dresSubmit.ts";
-import {getCurrentSubmissionKind} from "../dres/generated/api/taskTypeHelper.ts";
+import {thumbnailUrl, buildVectorQuery} from "../lib/vitrivr";
+import {useSearch} from "../state/SearchContext";
+import {useEffect, useMemo, useRef, useState} from "react";
+import {useAuth} from "../state/AuthContext";
+import {submitVideo, submitText} from "../dres/generated/api/dresSubmit";
+import {getCurrentSubmissionKind} from "../dres/generated/api/taskTypeHelper";
+import ResultItem from "../components/Results/ResultItem";
+import {retrieval} from "../vitirvr/api/client";
+
+type MediaKind = "image" | "video" | "custom";
+
+type MediaItem = {
+    id: string;
+    kind: MediaKind;
+    url: string;
+    thumbUrl?: string;
+    start: number;
+    end: number;
+    rawType?: string;
+    clipVector?: number[];
+};
+
+type RetrievablesResponse = {
+    retrievables?: Array<{
+        id?: string;
+        type?: string;
+        score?: number;
+        relationship?: {
+            partOf?: {
+                descriptors?: Record<string, unknown>;
+            };
+        };
+        descriptors?: Record<string, unknown>;
+    }>;
+};
+
+function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
+    const v = r.descriptors?.[key];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string") {
+        const n = Number(v.trim());
+        return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+}
+
+function nsToSecondsMaybe(x: number): number {
+    return x / 1_000_000_000;
+}
+
+function basenameFromPath(p: string): string {
+    const unixy = p.replace(/\\/g, "/");
+    const parts = unixy.split("/");
+    return parts[parts.length - 1] ?? "";
+}
+
+function toServedVideoUrl(schema: string, filePath: string): string {
+    const origin = import.meta.env.VITE_MEDIA_ORIGIN || "";
+    if (!origin) return "";
+    const filename = basenameFromPath(filePath);
+    if (!filename) return "";
+    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, origin).toString();
+}
+
+function pickFloatArray(
+    r: { descriptors?: Record<string, unknown> },
+    key: string
+): number[] | undefined {
+    const v = r.descriptors?.[key];
+
+    if (!Array.isArray(v)) return undefined;
+
+    const out: number[] = [];
+    for (const x of v) {
+        if (typeof x !== "number" || !Number.isFinite(x)) return undefined;
+        out.push(x);
+    }
+    return out;
+}
 
 
-type VideoState = { src?: string; poster?: string; start?: number; end?: number } | null;
+function mapNeighbors(schema: string, resp: RetrievablesResponse): MediaItem[] {
+    const list = resp.retrievables ?? [];
+    const out: MediaItem[] = [];
+
+    for (const r of list) {
+        const id = r.id?.trim();
+        const clipVector = pickFloatArray(r, "clip.vector");
+        if (!id) continue;
+
+        const kind: MediaKind = r.type === "SEGMENT" ? "video" : "custom";
+        if (kind !== "video") continue;
+
+        const filePath =
+            (r.descriptors?.["file.path"] as string | undefined) ||
+            (r.relationship?.partOf?.descriptors?.["file.path"] as string | undefined);
+
+        if (!filePath) continue;
+
+        const startNs = pickNumber(r, "time.start") ?? 0;
+        const endNs = pickNumber(r, "time.end") ?? 0;
+
+        const start = nsToSecondsMaybe(startNs);
+        const end = nsToSecondsMaybe(endNs);
+
+
+        const url = toServedVideoUrl(schema, filePath);
+        if (!url) continue;
+
+        out.push({
+            id,
+            kind: "video",
+            url,
+            thumbUrl: thumbnailUrl(schema, id),
+            start,
+            end,
+            rawType: r.type,
+            clipVector
+        });
+    }
+
+    return out;
+}
 
 export default function VideoPage() {
     const navigate = useNavigate();
     const {id} = useParams<{ id: string }>();
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const {items, schema} = useSearch();
-    const item = items.find(it => it.id === id);
+
+    const {items, schema, setVectorsById, vectorsById, setItems} = useSearch();
+    const item = items.find((it) => it.id === id);
+
     const {session, openLogin} = useAuth();
+    const {evaluationId} = useAuth();
+
     const [submitting, setSubmitting] = useState(false);
-    const {evaluationId} = useAuth()
     const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
     const [textAnswer, setTextAnswer] = useState("");
+
+    const [neighbors, setNeighbors] = useState<MediaItem[]>([]);
+    const [neighborsLoading, setNeighborsLoading] = useState(false);
+    const [neighborsError, setNeighborsError] = useState<string | null>(null);
+
+    const poster = id ? thumbnailUrl(schema, id) ?? "" : "";
+
+    const src = item?.url ?? "";
+    const start = item?.start ?? 0;
+    const end = item?.end ?? 0;
+
+    const currentVector = useMemo(() => {
+        if (!id) return undefined;
+        return vectorsById?.[id];
+    }, [id, vectorsById]);
+
+
+    const openNeighbor = (n: MediaItem) => {
+        if (n.clipVector && n.clipVector.length > 0) {
+            setVectorsById((prev) => ({...prev, [n.id]: n.clipVector!}));
+        }
+
+        setItems((prev) => {
+            if (prev.some((x) => x.id === n.id)) return prev;
+            return [...prev, n];
+        });
+
+        navigate(`/video/${encodeURIComponent(n.id)}`);
+    };
+
 
     useEffect(() => {
         let cancelled = false;
@@ -44,26 +191,7 @@ export default function VideoPage() {
         };
     }, [session, evaluationId]);
 
-
-    let poster = "";
-    if (id != null) {
-        poster = thumbnailUrl(schema, id) ?? "";
-    }
-
-    if (!id) {
-        return (
-            <div style={{padding: 16}}>
-                <button onClick={() => navigate(-1)} aria-label="Back">← Back</button>
-                <p>Missing video id.</p>
-            </div>
-        );
-    }
-
-    const src = item?.url ?? "";
-    const start = item?.start ?? 0;
-    const end = item?.end ?? 0;
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // Keep “start” seek behavior
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
@@ -76,34 +204,75 @@ export default function VideoPage() {
         return () => video.removeEventListener("loadedmetadata", onLoaded);
     }, [start]);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadNeighbors() {
+            if (!id) return;
+            if (!currentVector || currentVector.length === 0) {
+                setNeighbors([]);
+                setNeighborsError("No clip.vector found for this segment (did you store vectorsById during search?).");
+                return;
+            }
+
+            setNeighborsLoading(true);
+            setNeighborsError(null);
+
+            try {
+                // choose a limit you like
+                const body = buildVectorQuery(currentVector, 1000);
+                const resp = await retrieval.postExecuteQuery(schema, body);
+
+                if (cancelled) return;
+
+                const mapped = mapNeighbors(schema, resp as RetrievablesResponse)
+                    .filter((m) => m.id !== id); // drop self if it appears
+
+                setVectorsById((prev) => {
+                    const next = {...prev};
+                    for (const m of mapped) {
+                        if (m.clipVector && m.clipVector.length > 0) {
+                            next[m.id] = m.clipVector;
+                        }
+                    }
+                    return next;
+                });
+
+                setNeighbors(mapped);
+            } catch (e: any) {
+                if (!cancelled) setNeighborsError(e?.message ?? String(e));
+            } finally {
+                if (!cancelled) setNeighborsLoading(false);
+            }
+        }
+
+        loadNeighbors();
+        return () => {
+            cancelled = true;
+        };
+    }, [id, schema, currentVector]);
+
     const onSubmit = async () => {
         if (!session) {
             openLogin();
             return;
         }
-
         if (!evaluationId) {
             openLogin();
             return;
         }
 
-        const kind = await getCurrentSubmissionKind({session, evaluationId});
-        console.log("kind" + kind)
+        const k = await getCurrentSubmissionKind({session, evaluationId});
 
-        if (kind === "text") {
+        if (k === "text") {
             const text = textAnswer.trim();
             if (!text) {
                 alert("Please enter a text answer.");
                 return;
             }
-
             setSubmitting(true);
             try {
-                await submitText({
-                    session,
-                    evaluationId,
-                    text,
-                });
+                await submitText({session, evaluationId, text});
                 alert("Submitted text!");
                 setTextAnswer("");
             } catch (err: any) {
@@ -111,11 +280,12 @@ export default function VideoPage() {
             } finally {
                 setSubmitting(false);
             }
+            return;
         }
 
-        if (kind === "item") {
-            const splitLen = src.split("/").length
-            const videoName = src.split("/")[splitLen - 1].split(".")[0]
+        if (k === "item") {
+            const splitLen = src.split("/").length;
+            const videoName = src.split("/")[splitLen - 1].split(".")[0];
             setSubmitting(true);
             try {
                 await submitVideo({
@@ -134,17 +304,30 @@ export default function VideoPage() {
         }
     };
 
+    if (!id) {
+        return (
+            <div style={{padding: 16}}>
+                <button onClick={() => navigate(-1)} aria-label="Back">
+                    ← Back
+                </button>
+                <p>Missing video id.</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{padding: 16, display: "grid", gap: 16}}>
             <header style={{display: "flex", alignItems: "center", gap: 12}}>
-                <button onClick={() => navigate(-1)} style={{
-                    border: "1px solid #ddd",
-                    borderRadius: 8,
-                    background: "#fff",
-                    padding: "6px 10px",
-                    cursor: "pointer"
-                }}>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        border: "1px solid #ddd",
+                        borderRadius: 8,
+                        background: "#fff",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                    }}
+                >
                     ← Back
                 </button>
 
@@ -195,6 +378,37 @@ export default function VideoPage() {
                 preload="metadata"
                 style={{width: "100%", maxWidth: 960, borderRadius: 12, background: "#000"}}
             />
+
+            <section style={{display: "grid", gap: 10}}>
+                <h3 style={{margin: 0, fontSize: 14, fontWeight: 600}}>Nearest neighbors</h3>
+
+                {neighborsLoading && <div style={{opacity: 0.8}}>Loading neighbors…</div>}
+                {neighborsError && <div style={{color: "#b00020"}}>{neighborsError}</div>}
+
+                {!neighborsLoading && !neighborsError && neighbors.length === 0 && (
+                    <div style={{opacity: 0.7}}>No neighbors found.</div>
+                )}
+
+                {neighbors.length > 0 && (
+                    <div className="results-grid">
+                        {neighbors.map((n) => (
+                            <ResultItem
+                                key={n.id}
+                                id={n.id}
+                                kind="video"
+                                start={n.start}
+                                end={n.end}
+                                preload="none"
+                                controls={false}
+                                mediaClassName="ri-media"
+                                getPosterSrc={() => n.thumbUrl ?? ""}
+                                getVideoSrc={() => n.url}
+                                onBeforeOpen={() => openNeighbor(n)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
         </div>
     );
 }
