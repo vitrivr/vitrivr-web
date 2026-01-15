@@ -31,6 +31,7 @@ const queryTypeItems =
 
 type MediaKind = "image" | "video" | "custom";
 
+
 type MediaItem = {
     id: string;
     kind: MediaKind;
@@ -56,10 +57,13 @@ type RetrievablesResponse = {
     }>;
 };
 
+export type EmotionTarget = "face" | "sound" | "ocr";
+
 export type BlockState = {
     id: string;
     modality: Modality;
     emotion?: string;
+    emotionType?: "face" | "sound" | "ocr";
     queryType: "text" | "image";
     textQuery: string;
     file: File | null;
@@ -87,6 +91,7 @@ const makeBlockState = (): BlockState => ({
     id: crypto.randomUUID(),
     modality: modalityOptions[0].value,
     emotion: undefined,
+    emotionTarget: "face",
     queryType: "text",
     textQuery: "",
     file: null,
@@ -100,13 +105,11 @@ type Relationship = {
 };
 
 function videoDedupeKey(item: MediaItem): string {
-    // your urls look like: https://origin/<schema>/media/<filename>
     try {
         const u = new URL(item.url);
         const parts = u.pathname.split("/");
-        return parts[parts.length - 1] ?? item.id; // filename
+        return parts[parts.length - 1] ?? item.id;
     } catch {
-        // if item.url isn't absolute for some reason
         const parts = (item.url ?? "").split("/");
         return parts[parts.length - 1] ?? item.id;
     }
@@ -139,8 +142,6 @@ function pickFloatArray(
     const v = r.descriptors?.[key];
 
     if (!Array.isArray(v)) return undefined;
-
-    // ensure all entries are finite numbers
     const out: number[] = [];
     for (const x of v) {
         if (typeof x !== "number" || !Number.isFinite(x)) return undefined;
@@ -204,8 +205,8 @@ function pickFilePath(r: {
     relationship?: Relationship;
 }): string | undefined {
     const local = r.descriptors?.["file.path"];
-    console.log("id:", (r as any).id);// this is undefined
-    console.log("local", local); // this is also undefined
+    console.log("id:", (r as any).id);
+    console.log("local", local);
     if (typeof local === "string" && local.trim()) return local;
 
     const parent = r.relationship?.partOf?.descriptors?.["file.path"];
@@ -433,13 +434,13 @@ export function SearchCard() {
                 const b = blocks[0];
 
                 if (b.modality === "emotions") {
-                    // emotion selected from dropdown (e.g. "happy")
                     const chosen = (b.emotion ?? "").trim();
                     if (!chosen) {
                         setFlash({show: true, message: "Please select an emotion."});
                         return;
                     }
-                    const body = buildTextQuery("emotions", "", chosen);
+                    const body = buildTextQuery("emotions", "", chosen, b.emotionTarget);
+                    console.log("Building emotions query")
                     resp = await retrieval.postExecuteQuery(schema, body);
 
                 } else if (b.queryType === "image") {

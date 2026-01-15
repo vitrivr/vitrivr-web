@@ -71,11 +71,15 @@ export function buildTemporalQuery(blocks: BlockState[]) {
                 return "asr";
             case "ocr":
                 return "ocr";
-            case "emotions":
-                return "emotionsface";
             default:
                 return m;
         }
+    };
+
+    const emotionTypeToField = (emotionType?: string) => {
+        if (emotionType === "face") return "emotionsface";
+        if (emotionType === "ocr") return "emotionsocr";
+        return "emotionssound";
     };
 
     const inputs: Inputs = {};
@@ -85,41 +89,95 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     let opIdx = 0;
 
     for (const b of blocks) {
-        const opName = opIdx === 0 ? "op" : `op${opIdx}`;
         const inName = `in${opIdx}`;
 
-        // Emotions block
         if (b.modality === "emotions") {
             const chosen = (b.emotion ?? "").trim();
             if (!chosen) {
                 throw new Error("Temporal query: an emotions block is missing a selected emotion.");
             }
-            summary.push(`emotion: ${chosen}`);
 
+            const txt = (b.textQuery ?? "").trim();
+            if (!txt) {
+                throw new Error("Temporal query: an emotions block is missing text (needed for fusion).");
+            }
 
+            const txtKey = `txt-${opIdx}`;
             const vecKey = `e${opIdx}`;
+
+            inputs[txtKey] = {type: "TEXT", data: txt};
             inputs[vecKey] = {type: "FLOATVECTOR", data: emotionsToVector(chosen)};
 
-            operations[opName] = {
-                field: modalityToField("emotions"),
+            const clipOp = `clip-${opIdx}`;
+            const emoOp = `emotions-${opIdx}`;
+            const rel1 = `relations-${opIdx}`;
+            const rel2 = `relations2-${opIdx}`;
+            const agg1 = `agg-${opIdx}`;
+            const agg2 = `agg2-${opIdx}`;
+            const fusion = `fusion-${opIdx}`;
+
+            summary.push(`emotions(${chosen})+clip("${txt}")`);
+
+            const emotionField = emotionTypeToField(b.emotionType);
+
+            operations[clipOp] = {
+                field: "clip",
+                inputs: {txt: txtKey},
+                parameters: {limit: LIMIT},
+            };
+
+            operations[emoOp] = {
+                field: emotionField,
                 inputs: {vec: vecKey},
                 parameters: {limit: LIMIT},
             };
 
-            temporalInputs[inName] = opName;
+            operations[rel1] = {
+                factory: "RelationExpander",
+                inputs: {in: clipOp},
+                parameters: {outgoing: "partOf"},
+            };
+
+            operations[rel2] = {
+                factory: "RelationExpander",
+                inputs: {in: emoOp},
+                parameters: {outgoing: "partOf"},
+            };
+
+            operations[agg1] = {
+                factory: "ScoreAggregator",
+                inputs: {in: rel1},
+            };
+
+            operations[agg2] = {
+                factory: "ScoreAggregator",
+                inputs: {in: rel2},
+            };
+
+            operations[fusion] = {
+                factory: "WeightedScoreFusion",
+                inputs: {in: agg1, "in-2": agg2},
+                parameters: {
+                    weights: "0.7 , 100",
+                    p: "2",
+                    normalize: "true",
+                },
+            };
+
+            temporalInputs[inName] = fusion;
+
             opIdx++;
             continue;
         }
 
-        // Text-based blocks (clip/asr/ocr)
         const txt = (b.textQuery ?? "").trim();
         if (!txt) {
             throw new Error(`Temporal query: a ${b.modality.toUpperCase()} block is missing text.`);
         }
 
         const txtKey = `t${opIdx}`;
+        const opName = `op-${opIdx}`;
         inputs[txtKey] = {type: "TEXT", data: txt};
-
         summary.push(`${b.modality}: ${txt}`);
 
         operations[opName] = {
@@ -158,17 +216,19 @@ export function buildTemporalQuery(blocks: BlockState[]) {
         parameters: {field: "time", keys: "start, end"},
     };
 
+    operations["desclookup"] = {
+        factory: "FieldLookup",
+        inputs: {in: "timelookup"},
+        parameters: {"field": "clip", "keys": "descriptord"},
+    };
+
     operations["filelookup"] = {
         factory: "ObjectFieldLookup",
-        inputs: {in: "timelookup"},
+        inputs: {in: "desclookup"},
         parameters: {field: "file", predicates: "partOf", keys: "path"},
     };
 
-    console.log(
-        "[TemporalQuery] sequence:",
-        summary.join(" → ")
-    );
-
+    console.log("[TemporalQuery] sequence:", summary.join(" → "));
 
     return {
         inputs,
@@ -206,28 +266,88 @@ export function fileToBase64(file: File): Promise<string> {
  * @param field
  * @param emotions
  */
-export function buildTextQuery(field: string, prompt: string, emotions: string = "") {
+export function buildTextQuery(
+    field: string,
+    prompt: string,
+    emotions: string = "",
+    emotionType: string = ""
+) {
     const LIMIT = "1000";
+
+    let emotionField = "emotionssound";
+    if (emotionType === "face") emotionField = "emotionsface";
+    else if (emotionType === "ocr") emotionField = "emotionsocr";
 
     if (field === "emotions") {
         const emotionsVector = emotionsToVector(emotions);
 
         const inputs: Inputs = {
+            "txt-1": {type: "TEXT", data: prompt},
             emotion: {type: "FLOATVECTOR", data: emotionsVector},
         };
 
         const operations: Record<string, unknown> = {
+            clip: {
+                field: "clip",
+                inputs: {txt: "txt-1"},
+                parameters: {limit: LIMIT},
+            },
+
             emotions: {
-                field: "emotionsface",
+                field: emotionField,
                 inputs: {vec: "emotion"},
                 parameters: {limit: LIMIT},
             },
+
+            relations: {
+                factory: "RelationExpander",
+                inputs: {in: "clip"},
+                parameters: {outgoing: "partOf"},
+            },
+            "relations-2": {
+                factory: "RelationExpander",
+                inputs: {in: "emotions"},
+                parameters: {outgoing: "partOf"},
+            },
+
+            aggregator: {
+                factory: "ScoreAggregator",
+                inputs: {in: "relations"},
+            },
+            "aggregator-2": {
+                factory: "ScoreAggregator",
+                inputs: {in: "relations-2"},
+            },
+
+            fusion: {
+                factory: "WeightedScoreFusion",
+                inputs: {in: "aggregator", "in-2": "aggregator-2"},
+                parameters: {
+                    weights: "0.7 , 100",
+                    p: "2",
+                    normalize: "true",
+                },
+            },
+
+            timelookup: {
+                factory: "FieldLookup",
+                inputs: {in: "fusion"},
+                parameters: {field: "time", keys: "start, end"},
+            },
+            filelookup: {
+                factory: "ObjectFieldLookup",
+                inputs: {in: "timelookup"},
+                parameters: {field: "file", predicates: "partOf", keys: "path"},
+            },
         };
 
-        const output = addSegmentToFileLookups(operations, "emotions");
-
-        return {inputs, operations, output} as const;
+        return {
+            inputs,
+            operations,
+            output: "filelookup",
+        } as const;
     }
+
     const inputs: Inputs = {
         txt: {type: "TEXT", data: prompt},
     };
@@ -241,7 +361,6 @@ export function buildTextQuery(field: string, prompt: string, emotions: string =
     };
 
     const output = addSegmentToFileLookups(operations, "clip");
-
     return {inputs, operations, output} as const;
 }
 

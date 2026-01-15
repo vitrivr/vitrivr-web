@@ -191,7 +191,6 @@ export default function VideoPage() {
         };
     }, [session, evaluationId]);
 
-    // Keep “start” seek behavior
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
@@ -219,14 +218,13 @@ export default function VideoPage() {
             setNeighborsError(null);
 
             try {
-                // choose a limit you like
                 const body = buildVectorQuery(currentVector, 1000);
                 const resp = await retrieval.postExecuteQuery(schema, body);
 
                 if (cancelled) return;
 
                 const mapped = mapNeighbors(schema, resp as RetrievablesResponse)
-                    .filter((m) => m.id !== id); // drop self if it appears
+                    .filter((m) => m.id !== id);
 
                 setVectorsById((prev) => {
                     const next = {...prev};

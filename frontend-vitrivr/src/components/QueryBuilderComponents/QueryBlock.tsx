@@ -7,6 +7,7 @@ import type {BlockState} from "../SearchCard.tsx";
 
 type QueryType = Extract<BlockState['queryType'], string>;
 type Modality = Extract<BlockState["modality"], string>;
+type EmotionTarget = "face" | "sound" | "ocr";
 
 export type QueryBlockProps = {
     block: BlockState;
@@ -16,6 +17,13 @@ export type QueryBlockProps = {
     queryTypeItems: RadioOption<QueryType>[];
     emotionItems: DropdownItem[];
 };
+
+const emotionTargetItems =
+    [
+        {label: "Face", value: "face"},
+        {label: "Sound", value: "sound"},
+        {label: "OCR", value: "ocr"},
+    ] as const satisfies RadioOption<EmotionTarget>[];
 
 export default function QueryBlock({
                                        block,
@@ -37,6 +45,16 @@ export default function QueryBlock({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTextQuery]);
+
+    useEffect(() => {
+        if (isEmotion && !block.emotionTarget) {
+            onChange({emotionTarget: "face"});
+        }
+        if (!isEmotion && block.emotionTarget) {
+            onChange({emotionTarget: undefined});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEmotion]);
 
     return (
         <div
@@ -99,14 +117,27 @@ export default function QueryBlock({
                 )}
 
                 {isEmotion && (
-                    <Dropdown
-                        items={emotionItems}
-                        value={block.emotion}
-                        onChange={(v) => onChange({emotion: v})}
-                        placeholder="Select an Emotion"
-                        label="Emotion"
-                    />
+                    <>
+                        <Dropdown
+                            items={emotionItems}
+                            value={block.emotion}
+                            onChange={(v) => onChange({emotion: v})}
+                            placeholder="Select an Emotion"
+                            label="Emotion"
+                        />
+
+                        <div style={{marginTop: 12}}>
+                            <RadioGroup
+                                label="Emotion target"
+                                options={emotionTargetItems as any}
+                                value={(block.emotionTarget ?? "face") as any}
+                                onChange={(v) => onChange({emotionTarget: v as EmotionTarget})}
+                                orientation="horizontal"
+                            />
+                        </div>
+                    </>
                 )}
+
             </div>
 
             <div>
