@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f5a74064-f85f-48de-8b3f-e70352c29aef" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/components/Results/ResultItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/components/Results/ResultItem.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/components/SearchCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/components/SearchCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/components/VideoPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/components/VideoPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/dres/generated/api/base.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/dres/generated/api/base.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/lib/vitrivr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/lib/vitrivr.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-vitrivr/src/state/SearchContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend-vitrivr/src/state/SearchContext.tsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="TypeScript JSX File" />
+      </list>
+    </option>
+  </component>
+  <component name="FormatOnSaveOptions">
+    <option name="myRunOnSave" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="326KukcMIrNFNuhmACXXHt8IAOR" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;JavaScript Debug.localhost:5173.executor&quot;: &quot;Debug&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/andrina/repos/vitrivr-ng&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;settings.javascript.prettier&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/andrina/repos/frontend-vitrivr/frontend-vitrivr/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
+    ]
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/frontend-vitrivr/src/vitirvr" />
+      <recent name="$PROJECT_DIR$/frontend-vitrivr" />
+      <recent name="$PROJECT_DIR$/frontend-vitrivr/src/components/QueryBuilderComponents" />
+      <recent name="$PROJECT_DIR$/frontend-vitrivr/src/components/Results" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="localhost:5173" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:5173/">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JavaScript Debug.localhost:5173" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-e03c56caf84a-JavaScript-WS-252.23892.411" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="f5a74064-f85f-48de-8b3f-e70352c29aef" name="Changes" comment="" />
+      <created>1756735807214</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1756735807214</updated>
+      <workItem from="1756735808334" duration="4437000" />
+      <workItem from="1756792065739" duration="8317000" />
+      <workItem from="1756801598530" duration="3462000" />
+      <workItem from="1756809823792" duration="11345000" />
+      <workItem from="1756897706841" duration="1086000" />
+      <workItem from="1756969421961" duration="2429000" />
+      <workItem from="1757062202098" duration="3939000" />
+      <workItem from="1757247581729" duration="21000" />
+      <workItem from="1757247743492" duration="6689000" />
+      <workItem from="1757310414358" duration="12139000" />
+      <workItem from="1757323925320" duration="5663000" />
+      <workItem from="1757333163794" duration="270000" />
+      <workItem from="1757396078285" duration="10566000" />
+      <workItem from="1758260647306" duration="7751000" />
+      <workItem from="1758281423091" duration="11742000" />
+      <workItem from="1758609893998" duration="10313000" />
+      <workItem from="1758883678187" duration="569000" />
+      <workItem from="1758885035991" duration="5831000" />
+      <workItem from="1759215232886" duration="4378000" />
+      <workItem from="1759219973414" duration="16363000" />
+      <workItem from="1759404315228" duration="2342000" />
+      <workItem from="1759730314320" duration="3149000" />
+      <workItem from="1760015999445" duration="39000" />
+      <workItem from="1760617865840" duration="5756000" />
+      <workItem from="1760627204732" duration="128000" />
+      <workItem from="1760983206148" duration="2831000" />
+      <workItem from="1761024862766" duration="15803000" />
+      <workItem from="1761044869167" duration="1433000" />
+      <workItem from="1761051904576" duration="832000" />
+      <workItem from="1761052744913" duration="2113000" />
+      <workItem from="1761642426389" duration="2849000" />
+      <workItem from="1763979686014" duration="1661000" />
+      <workItem from="1763985166415" duration="2518000" />
+      <workItem from="1764053613099" duration="10394000" />
+      <workItem from="1764065471128" duration="11311000" />
+      <workItem from="1764662416097" duration="7829000" />
+      <workItem from="1764688997325" duration="5125000" />
+      <workItem from="1764852834800" duration="731000" />
+      <workItem from="1764856544516" duration="5000" />
+      <workItem from="1764861486333" duration="1232000" />
+      <workItem from="1764863440603" duration="36000" />
+      <workItem from="1764863528027" duration="204000" />
+      <workItem from="1765263213158" duration="12425000" />
+      <workItem from="1765283777521" duration="7515000" />
+      <workItem from="1765455880391" duration="11175000" />
+      <workItem from="1765788325366" duration="757000" />
+      <workItem from="1765790726858" duration="4257000" />
+      <workItem from="1765871200172" duration="2103000" />
+      <workItem from="1765885962043" duration="11124000" />
+      <workItem from="1765965852794" duration="8180000" />
+      <workItem from="1766039417412" duration="9962000" />
+      <workItem from="1767616043176" duration="1367000" />
+      <workItem from="1767638717206" duration="1486000" />
+      <workItem from="1767721595984" duration="3516000" />
+      <workItem from="1768060536023" duration="6179000" />
+      <workItem from="1768117719429" duration="18689000" />
+      <workItem from="1768140106076" duration="1266000" />
+      <workItem from="1768141382348" duration="3947000" />
+      <workItem from="1768200161833" duration="13279000" />
+      <workItem from="1768307125761" duration="7369000" />
+      <workItem from="1768392476107" duration="2865000" />
+      <workItem from="1768485132201" duration="14353000" />
+      <workItem from="1768545285032" duration="8033000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName=".env" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
