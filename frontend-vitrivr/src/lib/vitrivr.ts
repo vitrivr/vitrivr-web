@@ -3,6 +3,8 @@ import type {BlockState} from "../components/SearchCard.tsx";
 export const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
 export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
+export const MEDIA_BASE = import.meta.env.VITE_MEDIA_ORIGIN;
+
 type TextInput = { type: "TEXT"; data: string };
 type FloatVectorInput = { type: "FLOATVECTOR"; data: number[] };
 type Input = TextInput | FloatVectorInput;
@@ -11,7 +13,64 @@ type RawSchema = string | { name?: string; [key: string]: unknown };
 
 
 export function thumbnailUrl(schema: string, id: string): string {
+    if (!THUMBNAIL_BASE) return "";
     return `${THUMBNAIL_BASE}/${schema}/thumbnails/${encodeURIComponent(id)}.jpg`;
+}
+
+function basenameFromPath(p: string): string {
+    const unixy = p.replace(/\\/g, "/");
+    const parts = unixy.split("/");
+    return parts[parts.length - 1] ?? "";
+}
+
+export function servedVideoUrl(schema: string, filePath: string): string {
+    if (!MEDIA_BASE) return "";
+    const filename = basenameFromPath(filePath);
+    if (!filename) return "";
+    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, MEDIA_BASE).toString();
+}
+
+export type VitrivrRetrievable = {
+    id?: string;
+    type?: string;
+    descriptors?: Record<string, unknown>;
+    relationship?: {
+        partOf?: {
+            descriptors?: Record<string, unknown>;
+        };
+    };
+};
+
+export function pickFilePath(r: VitrivrRetrievable): string | undefined {
+    const local = r.descriptors?.["file.path"];
+    if (typeof local === "string" && local.trim()) return local;
+
+    const parent = r.relationship?.partOf?.descriptors?.["file.path"];
+    if (typeof parent === "string" && parent.trim()) return parent;
+
+    return undefined;
+}
+
+export type BuiltMediaUrls = {
+    url: string;
+    thumbUrl: string;
+    filePath?: string;
+    filename?: string;
+};
+
+/**
+ * Build URLs for a SEGMENT-like retrievable (video segment).
+ * - url is derived from file.path (served URL)
+ * - thumbUrl is derived from segment id
+ */
+export function buildSegmentMediaUrls(schema: string, r: VitrivrRetrievable): BuiltMediaUrls {
+    const id = (r.id ?? "").trim();
+    const filePath = pickFilePath(r);
+    const url = filePath ? servedVideoUrl(schema, filePath) : "";
+    const thumbUrl = id ? thumbnailUrl(schema, id) : "";
+    const filename = filePath ? basenameFromPath(filePath) : undefined;
+
+    return {url, thumbUrl, filePath: filePath ?? undefined, filename};
 }
 
 export async function fetchSchemas(): Promise<string[]> {

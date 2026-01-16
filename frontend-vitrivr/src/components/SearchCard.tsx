@@ -4,7 +4,13 @@ import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {buildTextQuery, buildTemporalQuery, fileToBase64} from "../lib/vitrivr.ts";
+import {
+    buildTextQuery,
+    buildTemporalQuery,
+    fileToBase64,
+    buildSegmentMediaUrls,
+    type VitrivrRetrievable
+} from "../lib/vitrivr.ts";
 import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
@@ -63,7 +69,7 @@ export type BlockState = {
     id: string;
     modality: Modality;
     emotion?: string;
-    emotionType?: "face" | "sound" | "ocr";
+    emotionTarget?: "face" | "sound" | "ocr";
     queryType: "text" | "image";
     textQuery: string;
     file: File | null;
@@ -91,7 +97,7 @@ const makeBlockState = (): BlockState => ({
     id: crypto.randomUUID(),
     modality: modalityOptions[0].value,
     emotion: undefined,
-    emotionTarget: "face",
+    emotionType: "face",
     queryType: "text",
     textQuery: "",
     file: null,
@@ -200,34 +206,6 @@ function truncateJson(x: unknown, limit = RAW_TRUNCATE): string {
     }
 }
 
-function pickFilePath(r: {
-    descriptors?: Record<string, unknown>;
-    relationship?: Relationship;
-}): string | undefined {
-    const local = r.descriptors?.["file.path"];
-    console.log("id:", (r as any).id);
-    console.log("local", local);
-    if (typeof local === "string" && local.trim()) return local;
-
-    const parent = r.relationship?.partOf?.descriptors?.["file.path"];
-    if (typeof parent === "string" && parent.trim()) return parent;
-
-    return undefined;
-}
-
-function basenameFromPath(p: string): string {
-    const unixy = p.replace(/\\/g, "/");
-    const parts = unixy.split("/");
-    return parts[parts.length - 1] ?? "";
-}
-
-function toServedVideoUrl(schema: string, filePath: string): string {
-    const origin = import.meta.env.VITE_MEDIA_ORIGIN || "";
-    if (!origin) return "";
-    const filename = basenameFromPath(filePath); // "10781.mp4"
-    if (!filename) return "";
-    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, origin).toString();
-}
 
 function mapTypeToKind(t?: string): MediaKind {
     switch (t) {
@@ -240,91 +218,53 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
-function toThumbUrlFromId(id: string, schema: string): string {
-    const thumbOrigin = import.meta.env.VITE_THUMBNAIL_ORIGIN || "";
-    if (!thumbOrigin) return "";
-    try {
-        const u = new URL(`${thumbOrigin}/${schema}/thumbnails/${id}.jpg`);
-        debugLog("thumb url", {id, schema, url: u.toString()});
-        return u.toString();
-    } catch (e) {
-        debugLog("thumb url build failed", {id, schema, thumbOrigin, err: String(e)});
-        return "";
-    }
-}
-
 
 function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
-    const list = resp.retrievables ?? [];
-    const mediaOrigin = import.meta.env.VITE_MEDIA_ORIGIN || "";
-
-    debugLog("mediaFrom()", {
-        schema,
-        mediaOrigin,
-        totalRetrievables: list.length,
-        sample: list[0],
-    });
+    const list = (resp.retrievables ?? []) as VitrivrRetrievable[];
 
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
-        const clipVector = pickFloatArray(r, "clip.vector");
-        if (!id) {
-            debugLog("drop: missing id", {idx, r});
-            return null;
-        }
+        if (!id) return null;
 
         const kind = mapTypeToKind(r.type);
-        const filePath = pickFilePath(r as any);
 
-        const startRaw = pickDescriptorScalar(r, "time.start") ?? 0;
-        const endRaw = pickDescriptorScalar(r, "time.end") ?? 0;
-
+        const startRaw = pickDescriptorScalar(r as any, "time.start") ?? 0;
+        const endRaw = pickDescriptorScalar(r as any, "time.end") ?? 0;
         const start = nsToSecondsMaybe(startRaw);
         const end = nsToSecondsMaybe(endRaw);
 
-        let url = "";
-        if (!mediaOrigin) {
-            debugLog("mediaOrigin missing", {idx, id, kind});
-        }
+        if (kind === "video") {
+            const {url, thumbUrl} = buildSegmentMediaUrls(schema, r);
 
-        if (filePath) {
-            if (!filePath) {
-                debugLog("drop: missing filePath for video", {idx, id});
+            if (!url) {
+                debugLog("drop: video without file.path", {idx, id, type: r.type, r});
                 return null;
             }
-            url = toServedVideoUrl(schema, filePath);
-        } else {
-            debugLog("drop: missing filePath (descriptors/relationship)", {
-                idx,
+
+            return {
                 id,
                 kind,
-                type: r.type,
-                descriptorsKeys: Object.keys(r.descriptors ?? {}),
-                parentKeys: Object.keys(((r as any).relationship?.partOf?.descriptors ?? {}) as Record<string, unknown>),
-            });
+                rawType: r.type,
+                url,
+                thumbUrl,
+                start,
+                end,
+                clipVector: pickFloatArray(r as any, "clip.vector"),
+            };
         }
 
-        let thumbUrl: string | undefined;
-
-        if (kind === "video") {
-            thumbUrl = toThumbUrlFromId(id, schema);
-            debugLog("video mapped", {idx, id, url, thumbUrl, start, end});
-        } else {
-            debugLog("non-video mapped", {idx, id, kind, url});
-        }
-
-        if (!url) {
-            debugLog("drop: empty url after mapping", {idx, id, kind, filePath});
-            return null;
-        }
-
-        return {id, kind, rawType: r.type, url, thumbUrl, start, end, clipVector};
+        return {
+            id,
+            kind,
+            rawType: r.type,
+            url: "",
+            start,
+            end,
+            clipVector: pickFloatArray(r as any, "clip.vector"),
+        };
     });
 
-    const filtered = out.filter((v): v is MediaItem => v !== null);
-    debugLog("mediaFrom() result", {kept: filtered.length, dropped: out.length - filtered.length});
-
-    return filtered;
+    return out.filter((v): v is MediaItem => v !== null && (v.kind !== "video" || !!v.url));
 }
 
 
