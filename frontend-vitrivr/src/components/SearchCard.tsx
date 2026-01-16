@@ -20,6 +20,8 @@ import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
+import { uuid } from "../utils/uuid";
+
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 const PAGE_SIZE = 100;
@@ -94,7 +96,7 @@ const emotionItems: DropdownItem[] = [
 ];
 
 const makeBlockState = (): BlockState => ({
-    id: crypto.randomUUID(),
+    id: uuid(),
     modality: modalityOptions[0].value,
     emotion: undefined,
     emotionTarget: "face",
