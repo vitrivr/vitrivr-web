@@ -6,7 +6,7 @@ type MediaKind = "image" | "video" | "custom";
 export type MediaItem = {
     start: number;
     end: number;
-    id: string; kind: MediaKind; rawType?: string; url?: string
+    id: string; kind: MediaKind; thumbUrl?: string; rawType?: string; url: string
 };
 
 type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVideos: boolean };

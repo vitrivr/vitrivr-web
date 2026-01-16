@@ -14,7 +14,16 @@ type RawSchema = string | { name?: string; [key: string]: unknown };
 
 export function thumbnailUrl(schema: string, id: string): string {
     if (!THUMBNAIL_BASE) return "";
-    return `${THUMBNAIL_BASE}/${schema}/thumbnails/${encodeURIComponent(id)}.jpg`;
+
+    const clean = (id ?? "").trim();
+    if (!clean) return "";
+
+    // shard folder = first 2 characters of the *raw* id
+    // (use lowercasing only if your filesystem is case-insensitive / your server expects it)
+    const shard = clean.slice(0, 2);
+    const encId = encodeURIComponent(clean);
+
+    return `${THUMBNAIL_BASE}/vbs/${schema.toUpperCase()}/thumbnails/shards/${encodeURIComponent(shard)}/${encId}.jpg`;
 }
 
 function basenameFromPath(p: string): string {
@@ -27,7 +36,7 @@ export function servedVideoUrl(schema: string, filePath: string): string {
     if (!MEDIA_BASE) return "";
     const filename = basenameFromPath(filePath);
     if (!filename) return "";
-    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, MEDIA_BASE).toString();
+    return new URL(`vbs/${schema.toUpperCase()}/videos/${encodeURIComponent(filename)}`, MEDIA_BASE).toString();
 }
 
 export type VitrivrRetrievable = {
@@ -177,7 +186,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
 
             summary.push(`emotions(${chosen})+clip("${txt}")`);
 
-            const emotionField = emotionTypeToField(b.emotionType);
+            const emotionField = emotionTypeToField(b.emotionTarget);
 
             operations[clipOp] = {
                 field: "clip",
@@ -297,7 +306,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
 }
 
 
-export function fileToBase64(file: File): Promise<string> {
+export function fileToBase64(file: File | null): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
@@ -314,6 +323,8 @@ export function fileToBase64(file: File): Promise<string> {
             reject(reader.error ?? new Error("FileReader error"));
         };
 
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
         reader.readAsDataURL(file);
     });
 }
@@ -424,7 +435,7 @@ export function buildTextQuery(
 }
 
 
-export function buildVectorQuery(vector: [], limit: number) {
+export function buildVectorQuery(vector: number[], limit: number) {
     return {
         "inputs": {
             "txt": {

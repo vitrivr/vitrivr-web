@@ -7,11 +7,12 @@ import {useAuth} from "../../state/AuthContext.tsx";
 import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 
 type BaseProps = {
-    id: string;
-    caption?: React.ReactNode;
-    className?: string;
-    captionClassName?: string;
-    onBeforeOpen?: () => void;
+    id: string,
+    caption?: React.ReactNode,
+    className?: string,
+    captionClassName?: string,
+    onBeforeOpen?: () => void,
+    getVideoSrc?: () => string | undefined
 };
 type ImageProps = {
     kind?: "image";
@@ -226,6 +227,7 @@ export default function ResultItem(props: ResultItemProps) {
                 <Link
                     to={`/video/${encodeURIComponent(id)}`}
                     state={linkState}
+                    onClick={() => props.onBeforeOpen?.()}
                     style={{textDecoration: "none", color: "inherit", display: "block"}}
                 >
                     {media}

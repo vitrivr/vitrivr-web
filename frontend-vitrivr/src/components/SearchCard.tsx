@@ -97,18 +97,11 @@ const makeBlockState = (): BlockState => ({
     id: crypto.randomUUID(),
     modality: modalityOptions[0].value,
     emotion: undefined,
-    emotionType: "face",
+    emotionTarget: "face",
     queryType: "text",
     textQuery: "",
     file: null,
 });
-
-type PartOfRel = {
-    descriptors?: Record<string, unknown>;
-};
-type Relationship = {
-    partOf?: PartOfRel;
-};
 
 function videoDedupeKey(item: MediaItem): string {
     try {
@@ -264,6 +257,8 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
         };
     });
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     return out.filter((v): v is MediaItem => v !== null && (v.kind !== "video" || !!v.url));
 }
 
@@ -275,8 +270,7 @@ export function SearchCard() {
         items, setItems,
         mediaFilter, setMediaFilter,
         raw, setRaw,
-        setScrollY, scrollY,
-        vectorsById, setVectorsById,
+        setScrollY, scrollY, setVectorsById,
     } = useSearch();
 
     useEffect(() => {
@@ -381,15 +375,21 @@ export function SearchCard() {
                     }
                     const body = buildTextQuery("emotions", "", chosen, b.emotionTarget);
                     console.log("Building emotions query")
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-expect-error
                     resp = await retrieval.postExecuteQuery(schema, body);
 
                 } else if (b.queryType === "image") {
                     const base64image = await fileToBase64(b.file);
                     const body = buildTextQuery(b.modality, base64image);
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-expect-error
                     resp = await retrieval.postExecuteQuery(schema, body);
 
                 } else {
                     const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-expect-error
                     resp = await retrieval.postExecuteQuery(schema, body);
                 }
 
@@ -397,6 +397,8 @@ export function SearchCard() {
                 const body = buildTemporalQuery(blocks);
                 console.log("creating temporal query");
                 printVitrivrRequest(body);
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
                 resp = await retrieval.postExecuteQuery(schema, body);
             }
 

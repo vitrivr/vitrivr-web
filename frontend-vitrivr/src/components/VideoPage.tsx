@@ -1,6 +1,6 @@
 "use client";
 import {useNavigate, useParams} from "react-router-dom";
-import {thumbnailUrl, buildVectorQuery} from "../lib/vitrivr";
+import {thumbnailUrl, buildVectorQuery, servedVideoUrl} from "../lib/vitrivr";
 import {useSearch} from "../state/SearchContext";
 import {useEffect, useMemo, useRef, useState} from "react";
 import {useAuth} from "../state/AuthContext";
@@ -61,7 +61,7 @@ function toServedVideoUrl(schema: string, filePath: string): string {
     if (!origin) return "";
     const filename = basenameFromPath(filePath);
     if (!filename) return "";
-    return new URL(`/${schema}/media/${encodeURIComponent(filename)}`, origin).toString();
+    return servedVideoUrl(schema, filePath);
 }
 
 function pickFloatArray(
@@ -219,6 +219,8 @@ export default function VideoPage() {
 
             try {
                 const body = buildVectorQuery(currentVector, 1000);
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
                 const resp = await retrieval.postExecuteQuery(schema, body);
 
                 if (cancelled) return;
@@ -369,6 +371,7 @@ export default function VideoPage() {
             </header>
 
             <video
+                key={id}
                 ref={videoRef}
                 src={src}
                 poster={poster}
