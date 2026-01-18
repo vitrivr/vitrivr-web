@@ -20,7 +20,7 @@ import {useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
-import { uuid } from "../utils/uuid";
+import {uuid} from "../utils/uuid";
 
 
 const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
@@ -216,6 +216,7 @@ function mapTypeToKind(t?: string): MediaKind {
 
 function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = (resp.retrievables ?? []) as VitrivrRetrievable[];
+    console.log("Length of Results is", list.length);
 
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
@@ -410,6 +411,7 @@ export function SearchCard() {
             debugLog("query response (truncated)", pretty);
 
             const media = mediaFrom(schema, resp as RetrievablesResponse);
+            console.log(`[Search] got ${media.length} results`);
 
             setVectorsById((prev) => {
                 const next = {...prev};

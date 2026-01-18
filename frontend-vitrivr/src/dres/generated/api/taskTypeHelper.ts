@@ -33,20 +33,13 @@ export async function getCurrentSubmissionKind(params: {
     if (!taskType) return "unknown";
 
     const t = taskType.toLowerCase();
+    console.log("taskType", taskType);
 
 
     // Could be implemented more pretty, but oh well...
-    if (t.includes("text") || t.includes("qa") || t.includes("answer")) {
+    if (t.includes("qa")) {
         return "text";
     }
 
-    if (t.includes("temporal") || t.includes("segment") || t.includes("range")) {
-        return "temporal";
-    }
-
-    if (t.includes("item") || t.includes("video") || t.includes("image")) {
-        return "item";
-    }
-
-    return "unknown";
+    return "item";
 }
