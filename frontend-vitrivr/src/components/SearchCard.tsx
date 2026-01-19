@@ -364,6 +364,20 @@ export function SearchCard() {
         setRaw("");
         setFlash({show: false, message: ""});
 
+
+        const upperSchema = (schema ?? "").toUpperCase();
+        const restrict = upperSchema === "LHE" || upperSchema === "MVK";
+
+        if (restrict) {
+            for (const b of blocks) {
+                if (b.modality === "emotions" || b.modality === "asr") {
+                    setFlash({show: true, message: `Schema ${upperSchema} does not support Emotions or ASR queries.`});
+                    return;
+                }
+            }
+        }
+
+
         try {
             let resp;
 
@@ -489,6 +503,7 @@ export function SearchCard() {
                                         modalityOptions={modalityOptions}
                                         queryTypeItems={queryTypeItems}
                                         emotionItems={emotionItems}
+                                        schema={schema}
                                     />
                                 ))}
                             </div>

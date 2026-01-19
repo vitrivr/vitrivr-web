@@ -16,6 +16,7 @@ export type QueryBlockProps = {
     modalityOptions: RadioOption<Modality>[];
     queryTypeItems: RadioOption<QueryType>[];
     emotionItems: DropdownItem[];
+    schema: string;
 };
 
 const emotionTargetItems =
@@ -32,18 +33,25 @@ export default function QueryBlock({
                                        modalityOptions,
                                        queryTypeItems,
                                        emotionItems,
+                                       schema,
                                    }: QueryBlockProps) {
     const isEmotion = block.modality === "emotions";
     const isTextQuery = block.queryType === "text";
     const isCLIP = block.modality === "clip";
+    const upperSchema = (schema ?? "").toUpperCase();
+    const restrictAudioAndEmotion = upperSchema === "LHE" || upperSchema === "MVK";
+    const isOcrOrAsr = block.modality === "ocr" || block.modality === "asr";
+    const allowImageQueryType = isCLIP; // only CLIP supports image queries in your UI
+
+
+    const allowedModalityOptions = restrictAudioAndEmotion
+        ? modalityOptions.filter((o) => o.value !== "emotions" && o.value !== "asr")
+        : modalityOptions;
+
 
     useEffect(() => {
-        if (isTextQuery) {
-            onChange({file: null});
-        } else {
-            onChange({textQuery: ""});
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (isTextQuery) onChange({file: null});
+        else onChange({textQuery: ""});
     }, [isTextQuery]);
 
     useEffect(() => {
@@ -55,6 +63,28 @@ export default function QueryBlock({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEmotion]);
+
+    useEffect(() => {
+        if (restrictAudioAndEmotion && (block.modality === "emotions" || block.modality === "asr")) {
+            onChange({
+                modality: "clip",
+                emotion: undefined,
+                emotionTarget: undefined,
+                queryType: "text",
+                textQuery: "",
+                file: null,
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [restrictAudioAndEmotion]);
+
+    useEffect(() => {
+        if (isOcrOrAsr && block.queryType !== "text") {
+            onChange({queryType: "text", file: null});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOcrOrAsr]);
+
 
     return (
         <div
@@ -98,9 +128,18 @@ export default function QueryBlock({
             <div style={{marginBottom: 16}}>
                 <RadioGroup
                     label="Modalities"
-                    options={modalityOptions}
+                    options={allowedModalityOptions}
                     value={block.modality}
-                    onChange={(v) => onChange({modality: v, emotion: undefined})}
+                    onChange={(v) => {
+                        const nextIsOcrOrAsr = v === "ocr" || v === "asr";
+
+                        onChange({
+                            modality: v,
+                            emotion: undefined,
+                            // if switching to OCR/ASR -> force text query
+                            ...(nextIsOcrOrAsr ? {queryType: "text", file: null} : {}),
+                        });
+                    }}
                     orientation="horizontal"
                 />
             </div>
@@ -111,7 +150,11 @@ export default function QueryBlock({
                         label="Query Type"
                         options={queryTypeItems}
                         value={block.queryType}
-                        onChange={(v) => onChange({queryType: v, textQuery: ""})}
+                        onChange={(v) => {
+                            // CLIP can do both text+image
+                            if (v === "image") onChange({queryType: "image", textQuery: ""});
+                            else onChange({queryType: "text", file: null});
+                        }}
                         orientation="horizontal"
                     />
                 )}
