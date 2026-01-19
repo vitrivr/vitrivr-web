@@ -204,6 +204,11 @@ export default function VideoPage() {
     }, [start]);
 
     useEffect(() => {
+        window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
+    }, [id]);
+
+
+    useEffect(() => {
         let cancelled = false;
 
         async function loadNeighbors() {
