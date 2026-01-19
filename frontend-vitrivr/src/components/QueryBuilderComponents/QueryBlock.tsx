@@ -41,7 +41,6 @@ export default function QueryBlock({
     const upperSchema = (schema ?? "").toUpperCase();
     const restrictAudioAndEmotion = upperSchema === "LHE" || upperSchema === "MVK";
     const isOcrOrAsr = block.modality === "ocr" || block.modality === "asr";
-    const allowImageQueryType = isCLIP; // only CLIP supports image queries in your UI
 
 
     const allowedModalityOptions = restrictAudioAndEmotion
