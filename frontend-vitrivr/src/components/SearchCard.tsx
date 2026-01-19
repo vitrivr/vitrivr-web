@@ -425,6 +425,21 @@ export function SearchCard() {
             debugLog("query response (truncated)", pretty);
 
             const media = mediaFrom(schema, resp as RetrievablesResponse);
+            const rawCount =
+                (resp as RetrievablesResponse)?.retrievables?.length ?? 0;
+
+            if (rawCount === 0) {
+                setFlash({
+                    show: true,
+                    message: "No results found for this query.",
+                });
+            } else if (media.length === 0) {
+                setFlash({
+                    show: true,
+                    message: "Results were found, but none could be displayed.",
+                });
+            }
+
             console.log(`[Search] got ${media.length} results`);
 
             setVectorsById((prev) => {
