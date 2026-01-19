@@ -34,7 +34,7 @@ type Modality = "clip" | "emotions" | "ocr" | "asr";
 const queryTypeItems =
     [
         {label: "Text", value: "text"},
-        {label: "Image", value: "image"},
+        // {label: "Image", value: "image"}, TODO: add back in, as soon implemented!
     ] as const satisfies RadioOption<QueryType>[];
 
 type MediaKind = "image" | "video" | "custom";
