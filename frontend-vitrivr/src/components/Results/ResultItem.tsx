@@ -148,12 +148,13 @@ export default function ResultItem(props: ResultItemProps) {
 
             setSubmitting(true);
             try {
-                await submitText({
+                const res = await submitText({
                     session,
                     evaluationId,
                     text,
                 });
-                alert("Submitted text!");
+                alert("Submitted! " + JSON.stringify(res.data.submission));
+                console.log("DRES submitText response:", res);
                 setTextAnswer("");
             } catch (err: any) {
                 alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
@@ -171,14 +172,15 @@ export default function ResultItem(props: ResultItemProps) {
             const videoName = props.getVideoSrc(id).split("/")[splitLen - 1].split(".")[0]
             setSubmitting(true);
             try {
-                await submitVideo({
+                const res = await submitVideo({
                     session,
                     mediaItemName: videoName,
                     evaluationId,
                     start: start > 0 ? Math.round(start * 1000) : undefined,
                     end: end > 0 ? Math.round(end * 1000) : undefined,
                 });
-                alert("Submitted!");
+                alert("Submitted! " + JSON.stringify(res.data.submission));
+                console.log("DRES submitText response:", res);
             } catch (err: any) {
                 alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
             } finally {
