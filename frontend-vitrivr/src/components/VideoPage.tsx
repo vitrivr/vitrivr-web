@@ -352,6 +352,20 @@ export default function VideoPage() {
                     ← Back
                 </button>
 
+                <button
+                    onClick={() => navigate("/")}
+                    style={{
+                        border: "1px solid #ddd",
+                        borderRadius: 8,
+                        background: "#fff",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                    }}
+                    title="Go to search"
+                >
+                    🏠 Home
+                </button>
+
                 <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {name}</h2>
 
                 <div style={{marginLeft: "auto", display: "flex", gap: 10, alignItems: "center"}}>
