@@ -42,6 +42,7 @@ export default function Input({
                 onChange={(e) => onChange?.(e.target.value)}
                 disabled={disabled}
                 className={className}
+                rows={5}
                 style={{
                     width: "95%",
                     height: "100%",
