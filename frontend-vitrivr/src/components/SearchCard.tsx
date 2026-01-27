@@ -331,6 +331,22 @@ export function SearchCard() {
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
 
+    const resetAll = () => {
+        setVisibleCount(PAGE_SIZE);
+        setLoading(false);
+        setError(null);
+        setFlash({show: false, message: ""});
+        setFilterOpen(false);
+        setItems([]);
+        setRaw("");
+        setVectorsById({}); // not sure if keep this
+
+        setBlocks([makeBlockState()]);
+
+        setScrollY(0);
+        window.scrollTo(0, 0);
+    };
+
 
     const onSearchRef = useRef<() => void>(() => {
     });
@@ -493,22 +509,6 @@ export function SearchCard() {
         <div className="layout">
             <div className="sc-page">
                 <div className="stack">
-                    {/* Title card */}
-                    <section className="panel">
-                        <div className="panel__head row-between">
-                            <div className="stack-xs">
-                                <h2 className="panel__title">Search</h2>
-                                <p className="panel__subtitle">
-                                    Build a query and retrieve items from the selected schema.
-                                </p>
-                            </div>
-
-                            <div className="row">
-                                <span className="muted" style={{fontSize: 12}}>Schema</span>
-                                <SchemaSelector value={schema} onChange={setSchema}/>
-                            </div>
-                        </div>
-                    </section>
 
                     {/* Query card */}
                     <section className="panel sc-queryPanel">
@@ -520,17 +520,42 @@ export function SearchCard() {
                                 </p>
                             </div>
 
-                            <button
-                                className="btn icon-btn btn-tooltip"
-                                type="button"
-                                onClick={addBlock}
-                                aria-label="Add query block"
-                                title="Add a new query block"
-                                data-tooltip="Add a new query block"
-                            >
-                                +
-                            </button>
+                            <div className="row">
+                                <div className="row">
+                                    <span className="muted" style={{fontSize: 16}}>Schema</span>
+                                    <SchemaSelector value={schema} onChange={setSchema}/>
+                                </div>
+                                <button
+                                    className="btn"
+                                    type="button"
+                                    onClick={resetAll}
+                                    disabled={loading && items.length === 0 && raw === ""}
+                                    title="Reset query and clear results"
+                                    style={{
+                                        backgroundColor: "#f8c8dc",   // light pink
+                                        borderColor: "#f2a7c7",
+                                        color: "#5a1a33",
+                                    }}
+                                >
+                                    Reset
+                                </button>
 
+                                <button
+                                    className="btn icon-btn btn-tooltip"
+                                    type="button"
+                                    onClick={addBlock}
+                                    aria-label="Add query block"
+                                    title="Add a new query block"
+                                    data-tooltip="Add a new query block"
+                                    style={{
+                                        backgroundColor: "#F0FFF0",   // light pink
+                                        borderColor: "#ADEBB3",
+                                        color: "#2E6F40",
+                                    }}
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
 
                         <div className="panel__body stack">

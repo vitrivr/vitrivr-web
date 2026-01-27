@@ -75,11 +75,11 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
                 value={(value && schemas.includes(value)) ? value : schemas[0]}
                 onChange={handleChange}
                 style={{
-                    fontSize: 13,
+                    fontSize: 14,
                     padding: "2px 6px",
                     borderRadius: 6,
                     border: "1px solid #ddd",
-                    background: "#fff"
+                    background: "#90D5FF"
                 }}
             >
                 {schemas.map((name) => (
