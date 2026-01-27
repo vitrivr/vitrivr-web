@@ -1,5 +1,5 @@
 "use client";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
@@ -330,6 +330,32 @@ export function SearchCard() {
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
+
+
+    const onSearchRef = useRef<() => void>(() => {
+    });
+    onSearchRef.current = () => {
+        void onSearch();
+    };
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            // Ctrl+Enter on Windows/Linux, Cmd+Enter on macOS
+            const isSubmitCombo = (e.ctrlKey || e.metaKey) && e.key === "Enter";
+            if (!isSubmitCombo) return;
+
+            // optional guardrails
+            if (loading) return;
+            if (filterOpen) return;
+            if (e.altKey || e.shiftKey) return;
+
+            e.preventDefault();
+            onSearchRef.current();
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [loading, filterOpen]);
 
     const onSearch = async () => {
         setVisibleCount(PAGE_SIZE);
