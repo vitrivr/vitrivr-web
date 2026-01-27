@@ -15,6 +15,7 @@ type MediaItem = {
     id: string;
     kind: MediaKind;
     url: string;
+    name?: string;
     thumbUrl?: string;
     start: number;
     end: number;
@@ -80,6 +81,17 @@ function pickFloatArray(
     return out;
 }
 
+function videoNameFromUrl(url: string): string {
+    try {
+        const u = new URL(url);
+        const base = u.pathname.split("/").pop() ?? "";
+        return base.replace(/\.[^.]+$/, "");
+    } catch {
+        const base = (url ?? "").split("?")[0].split("#")[0].split("/").pop() ?? "";
+        return base.replace(/\.[^.]+$/, "");
+    }
+}
+
 
 function mapNeighbors(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = resp.retrievables ?? [];
@@ -113,6 +125,7 @@ function mapNeighbors(schema: string, resp: RetrievablesResponse): MediaItem[] {
             id,
             kind: "video",
             url,
+            name: videoNameFromUrl(url),
             thumbUrl: thumbnailUrl(schema, id),
             start,
             end,
@@ -148,6 +161,7 @@ export default function VideoPage() {
     const src = item?.url ?? "";
     const start = item?.start ?? 0;
     const end = item?.end ?? 0;
+    const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
 
     const currentVector = useMemo(() => {
         if (!id) return undefined;
@@ -338,7 +352,7 @@ export default function VideoPage() {
                     ← Back
                 </button>
 
-                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {id}</h2>
+                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {name}</h2>
 
                 <div style={{marginLeft: "auto", display: "flex", gap: 10, alignItems: "center"}}>
                     {kind === "text" && (
@@ -411,6 +425,7 @@ export default function VideoPage() {
                                 mediaClassName="ri-media"
                                 getPosterSrc={() => n.thumbUrl ?? ""}
                                 getVideoSrc={() => n.url}
+                                caption={n.name}
                                 onBeforeOpen={() => openNeighbor(n)}
                             />
                         ))}

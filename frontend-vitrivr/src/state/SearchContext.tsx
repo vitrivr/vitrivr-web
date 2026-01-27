@@ -7,6 +7,7 @@ type MediaKind = "image" | "video" | "custom";
 export type MediaItem = {
     start: number;
     end: number;
+    name: string;
     id: string; kind: MediaKind; thumbUrl?: string; rawType?: string; url: string
 };
 

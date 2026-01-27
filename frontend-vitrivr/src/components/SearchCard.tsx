@@ -44,6 +44,7 @@ type MediaItem = {
     id: string;
     kind: MediaKind;
     rawType?: string;
+    name?: string;
     url: string;
     thumbUrl?: string;
     start: number;
@@ -135,6 +136,18 @@ function dedupeVideos(list: MediaItem[]): MediaItem[] {
 
     return out;
 }
+
+function videoNameFromUrl(url: string): string {
+    try {
+        const u = new URL(url);
+        const base = u.pathname.split("/").pop() ?? "";
+        return base.replace(/\.[^.]+$/, ""); // drop extension
+    } catch {
+        const base = (url ?? "").split("?")[0].split("#")[0].split("/").pop() ?? "";
+        return base.replace(/\.[^.]+$/, "");
+    }
+}
+
 
 function pickFloatArray(
     r: { descriptors?: Record<string, unknown> },
@@ -245,6 +258,7 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
                 thumbUrl,
                 start,
                 end,
+                name: videoNameFromUrl(url),
                 clipVector: pickFloatArray(r as any, "clip.vector"),
             };
         }
@@ -256,6 +270,7 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
             url: "",
             start,
             end,
+            name: "",
             clipVector: pickFloatArray(r as any, "clip.vector"),
         };
     });
@@ -630,6 +645,7 @@ export function SearchCard() {
                                                                                    id,
                                                                                    kind,
                                                                                    url,
+                                                                                   name,
                                                                                    thumbUrl,
                                                                                    rawType,
                                                                                    start,
@@ -661,6 +677,7 @@ export function SearchCard() {
                                                     mediaClassName="ri-media"
                                                     getPosterSrc={() => thumbUrl ?? ""}
                                                     getVideoSrc={() => url}
+                                                    caption={name}
                                                     onBeforeOpen={beforeNavigate}
                                                 />
                                             );
