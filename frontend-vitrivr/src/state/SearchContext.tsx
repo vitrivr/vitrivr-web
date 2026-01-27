@@ -1,6 +1,7 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
+import {makeBlockState} from "./makeBlockState";
 
 type MediaKind = "image" | "video" | "custom";
 export type MediaItem = {
@@ -40,7 +41,21 @@ export function SearchProvider({children, initial}: {
     children: React.ReactNode;
     initial: Pick<SearchState, "blocks">
 }) {
-    const [blocks, setBlocks] = useState(initial.blocks);
+
+    const ensureAtLeastOne = (bs: BlockState[]) =>
+        bs.length === 0 ? [makeBlockState()] : bs;
+
+    const [blocks, _setBlocks] = useState<BlockState[]>(
+        ensureAtLeastOne(initial.blocks ?? [])
+    );
+
+    const setBlocks: React.Dispatch<React.SetStateAction<BlockState[]>> = (next) => {
+        _setBlocks((prev) => {
+            const resolved = typeof next === "function" ? (next as any)(prev) : next;
+            return ensureAtLeastOne(resolved);
+        });
+    };
+
     const [items, setItems] = useState<SearchState["items"]>([]);
     const [mediaFilter, setMediaFilter] = useState<MediaFilter>({
         image: true,
