@@ -308,15 +308,11 @@ export function SearchCard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
-    const [schema, setSchema] = useState<string>(() => {
-        try {
-            return window.localStorage.getItem("vitrivr_schema")
-                ?? DEFAULT_SCHEMA
-                ?? "";
-        } catch {
-            return DEFAULT_SCHEMA ?? "";
-        }
-    });
+    const {
+        schema,
+        setSchema,
+    } = useSearch();
+    
     const counts = {
         image: items.filter(i => i.kind === "image").length,
         video: items.filter(i => i.kind === "video").length,
