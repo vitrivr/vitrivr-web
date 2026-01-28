@@ -86,3 +86,25 @@
     background: #fff;
     cursor: pointer;
 }
+
+.ep-titleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ep-close {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    padding: 6px 10px;
+    border-radius: 10px;
+}
+
+.ep-close:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+

@@ -23,7 +23,6 @@ import "../styles/styles.css"
 import {uuid} from "../utils/uuid";
 
 
-const DEFAULT_SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA;
 const PAGE_SIZE = 100;
 const DEBUG = (import.meta.env.VITE_DEBUG ?? "").toString() === "1";
 const RAW_TRUNCATE = 100_000;
@@ -312,7 +311,7 @@ export function SearchCard() {
         schema,
         setSchema,
     } = useSearch();
-    
+
     const counts = {
         image: items.filter(i => i.kind === "image").length,
         video: items.filter(i => i.kind === "video").length,

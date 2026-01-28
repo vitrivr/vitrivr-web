@@ -13,7 +13,11 @@ type EvalRow = {
     taskType?: string;
 };
 
-export default function EvaluationPicker() {
+type EvaluationPickerProps = {
+    onClose?: () => void;
+};
+
+export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
     const {session, setEvaluationId} = useAuth();
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
     const api = useMemo(() => EvaluationClientApiFactory(undefined, basePath, dresAxios), [basePath]);
@@ -53,7 +57,6 @@ export default function EvaluationPicker() {
                             taskType: task?.taskType,
                         });
                     } catch {
-                        // If current task endpoint fails, still show evaluation
                         display.push({id, name});
                     }
                 }
@@ -78,15 +81,31 @@ export default function EvaluationPicker() {
     const onContinue = () => {
         if (!selected) return;
         setEvaluationId(selected);
+        onClose?.(); // <-- close modal after selection
     };
 
     return (
-        <div className="ep-backdrop" role="dialog" aria-modal="true" aria-label="Select evaluation">
-            <div className="ep-panel">
-                <div className="ep-title">Select evaluation / task</div>
-                <div className="ep-subtitle">
-                    Choose the active evaluation you want to submit to.
+        <div
+            className="ep-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select evaluation"
+            onMouseDown={(e) => {
+                // close if user clicks the backdrop (not the panel)
+                if (e.target === e.currentTarget) onClose?.();
+            }}
+        >
+            <div className="ep-panel" onMouseDown={(e) => e.stopPropagation()}>
+                <div className="ep-titleRow">
+                    <div className="ep-title">Select evaluation / task</div>
+                    {onClose && (
+                        <button className="ep-close" type="button" aria-label="Close" onClick={onClose}>
+                            ×
+                        </button>
+                    )}
                 </div>
+
+                <div className="ep-subtitle">Choose the active evaluation you want to submit to.</div>
 
                 {loading && <div className="ep-muted">Loading…</div>}
                 {err && <div className="ep-error">{err}</div>}
