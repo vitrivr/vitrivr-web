@@ -15,7 +15,7 @@ type MediaItem = {
     id: string;
     kind: MediaKind;
     url: string;
-    name?: string;
+    name: string;
     thumbUrl?: string;
     start: number;
     end: number;
