@@ -292,6 +292,7 @@ export default function VideoPage() {
             setSubmitting(true);
             try {
                 const res = await submitText({session, evaluationId, text});
+                console.log("Submitted text", text)
                 alert("Submitted! " + JSON.stringify(res.data.submission));
                 console.log("DRES submitText response:", res.data.submission);
                 setTextAnswer("");
@@ -304,6 +305,9 @@ export default function VideoPage() {
         }
 
         if (k === "item") {
+            const video = videoRef.current;
+            const tSec = video?.currentTime ?? start;
+            const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
             const splitLen = src.split("/").length;
             const videoName = src.split("/")[splitLen - 1].split(".")[0];
             setSubmitting(true);
@@ -312,17 +316,19 @@ export default function VideoPage() {
                     session,
                     mediaItemName: videoName,
                     evaluationId,
-                    start: start > 0 ? Math.round(start * 1000) : undefined,
-                    end: end > 0 ? Math.round(end * 1000) : undefined,
+                    start: tMs,
+                    end: tMs,
                 });
+                console.log("Submission", videoName, tMs, tMs)
                 alert("Submitted! " + JSON.stringify(res.data.submission));
-                console.log("DRES submitText response:", res);
+                setTextAnswer("");
             } catch (err: any) {
                 alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
             } finally {
                 setSubmitting(false);
             }
         }
+
     };
 
     if (!id) {

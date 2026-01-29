@@ -33,7 +33,7 @@ export async function getCurrentSubmissionKind(params: {
     if (!taskType) return "unknown";
 
     const t = taskType.toLowerCase();
-    console.log("taskType", taskType);
+    //console.log("taskType", taskType);
 
 
     // Could be implemented more pretty, but oh well...
