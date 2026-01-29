@@ -11,16 +11,23 @@ function Header() {
 
     return (
         <>
-            {showEvalPicker && (
-                <EvaluationPicker onClose={() => setShowEvalPicker(false)}/>
-            )}
+            {showEvalPicker && <EvaluationPicker onClose={() => setShowEvalPicker(false)}/>}
 
             <header className="header">
                 <div className="header__inner">
-                    <div className="header__brand">VITRIVR</div>
-                    <div className="header__dot">·</div>
-                    <div className="header__subtitle">Multimedia Retrieval</div>
+                    {/* LEFT */}
+                    <div className="header__left">
+                        <div className="header__brand">VITRIVR</div>
+                        <div className="header__dot">·</div>
+                        <div className="header__subtitle">Multimedia Retrieval</div>
+                    </div>
 
+                    {/* CENTER */}
+                    <div className="header__center" aria-label="vitrivr logo">
+                        <img src="/vitrivr.svg" className="header__logo" alt="vitrivr"/>
+                    </div>
+
+                    {/* RIGHT */}
                     <div className="header__actions">
                         {status === "loggedIn" ? (
                             <div className="header__auth">
@@ -47,7 +54,9 @@ function Header() {
                         ) : (
                             <div className="header__auth">
                                 <span className="header__user">Guest</span>
-                                <button className="header__btn" onClick={openLogin}>Login</button>
+                                <button className="header__btn" onClick={openLogin}>
+                                    Login
+                                </button>
                             </div>
                         )}
                     </div>
