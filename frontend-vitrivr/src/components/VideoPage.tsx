@@ -160,7 +160,7 @@ export default function VideoPage() {
 
     const src = item?.url ?? "";
     const start = item?.start ?? 0;
-    const end = item?.end ?? 0;
+    // const end = item?.end ?? 0; // TODO remove
     const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
 
     const currentVector = useMemo(() => {
