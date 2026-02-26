@@ -59,7 +59,7 @@ frontend-vitrivr/
 1. **Navigate to the frontend directory**
 
 ```bash
-cd frontend/vitrivr
+cd frontend-vitrivr
 ```
 
 2. **Install all dependencies**
@@ -74,7 +74,7 @@ npm install
 npm run build
 ```
 
-4. **Run the application**
+4. **Run the application in development mode**
 
 ```bash
 npm run dev
