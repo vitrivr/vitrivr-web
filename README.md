@@ -37,7 +37,7 @@ assess the performance of multimedia retrieval systems.
 
 ```
 frontend-vitrivr/
-├── frontend-vitrivr/
+├── vitrivr-web/
 │   ├── public/
 │   ├── src/
 │   │   ├── assets/
