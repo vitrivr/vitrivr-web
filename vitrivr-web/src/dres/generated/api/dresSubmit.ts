@@ -1,5 +1,5 @@
 import {SubmissionApiFactory, type ApiClientSubmission} from "./api.ts";
-import {dresAxios} from "./dresAxios";
+import {dresAxios} from "./dresAxios.ts";
 
 
 const basePath = (import.meta.env.VITE_DRES_BASE_URL ?? "").toString();

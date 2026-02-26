@@ -1,5 +1,5 @@
 import {EvaluationClientApiFactory} from "./api.ts";
-import {dresAxios} from "./dresAxios";
+import {dresAxios} from "./dresAxios.ts";
 
 export type SubmissionKind =
     | "text"

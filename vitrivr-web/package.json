@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "gen:api": "openapi-generator-cli generate -i ./oas.json -g typescript-axios -o ./src/dres/generated/api",
-    "gen:api:fetch": "openapi-generator-cli generate -i ./openapi.yaml -g typescript-fetch -o ./src/dres/generated/api"
+    "gen:api": "openapi-generator-cli generate -i ./oas.json -g typescript-axios -o src/dres/generated/api",
+    "gen:api:fetch": "openapi-generator-cli generate -i ./openapi.yaml -g typescript-fetch -o src/dres/generated/api"
   },
   "dependencies": {
     "axios": "^1.13.2",
