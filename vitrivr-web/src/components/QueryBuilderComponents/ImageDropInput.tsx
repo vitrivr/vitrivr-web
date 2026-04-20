@@ -1,3 +1,35 @@
+/**
+ * ImageDropInput
+ *
+ * A image input component with drag-and-drop, click-to-browse,
+ * and paste support.
+ *
+ * Features:
+ * - Accepts image files only
+ * - Drag and drop support
+ * - Click to open file picker
+ * - Paste image support when focused
+ * - Displays selected file name
+ * - Allows clearing the current file
+ *
+ * Props:
+ * @param disabled - Disables all interactions when true
+ * @param className - Optional class name for the dropzone container
+ * @param onChange - Called when the selected file changes
+ * @param accept - File input accept value, defaults to "image/*"
+ *
+ * Behavior:
+ * - Only the first valid image file is selected
+ * - Non-image files are ignored
+ * - Pasted images are supported when the dropzone is focused
+ * - Clicking "Clear" removes the selected file and calls `onChange(null)`
+ *
+ * Example:
+ * <ImageDropInput
+ *   onChange={setFile}
+ * />
+ */
+
 "use client";
 
 import React, {useEffect, useRef, useState} from "react";
@@ -27,7 +59,7 @@ export default function ImageDropInput({
 
     const handleFile = (f: File | null) => {
         setFileName(f?.name ?? "");
-        onChange?.(f);
+        onChange?.(f)
     };
 
     const onBrowse = () => {
@@ -81,7 +113,7 @@ export default function ImageDropInput({
 
         el.addEventListener("paste", onPaste);
         return () => el.removeEventListener("paste", onPaste);
-    }, [disabled]);
+    }, [disabled, handleFile]);
 
     return (
         <div

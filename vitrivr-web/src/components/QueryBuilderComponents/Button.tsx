@@ -1,3 +1,7 @@
+/**
+ * Costume Button component. Currently not used because of styling reasons, can be easily included.
+ */
+
 export type ButtonProps = {
     label?: string;
     onClick?: () => void;

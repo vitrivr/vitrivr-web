@@ -1,3 +1,7 @@
+/**
+ * Flash warning for e.g. error messages.
+ */
+
 import React from "react";
 import "./Flash.css";
 

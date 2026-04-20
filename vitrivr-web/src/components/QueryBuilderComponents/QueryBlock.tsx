@@ -1,8 +1,49 @@
+/**
+ * QueryBlock
+ *
+ * A query builder block used to configure one search step in the UI.
+ *
+ * Features:
+ * - Selects a search modality (for example CLIP, OCR, ASR, or emotions)
+ * - Supports text and image query input where allowed
+ * - Supports emotion selection and emotion target selection
+ * - Adapts available options based on the active schema
+ * - Allows removing the block when `onRemove` is provided
+ *
+ * Props:
+ * @param block - Current state of the query block
+ * @param onChange - Called with partial updates to the block state
+ * @param onRemove - Optional handler for removing the block
+ * @param modalityOptions - Available modality options
+ * @param queryTypeItems - Available query type options, usually text or image
+ * @param emotionItems - Available emotion dropdown items
+ * @param schema - Active vitrivr schema, used to restrict unsupported modalities
+ *
+ * Behavior:
+ * - CLIP supports both text and image queries
+ * - OCR and ASR force text input
+ * - Emotion mode shows emotion selection and emotion target controls
+ * - Some schemas disable unsupported modalities such as emotions or ASR
+ * - Switching query type clears incompatible input values
+ *
+ * Example:
+ * <QueryBlock
+ *   block={block}
+ *   onChange={handleBlockChange}
+ *   onRemove={handleRemove}
+ *   modalityOptions={modalityOptions}
+ *   queryTypeItems={queryTypeItems}
+ *   emotionItems={emotionItems}
+ *   schema="vbs"
+ * />
+ */
+
+
 import {useEffect} from "react";
 import RadioGroup, {type RadioOption} from "./RadioGroup.tsx";
 import Dropdown, {type DropdownItem} from "./Dropdown.tsx";
 import Input from "./Input.tsx";
-//import FileUploader from "./FileUploader.tsx";
+//import FileUploader from "./FileUploader.tsx"; // was removed because of the VBS
 import type {BlockState} from "../SearchCard.tsx";
 
 type QueryType = Extract<BlockState['queryType'], string>;

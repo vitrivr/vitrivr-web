@@ -1,3 +1,22 @@
+/**
+ * Header
+ *
+ * The top navigation bar for the application.
+ *
+ * Features:
+ * - Displays the vitrivr brand and logo
+ * - Shows authentication status in the header
+ * - Lets logged-in users open the evaluation picker
+ * - Lets users log in or log out
+ *
+ * Dependencies:
+ * - Uses `useAuth` for authentication state and actions
+ * - Uses `EvaluationPicker` for selecting an evaluation or task
+ *
+ * Example:
+ * <Header />
+ */
+
 import "./Header.css";
 import {useAuth} from "../state/AuthContext";
 import {useState} from "react";

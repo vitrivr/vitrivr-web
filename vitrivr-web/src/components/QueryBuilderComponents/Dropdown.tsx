@@ -1,3 +1,35 @@
+/**
+ * Dropdown
+ *
+ * A simple dropdown/select component.
+ *
+ * Features:
+ * - Supports controlled and uncontrolled usage
+ * - Accepts items as strings or item objects
+ * - Keyboard navigation (Arrow keys, Enter, Escape, Home, End)
+ * - Disabled options support
+ * - Customizable labels, placeholder, and class names
+ *
+ * Props:
+ * @param items - List of dropdown options. Each item can be a string or an object:
+ *   { value, label?, disabled? }
+ * @param value - Controlled selected value
+ * @param defaultValue - Initial selected value for uncontrolled usage
+ * @param onChange - Called when an item is selected: (value, item) => void
+ * @param label - Accessible label for the button
+ * @param placeholder - Text shown when no item is selected
+ * @param className - Class name for the root wrapper
+ * @param buttonClassName - Class name for the trigger button
+ * @param listClassName - Class name for the options list
+ *
+ * Example:
+ * <Dropdown
+ *   items={["Apple", "Banana", "Orange"]}
+ *   placeholder="Choose a fruit"
+ *   onChange={(value) => console.log(value)}
+ * />
+ */
+
 "use client";
 import React from "react";
 

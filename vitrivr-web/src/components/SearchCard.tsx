@@ -1,3 +1,48 @@
+/**
+ * SearchCard
+ *
+ * The main search interface for building queries, executing retrieval,
+ * and displaying search results.
+ *
+ * Features:
+ * - Supports single-block and multi-block query building
+ * - Supports multiple modalities such as CLIP, emotions, OCR, and ASR
+ * - Supports schema selection and schema-based restrictions
+ * - Displays retrieved media results with filtering and pagination
+ * - Stores raw API responses for debugging
+ * - Supports keyboard shortcut submission with Ctrl/Cmd + Enter
+ * - Saves vectors for later nearest-neighbor browsing
+ *
+ * Behavior:
+ * - Validates query blocks before search
+ * - Builds either a text, image, emotion, or temporal query
+ * - Sends the query to the retrieval backend
+ * - Maps backend retrievables into UI media items
+ * - Stores clip vectors for later reuse
+ * - Supports deduplicating video results when enabled
+ * - Resets UI state and results through the reset action
+ *
+ * State and context:
+ * - Uses `useSearch` for shared query, schema, result, and vector state
+ * - Uses local state for loading, errors, flash messages, filters, and pagination
+ *
+ * Main helpers:
+ * @param makeBlockState - Creates a default query block
+ * @param dedupeVideos - Removes duplicate video results by file name
+ * @param mediaFrom - Maps retrieval response items into displayable media items
+ * @param truncateJson - Truncates raw JSON for debug display
+ * @param resetAll - Clears query blocks, results, filters, and scroll state
+ *
+ * Example:
+ * <SearchCard />
+ *
+ * Notes:
+ * - Multi-block queries are executed as temporal queries
+ * - Single-block queries may be text, image, or emotion queries
+ * - Some schemas disable unsupported modalities such as ASR or emotions
+ * - Raw responses are shown in a collapsible debug section
+ */
+
 "use client";
 import {useEffect, useRef, useState} from "react";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";

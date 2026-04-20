@@ -1,3 +1,33 @@
+/**
+ * SchemaSelector
+ *
+ * A small selector component for choosing the active vitrivr schema.
+ *
+ * Features:
+ * - Loads available schemas from the backend
+ * - Displays loading, error, and empty states
+ * - Selects a fallback schema when the current value is invalid
+ * - Persists the selected schema in localStorage
+ *
+ * Props:
+ * @param value - Currently selected schema
+ * @param onChange - Called when the selected schema changes
+ *
+ * Behavior:
+ * - Fetches schemas when the component mounts
+ * - If the current schema is missing or invalid, selects the first available schema
+ * - Saves schema changes to `localStorage` under `vitrivr_schema`
+ *
+ * Dependencies:
+ * - Uses `fetchSchemas` to load available schemas
+ *
+ * Example:
+ * <SchemaSelector
+ *   value={schema}
+ *   onChange={setSchema}
+ * />
+ */
+
 "use client";
 
 import {useEffect, useState} from "react";

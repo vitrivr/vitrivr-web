@@ -1,3 +1,33 @@
+/**
+ * EvaluationPicker
+ *
+ * A modal dialog for selecting the active DRES evaluation/task.
+ *
+ * Features:
+ * - Loads available evaluations for the current user
+ * - Tries to fetch the current task for each evaluation
+ * - Lets the user select one evaluation from a list
+ * - Stores the selected evaluation in auth state
+ * - Supports closing by button or backdrop click
+ *
+ * Props:
+ * @param onClose - Optional callback fired when the dialog should close
+ *
+ * Behavior:
+ * - Loads evaluations when the component mounts
+ * - Shows loading and error states
+ * - Preselects the first available evaluation
+ * - Clicking "Continue" saves the selected evaluation id
+ * - Clicking outside the panel closes the dialog
+ *
+ * Dependencies:
+ * - Uses `useAuth` for session access and `setEvaluationId`
+ * - Uses the DRES evaluation client API to load evaluations and tasks
+ *
+ * Example:
+ * <EvaluationPicker onClose={() => setOpen(false)} />
+ */
+
 "use client";
 
 import {useEffect, useMemo, useState} from "react";

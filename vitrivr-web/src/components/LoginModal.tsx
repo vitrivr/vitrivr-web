@@ -1,3 +1,30 @@
+/**
+ * LoginModal
+ *
+ * A modal dialog for signing in to DRES.
+ *
+ * Features:
+ * - Collects username and password
+ * - Submits credentials through auth context
+ * - Shows loading and error states
+ * - Supports optional closing via close button
+ *
+ * Props:
+ * @param onClose - Optional callback fired when the modal should close
+ *
+ * Behavior:
+ * - Prevents default form submission
+ * - Trims the username before login
+ * - Closes automatically after a successful login
+ * - Displays an error message when login fails
+ *
+ * Dependencies:
+ * - Uses `useAuth` for the `login` action
+ *
+ * Example:
+ * <LoginModal onClose={() => setOpen(false)} />
+ */
+
 "use client";
 
 import React, {useState} from "react";

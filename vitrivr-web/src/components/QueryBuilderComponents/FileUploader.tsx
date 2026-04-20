@@ -1,3 +1,37 @@
+/**
+ * FileUploader
+ *
+ * Currently not used, but relevant for future iterations were direct image-to-image search is necessary.
+ * (This was not used because the frontend was first developed for the VBS26 in Prague. Image-to-Image search
+ * is not permitted at the VBS.)
+ *
+ * A simple image file input component with basic validation.
+ *
+ * Features:
+ * - Accepts image files only
+ * - Shows an error message for invalid file types
+ * - Displays basic file details after selection
+ * - Supports optional label and custom styling
+ *
+ * Props:
+ * @param label - Optional label shown above the file input
+ * @param file - Currently selected file
+ * @param onChange - Called when the selected file changes
+ * @param className - Optional class name for the wrapper
+ *
+ * Behavior:
+ * - If no file is selected, `onChange(null)` is called
+ * - If a non-image file is selected, the component shows an error and resets the value
+ * - If a valid image is selected, `onChange(file)` is called
+ *
+ * Example:
+ * <FileUploader
+ *   label="Upload an image"
+ *   file={file}
+ *   onChange={setFile}
+ * />
+ */
+
 import React from "react";
 import Flash from "./Flash";
 

@@ -1,3 +1,46 @@
+/**
+ * VideoPage
+ *
+ * A detail page for viewing a selected video segment, submitting results to DRES,
+ * and exploring visually similar neighbor segments.
+ *
+ * Features:
+ * - Plays the selected video segment
+ * - Restores the segment start time when metadata is loaded
+ * - Supports DRES submission for text and item tasks
+ * - Loads nearest-neighbor video results from the current clip vector
+ * - Lets the user open neighbor results as new video pages
+ * - Integrates with search, auth, and evaluation state
+ *
+ * Behavior:
+ * - Reads the selected video `id` from the route
+ * - Looks up the current item from search state
+ * - Detects the active DRES submission mode (`text`, `item`, etc.)
+ * - For text tasks, submits the entered text answer
+ * - For item tasks, submits the current playback timestamp
+ * - If a clip vector is available, runs a vector search to load nearest neighbors
+ * - Stores discovered neighbor vectors back into shared state for later navigation
+ *
+ * Main helpers:
+ * @param pickNumber - Reads numeric descriptor values safely
+ * @param nsToSecondsMaybe - Converts nanoseconds to seconds
+ * @param basenameFromPath - Extracts the filename from a path
+ * @param toServedVideoUrl - Builds a playable served video URL
+ * @param pickFloatArray - Reads numeric vector descriptors safely
+ * @param videoNameFromUrl - Derives a display name from a video URL
+ * @param mapNeighbors - Maps retrieval results into video neighbor items
+ *
+ * Example route:
+ * /video/:id
+ *
+ * Notes:
+ * - Neighbor search depends on `vectorsById[id]` being available
+ * - Only video-type neighbors are shown
+ * - If no clip vector exists, neighbor loading is skipped with an error message
+ * - The component expects surrounding providers such as `SearchContext` and `AuthContext`
+ */
+
+
 "use client";
 import {useNavigate, useParams} from "react-router-dom";
 import {thumbnailUrl, buildVectorQuery, servedVideoUrl} from "../lib/vitrivr";

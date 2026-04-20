@@ -1,3 +1,45 @@
+/**
+ * Input
+ *
+ * A small wrapper component that renders either a text input area
+ * or an image input, depending on the selected type.
+ *
+ * Features:
+ * - Supports text input with a textarea
+ * - Supports image input through `ImageDropInput`
+ * - Optional disabled state
+ * - Customizable placeholder, class name, name, and id
+ *
+ * Props:
+ * @param type - Input mode: "text" or "image". Defaults to "text"
+ * @param disabled - Disables the input when true
+ * @param value - Current text value
+ * @param onChange - Called when the text value changes
+ * @param onImageChange - Called when the selected image file changes
+ * @param className - Optional class name for styling
+ * @param placeholder - Placeholder text for text mode
+ * @param name - Optional textarea name
+ * @param id - Optional textarea id
+ *
+ * Behavior:
+ * - When `type="image"`, the component renders `ImageDropInput`
+ * - When `type="text"`, the component renders a textarea
+ * - Text updates call `onChange`
+ * - Image updates call `onImageChange`
+ *
+ * Example:
+ * <Input
+ *   type="text"
+ *   value={query}
+ *   onChange={setQuery}
+ * />
+ *
+ * <Input
+ *   type="image"
+ *   onImageChange={setFile}
+ * />
+ */
+
 "use client";
 import ImageDropInput from "./ImageDropInput.tsx";
 

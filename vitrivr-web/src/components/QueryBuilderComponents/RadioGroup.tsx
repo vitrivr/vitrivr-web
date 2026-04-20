@@ -1,3 +1,43 @@
+/**
+ * RadioGroup
+ *
+ * A reusable radio button group for selecting one option from a list.
+ *
+ * Features:
+ * - Supports generic string-based option values
+ * - Horizontal or vertical layout
+ * - Optional visible label or ARIA label
+ * - Disabled option support
+ * - Controlled component behavior
+ *
+ * Props:
+ * @param label - Visible group label shown as the fieldset legend
+ * @param ariaLabel - Accessible label used when no visible label is provided
+ * @param name - Optional radio group name. If omitted, one is generated automatically
+ * @param options - List of radio options with value, label, and optional disabled state
+ * @param value - Currently selected value
+ * @param onChange - Called when the selected value changes
+ * @param orientation - Layout direction, either "horizontal" or "vertical"
+ * @param className - Optional extra class name for the fieldset
+ *
+ * Behavior:
+ * - Renders a fieldset with one radio input per option
+ * - Uses `label` as the visible legend when provided
+ * - Uses `ariaLabel` only when no visible label is present
+ * - Calls `onChange` with the selected option value
+ *
+ * Example:
+ * <RadioGroup
+ *   label="Query Type"
+ *   options={[
+ *     { value: "text", label: "Text" },
+ *     { value: "image", label: "Image" }
+ *   ]}
+ *   value={value}
+ *   onChange={setValue}
+ * />
+ */
+
 "use client";
 import React from "react";
 import "./RadioGroup.css";

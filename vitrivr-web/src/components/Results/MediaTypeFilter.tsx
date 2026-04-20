@@ -1,3 +1,40 @@
+/**
+ * MediaTypeFilter
+ *
+ * A small popover component for filtering visible media result types.
+ *
+ * Features:
+ * - Toggles image, video, and custom result visibility
+ * - Supports hiding duplicate videos
+ * - Closes on outside click
+ * - Closes when Escape is pressed
+ * - Displays result counts for each media type
+ *
+ * Props:
+ * @param open - Whether the filter popover is visible
+ * @param value - Current filter state
+ * @param counts - Optional result counts for images, videos, and custom items
+ * @param onChange - Called when any filter value changes
+ * @param onClose - Called when the popover should close
+ * @param className - Optional class name for the popover container
+ *
+ * Behavior:
+ * - Returns `null` when `open` is false
+ * - Updates individual filter keys through checkbox changes
+ * - Closes automatically on outside click or Escape key press
+ * - Includes a `uniqueVideos` option for hiding duplicate video results
+ *
+ * Example:
+ * <MediaTypeFilter
+ *   open={open}
+ *   value={mediaFilter}
+ *   counts={{ image: 12, video: 8, custom: 2 }}
+ *   onChange={setMediaFilter}
+ *   onClose={() => setOpen(false)}
+ * />
+ */
+
+
 "use client";
 import React, {useEffect, useRef} from "react";
 import "./MediaTypeFilter.css"
