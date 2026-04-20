@@ -12,26 +12,49 @@ type Inputs = Record<string, Input>;
 type RawSchema = string | { name?: string; [key: string]: unknown };
 
 
+/**
+ * Builds the thumbnail URL for a given segment or media id.
+ *
+ * The current implementation is tailored to the VBS 2026 thumbnail layout,
+ * where thumbnails are stored in shard folders derived from the first two
+ * characters of the raw id.
+ * @param schema - Active vitrivr schema name
+ * @param id - Segment or media identifier used to locate the thumbnail
+ * @returns The absolute thumbnail URL, or an empty string if it cannot be built
+ */
 export function thumbnailUrl(schema: string, id: string): string {
     if (!THUMBNAIL_BASE) return "";
 
     const clean = (id ?? "").trim();
     if (!clean) return "";
 
-    // shard folder = first 2 characters of the *raw* id
-    // (use lowercasing only if your filesystem is case-insensitive / your server expects it)
+    // shared folder = first 2 characters of the raw id
     const shard = clean.slice(0, 2);
     const encId = encodeURIComponent(clean);
 
     return `${THUMBNAIL_BASE}/vbs/${schema.toUpperCase()}/thumbnails/shards/${encodeURIComponent(shard)}/${encId}.jpg`;
 }
 
+
+/**
+ * Extracts the filename from a filesystem-style path.
+ *
+ * @param p - Full path string
+ * @returns The basename of the path, or an empty string if unavailable
+ */
 function basenameFromPath(p: string): string {
     const unixy = p.replace(/\\/g, "/");
     const parts = unixy.split("/");
     return parts[parts.length - 1] ?? "";
 }
 
+/**
+ * Builds a public video URL from a source file path.
+ *
+ * @param schema - Active vitrivr schema name
+ * @param filePath - Original file path descriptor from the backend
+ * @returns A playable video URL, or an empty string if it cannot be built
+ */
 export function servedVideoUrl(schema: string, filePath: string): string {
     if (!MEDIA_BASE) return "";
     const filename = basenameFromPath(filePath);
@@ -39,6 +62,13 @@ export function servedVideoUrl(schema: string, filePath: string): string {
     return new URL(`vbs/${schema.toUpperCase()}/videos/${encodeURIComponent(filename)}`, MEDIA_BASE).toString();
 }
 
+
+/**
+ * Minimal frontend representation of a retrievable object returned by vitrivr.
+ *
+ * This type is used by helper functions that inspect descriptors and
+ * relationship metadata, especially for segment/video results.
+ */
 export type VitrivrRetrievable = {
     id?: string;
     type?: string;
@@ -50,6 +80,16 @@ export type VitrivrRetrievable = {
     };
 };
 
+
+/**
+ * Extracts a usable file path from a retrievable.
+ *
+ * The method first checks the retrievable's own descriptors for `file.path`.
+ * If not found, it falls back to the parent object's descriptors via
+ * `relationship.partOf`.
+ * @param r - A vitrivr retrievable object
+ * @returns The resolved file path, or `undefined`
+ */
 export function pickFilePath(r: VitrivrRetrievable): string | undefined {
     const local = r.descriptors?.["file.path"];
     if (typeof local === "string" && local.trim()) return local;
@@ -68,9 +108,11 @@ export type BuiltMediaUrls = {
 };
 
 /**
- * Build URLs for a SEGMENT-like retrievable (video segment).
- * - url is derived from file.path (served URL)
- * - thumbUrl is derived from segment id
+ * Builds the media URLs needed to render a segment-like retrievable.
+ * This helper is mainly intended for video segment results.
+ * @param schema - Active vitrivr schema name
+ * @param r - Segment-like retrievable object
+ * @returns An object containing video and thumbnail URLs plus path metadata
  */
 export function buildSegmentMediaUrls(schema: string, r: VitrivrRetrievable): BuiltMediaUrls {
     const id = (r.id ?? "").trim();
@@ -82,6 +124,12 @@ export function buildSegmentMediaUrls(schema: string, r: VitrivrRetrievable): Bu
     return {url, thumbUrl, filePath: filePath ?? undefined, filename};
 }
 
+
+/**
+ * Fetches the list of available schemas from the vitrivr backend.
+ * @returns A promise resolving to a list of schema names
+ * @throws Error when the HTTP request fails
+ */
 export async function fetchSchemas(): Promise<string[]> {
     const url = `${API_BASE}/api/schema/list`;
 
@@ -120,8 +168,8 @@ export async function fetchSchemas(): Promise<string[]> {
 }
 
 /**
- * TODO make this for more like this
- * @param blocks
+ * Build a temporal query that consists of multiple QueryBlocks.
+ * @param blocks ordered list of QueryBlocks from the UI
  */
 export function buildTemporalQuery(blocks: BlockState[]) {
     const LIMIT = "10";
@@ -305,7 +353,10 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     } as const;
 }
 
-
+/**
+ * Converts file object into base64 data URL String.
+ * @param file File to convert
+ */
 export function fileToBase64(file: File | null): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -332,9 +383,10 @@ export function fileToBase64(file: File | null): Promise<string> {
 
 /**
  * Builds the query for vitrivr-engine for textual queries
- * @param prompt
- * @param field
- * @param emotions
+ * @param prompt the textual query
+ * @param field such as clip, ocr, asr, or emotions
+ * @param emotions emotion label such as happy, sad, etc.
+ * @param emotionType where the emotions occurs such as face, asr or ocr.
  */
 export function buildTextQuery(
     field: string,
@@ -434,7 +486,11 @@ export function buildTextQuery(
     return {inputs, operations, output} as const;
 }
 
-
+/**
+ * Builds a vector-based vitrivr query that is used for the nearest neighbor search.
+ * @param vector embedding vector
+ * @param limit maximum number of retrieval results
+ */
 export function buildVectorQuery(vector: number[], limit: number) {
     return {
         "inputs": {
@@ -471,6 +527,11 @@ export function buildVectorQuery(vector: number[], limit: number) {
     } as const
 }
 
+/**
+ * Converts emotion labels into a one-hot representation
+ * @param emotion label
+ * @returns the one-hot encoded vector
+ */
 export function emotionsToVector(emotion: string | undefined | null): number[] {
     const orderingEmotions = ["anger", "disgust", "fear", "happy", "neutral", "sad", "surprise"];
 
@@ -486,6 +547,10 @@ export function emotionsToVector(emotion: string | undefined | null): number[] {
 
 type Ops = Record<string, unknown>;
 
+
+/**
+ * Append the standard lookup chain.
+ */
 function addSegmentToFileLookups(operations: Ops, inputOp: string) {
     operations["relations"] = {
         factory: "RelationExpander",
