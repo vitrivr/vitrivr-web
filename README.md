@@ -62,22 +62,42 @@ frontend-vitrivr/
 cd frontend-vitrivr
 ```
 
-2. **Install all dependencies**
+2. **Create the .env file**
+   In the .env file the address of the vitrivr-engine, DRES-server, etc. are saved.
+
+```bash
+VITE_VITRIVR_BASE_URL=http://<ip>:<port>
+VITE_MEDIA_ORIGIN=http://<ip>:<port>
+VITE_THUMBNAIL_ORIGIN=http://<ip>:<port>
+VITE_DRES_BASE_URL=https://vbs.videobrowsing.org/
+VITE_DEBUG=0
+```
+
+3. **Install all dependencies**
 
 ```bash
 npm install
 ```
 
-3. **Build the application**
+4. **Build the application**
 
 ```bash
 npm run build
 ```
 
-4. **Run the application in development mode**
+5. **Run the application in development mode**
 
 ```bash
 npm run dev
 ```
 
 ---
+
+## Notes for developers
+
+This frontend was specifically developed for the VBS Prague 2026. This affects some parts of the code, mainly:
+
+- The image-to-image search, as this search operation is not permitted at the VBS, and is therefore not fully
+  implemented. The components exists, but they need to be slighty adapted.
+- DRES is included with a login on the upper left. The user is not forced to log in, but it is highly recommended that
+  if you want to run the frontend without DRES that you remove it entirely.
