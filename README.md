@@ -98,6 +98,6 @@ npm run dev
 This frontend was specifically developed for the VBS Prague 2026. This affects some parts of the code, mainly:
 
 - The image-to-image search, as this search operation is not permitted at the VBS, and is therefore not fully
-  implemented. The components exists, but they need to be slighty adapted.
+  implemented. The components exist, but they need to be slightly adapted.
 - DRES is included with a login on the upper left. The user is not forced to log in, but it is highly recommended that
   if you want to run the frontend without DRES that you remove it entirely.
