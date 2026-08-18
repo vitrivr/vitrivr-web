@@ -1,9 +1,9 @@
 import type {BlockState} from "../components/SearchCard.tsx";
 
-export const SCHEMA = import.meta.env.VITE_VITRIVR_SCHEMA
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
 export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
 export const MEDIA_BASE = import.meta.env.VITE_MEDIA_ORIGIN;
+export const MEDIA_PATH_PREFIX: string = import.meta.env.VITE_MEDIA_PATH_PREFIX ?? "";
 
 type TextInput = { type: "TEXT"; data: string };
 type FloatVectorInput = { type: "FLOATVECTOR"; data: number[] };
@@ -24,15 +24,13 @@ type RawSchema = string | { name?: string; [key: string]: unknown };
  */
 export function thumbnailUrl(schema: string, id: string): string {
     if (!THUMBNAIL_BASE) return "";
-
     const clean = (id ?? "").trim();
     if (!clean) return "";
-
-    // shared folder = first 2 characters of the raw id
-    const shard = clean.slice(0, 2);
-    const encId = encodeURIComponent(clean);
-
-    return `${THUMBNAIL_BASE}/vbs/${schema.toUpperCase()}/thumbnails/shards/${encodeURIComponent(shard)}/${encId}.jpg`;
+    /* Include schema in the path so a single media-http server serving the parent
+       data directory can route requests for multiple schemas thumbnails. */
+    const s = (schema ?? "").trim();
+    const schemaSeg = s ? `${encodeURIComponent(s)}/` : "";
+    return `${THUMBNAIL_BASE}/${schemaSeg}thumbnails/${encodeURIComponent(clean)}.jpg`;
 }
 
 
@@ -57,9 +55,17 @@ function basenameFromPath(p: string): string {
  */
 export function servedVideoUrl(schema: string, filePath: string): string {
     if (!MEDIA_BASE) return "";
-    const filename = basenameFromPath(filePath);
-    if (!filename) return "";
-    return new URL(`vbs/${schema.toUpperCase()}/videos/${encodeURIComponent(filename)}`, MEDIA_BASE).toString();
+    const normalized = filePath.replace(/\\/g, "/");
+    console.log("Media path prefix is: " + MEDIA_PATH_PREFIX);
+    const prefix = MEDIA_PATH_PREFIX.replace(/\\/g, "/").replace(/\/?$/, "/");
+    const relative = prefix && normalized.startsWith(prefix)
+        ? normalized.slice(prefix.length)
+        : basenameFromPath(normalized);
+    if (!relative) return "";
+    const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
+    const subpath = (import.meta.env.VITE_MEDIA_SUBPATH as string | undefined) ?? "";
+    console.log("pathhhh" + new URL(`${subpath}${encodedPath}`, MEDIA_BASE).toString())
+    return new URL(`${subpath}${encodedPath}`, MEDIA_BASE).toString();
 }
 
 
