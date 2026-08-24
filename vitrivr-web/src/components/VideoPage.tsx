@@ -300,7 +300,9 @@ export default function VideoPage() {
     const poster = id ? thumbnailUrl(schema, id) ?? "" : "";
     const src = item?.url ?? routeState?.src ?? "";
     const start = typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
-    const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
+    const dayOfRecording = src.split("/")[4];
+    const timeOfRecoding = src.split("/")[7].split(".")[0];
+    const nameOfPersonRecording = src.split("/")[5];
     const [sameHourVideos, setSameHourVideos] = useState<HourlyVideo[]>([]);
     const [sameHourLoading, setSameHourLoading] = useState(false);
 
@@ -545,7 +547,7 @@ export default function VideoPage() {
                     🏠 Home
                 </button>
 
-                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {name}</h2>
+                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {dayOfRecording}/{nameOfPersonRecording}/{timeOfRecoding}</h2>
 
                 <div style={{marginLeft: "auto", display: "flex", gap: 10, alignItems: "center"}}>
                     {kind === "text" && (
@@ -634,7 +636,7 @@ export default function VideoPage() {
                             fontWeight: 600,
                         }}
                     >
-                        What other people were doing at that time:
+                        Other POVs for {dayOfRecording} at {timeOfRecoding}:00
                     </h3>
 
                     {sameHourLoading && (
