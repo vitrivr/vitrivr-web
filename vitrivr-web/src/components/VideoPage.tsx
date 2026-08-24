@@ -86,6 +86,71 @@ type RetrievablesResponse = {
     }>;
 };
 
+type HourlyVideo = {
+    person: string;
+    url: string;
+};
+
+/**
+ * Checks whether a video exists for the url.
+ */
+function videoExists(url: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        const video = document.createElement("video");
+
+        const cleanup = () => {
+            video.removeAttribute("src");
+            video.load();
+        };
+
+        video.preload = "metadata";
+
+        video.onloadedmetadata = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        video.onerror = () => {
+            cleanup();
+            resolve(false);
+        };
+        video.src = url;
+    });
+}
+
+/**
+ * Runs async checks with a concurrency limit s.t. we don't fire too many requests at the video server.
+ */
+async function filterExistingVideos(
+    videos: HourlyVideo[],
+    concurrency = 4
+): Promise<HourlyVideo[]> {
+    const existing: HourlyVideo[] = [];
+    let index = 0;
+
+    async function worker() {
+        while (true) {
+            const currentIndex = index++;
+            if (currentIndex >= videos.length) return;
+
+            const video = videos[currentIndex];
+
+            if (await videoExists(video.url)) {
+                existing.push(video);
+            }
+        }
+    }
+
+    await Promise.all(
+        Array.from(
+            {length: Math.min(concurrency, videos.length)},
+            () => worker()
+        )
+    );
+
+    return videos.filter((video) => existing.some((existingVideo) => existingVideo.url === video.url));
+}
+
 /**
  * Function that parses the URL of the video to extract the day, person and filename from the path.
  * Mainly used for displaying the videos from the same time, date but different person.
@@ -233,28 +298,52 @@ export default function VideoPage() {
 
     const src = item?.url ?? "";
     const start = item?.start ?? 0;
-    // const end = item?.end ?? 0; // TODO remove
     const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
+    const [sameHourVideos, setSameHourVideos] = useState<HourlyVideo[]>([]);
+    const [sameHourLoading, setSameHourLoading] = useState(false);
 
-    /**
-     * Creates the path for the videos from the same date and time but for other people.
-     * E.g. if the path is http://10.34.64.212:8080/videos/day3/Florian/video/13.mp4 ->
-     * http://10.34.64.212:8080/videos/day3/Allie/video/13.mp4 etc.
-     */
-    const sameHourVideos = useMemo(() => {
-        const info = parseVideoURL(src);
-        if (!info) return [];
+    useEffect(() => {
+        let cancelled = false;
 
-        return PEOPLE
-            .filter((person) => person !== info.person)
-            .map((person) => ({
-                person,
-                url:
-                    `${info.origin}/videos/` +
-                    `${encodeURIComponent(info.day)}/` +
-                    `${encodeURIComponent(person)}/video/` +
-                    `${encodeURIComponent(info.filename)}`,
-            }));
+        async function loadSameHourVideos() {
+            const info = parseVideoURL(src);
+
+            if (!info) {
+                setSameHourVideos([]);
+                return;
+            }
+
+            const candidates: HourlyVideo[] = PEOPLE
+                .filter((person) => person !== info.person)
+                .map((person) => ({
+                    person,
+                    url:
+                        `${info.origin}/videos/` +
+                        `${encodeURIComponent(info.day)}/` +
+                        `${encodeURIComponent(person)}/video/` +
+                        `${encodeURIComponent(info.filename)}`,
+                }));
+
+            setSameHourLoading(true);
+
+            try {
+                const existing = await filterExistingVideos(candidates, 4);
+
+                if (!cancelled) {
+                    setSameHourVideos(existing);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSameHourLoading(false);
+                }
+            }
+        }
+
+        loadSameHourVideos();
+
+        return () => {
+            cancelled = true;
+        };
     }, [src]);
 
     const currentVector = useMemo(() => {
@@ -533,8 +622,9 @@ export default function VideoPage() {
                     style={{
                         display: "grid",
                         gap: 12,
-                        maxHeight: "70vh",
+                        maxHeight: "75vh",
                         overflowY: "auto",
+                        paddingRight: 4,
                     }}
                 >
                     <h3
@@ -547,41 +637,62 @@ export default function VideoPage() {
                         What other people were doing at that time:
                     </h3>
 
-                    {sameHourVideos.length === 0 && (
+                    {sameHourLoading && (
+                        <div style={{opacity: 0.7, fontSize: 13}}>
+                            Loading hourly videos…
+                        </div>
+                    )}
+                    {!sameHourLoading && sameHourVideos.length === 0 && (
                         <div style={{opacity: 0.7, fontSize: 13}}>
                             No other videos available.
                         </div>
                     )}
 
-                    {sameHourVideos.map(({person, url}) => (
-                        <div
-                            key={person}
-                            style={{
-                                display: "grid",
-                                gap: 5,
-                            }}
-                        >
-                            <video
-                                src={url}
-                                controls
-                                preload="none"
-                                style={{
-                                    width: "80%",
-                                    borderRadius: 8,
-                                    background: "#000",
-                                }}
-                            />
-
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                            gap: 10,
+                        }}
+                    >
+                        {sameHourVideos.map(({person, url}) => (
                             <div
+                                key={url}
                                 style={{
-                                    fontSize: 13,
-                                    fontWeight: 500,
+                                    minWidth: 0,
+                                    display: "grid",
+                                    gap: 5,
                                 }}
                             >
-                                {person}
+                                <video
+                                    src={url}
+                                    controls
+                                    preload="none"
+                                    style={{
+                                        display: "block",
+                                        width: "100%",
+                                        aspectRatio: "16 / 9",
+                                        objectFit: "contain",
+                                        borderRadius: 8,
+                                        background: "#000",
+                                    }}
+                                />
+
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                    title={person}
+                                >
+                                    {person}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </aside>
             </div>
 
