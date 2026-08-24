@@ -54,6 +54,12 @@ import {retrieval} from "../vitirvr/api/client";
 
 type MediaKind = "image" | "video" | "custom";
 
+/**
+ * All the people contained in the CASTLE dataset 2024
+ */
+const PEOPLE = ["Allie", "Bao", "Bjorn", "Cathal", "Florian", "Kitchen", "Klaus", "Living1", "Living2", "Luca",
+    "Meeting", "Onanong", "Reading", "Stevan", "Tien", "Werner"];
+
 type MediaItem = {
     id: string;
     kind: MediaKind;
@@ -79,6 +85,30 @@ type RetrievablesResponse = {
         descriptors?: Record<string, unknown>;
     }>;
 };
+
+/**
+ * Function that parses the URL of the video to extract the day, person and filename from the path.
+ * Mainly used for displaying the videos from the same time, date but different person.
+ * @param url
+ */
+function parseVideoURL(url: string) {
+    if (!url) {
+        console.log("No URL was given. ")
+    } else {
+        try {
+            const parsed = new URL(url);
+            // TODO: adjust this to the actual schema of the filename. not all filenames contain "videos"
+            // the expected format is like this: http://10.34.64.212:8080/videos/day4/Luca/video/08.mp4
+            const match = parsed.pathname.match(/^\/videos\/([^/]+)\/([^/]+)\/video\/([^/]+)$/);
+            if (!match) {
+                return null;
+            }
+            return {origin: parsed.origin, day: match[1], person: match[2], filename: match[3]};
+        } catch {
+            return null;
+        }
+    }
+}
 
 function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
     const v = r.descriptors?.[key];
@@ -205,6 +235,27 @@ export default function VideoPage() {
     const start = item?.start ?? 0;
     // const end = item?.end ?? 0; // TODO remove
     const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
+
+    /**
+     * Creates the path for the videos from the same date and time but for other people.
+     * E.g. if the path is http://10.34.64.212:8080/videos/day3/Florian/video/13.mp4 ->
+     * http://10.34.64.212:8080/videos/day3/Allie/video/13.mp4 etc.
+     */
+    const sameHourVideos = useMemo(() => {
+        const info = parseVideoURL(src);
+        if (!info) return [];
+
+        return PEOPLE
+            .filter((person) => person !== info.person)
+            .map((person) => ({
+                person,
+                url:
+                    `${info.origin}/videos/` +
+                    `${encodeURIComponent(info.day)}/` +
+                    `${encodeURIComponent(person)}/video/` +
+                    `${encodeURIComponent(info.filename)}`,
+            }));
+    }, [src]);
 
     const currentVector = useMemo(() => {
         if (!id) return undefined;
@@ -454,15 +505,85 @@ export default function VideoPage() {
                 </div>
             </header>
 
-            <video
-                key={id}
-                ref={videoRef}
-                src={src}
-                poster={poster}
-                controls
-                preload="metadata"
-                style={{width: "100%", maxWidth: 960, borderRadius: 12, background: "#000"}}
-            />
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 3fr) minmax(260px, 1fr)",
+                    gap: 16,
+                    alignItems: "start",
+                }}
+            >
+                {/* Main video */}
+                <video
+                    key={id}
+                    ref={videoRef}
+                    src={src}
+                    poster={poster}
+                    controls
+                    preload="metadata"
+                    style={{
+                        width: "100%",
+                        borderRadius: 12,
+                        background: "#000",
+                    }}
+                />
+
+                {/* Same hour, different people */}
+                <aside
+                    style={{
+                        display: "grid",
+                        gap: 12,
+                        maxHeight: "70vh",
+                        overflowY: "auto",
+                    }}
+                >
+                    <h3
+                        style={{
+                            margin: 0,
+                            fontSize: 14,
+                            fontWeight: 600,
+                        }}
+                    >
+                        What other people were doing at that time:
+                    </h3>
+
+                    {sameHourVideos.length === 0 && (
+                        <div style={{opacity: 0.7, fontSize: 13}}>
+                            No other videos available.
+                        </div>
+                    )}
+
+                    {sameHourVideos.map(({person, url}) => (
+                        <div
+                            key={person}
+                            style={{
+                                display: "grid",
+                                gap: 5,
+                            }}
+                        >
+                            <video
+                                src={url}
+                                controls
+                                preload="none"
+                                style={{
+                                    width: "80%",
+                                    borderRadius: 8,
+                                    background: "#000",
+                                }}
+                            />
+
+                            <div
+                                style={{
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                }}
+                            >
+                                {person}
+                            </div>
+                        </div>
+                    ))}
+                </aside>
+            </div>
 
             <section style={{display: "grid", gap: 10}}>
                 <h3 style={{margin: 0, fontSize: 14, fontWeight: 600}}>Nearest neighbors</h3>
