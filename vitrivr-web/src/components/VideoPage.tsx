@@ -42,7 +42,7 @@
 
 
 "use client";
-import {useNavigate, useParams} from "react-router-dom";
+import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {thumbnailUrl, buildVectorQuery, servedVideoUrl} from "../lib/vitrivr";
 import {useSearch} from "../state/SearchContext";
 import {useEffect, useMemo, useRef, useState} from "react";
@@ -276,9 +276,12 @@ function mapNeighbors(schema: string, resp: RetrievablesResponse): MediaItem[] {
 }
 
 export default function VideoPage() {
+    const location = useLocation();
     const navigate = useNavigate();
     const {id} = useParams<{ id: string }>();
     const videoRef = useRef<HTMLVideoElement | null>(null);
+
+    const routeState = location.state as | { src?: string; poster?: string; start?: number; end?: number; } | null;
 
     const {items, schema, setVectorsById, vectorsById, setItems} = useSearch();
     const item = items.find((it) => it.id === id);
@@ -295,9 +298,8 @@ export default function VideoPage() {
     const [neighborsError, setNeighborsError] = useState<string | null>(null);
 
     const poster = id ? thumbnailUrl(schema, id) ?? "" : "";
-
-    const src = item?.url ?? "";
-    const start = item?.start ?? 0;
+    const src = item?.url ?? routeState?.src ?? "";
+    const start = typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
     const name = item?.name ?? (src ? videoNameFromUrl(src) : id ?? "");
     const [sameHourVideos, setSameHourVideos] = useState<HourlyVideo[]>([]);
     const [sameHourLoading, setSameHourLoading] = useState(false);
@@ -387,18 +389,6 @@ export default function VideoPage() {
             cancelled = true;
         };
     }, [session, evaluationId]);
-
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const onLoaded = () => {
-            video.currentTime = Math.min(start, video.duration || start);
-        };
-
-        video.addEventListener("loadedmetadata", onLoaded);
-        return () => video.removeEventListener("loadedmetadata", onLoaded);
-    }, [start]);
 
     useEffect(() => {
         window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
@@ -610,6 +600,16 @@ export default function VideoPage() {
                     poster={poster}
                     controls
                     preload="metadata"
+                    onLoadedMetadata={(e) => {
+                        const video = e.currentTarget;
+
+                        // console.log("Video start:", start);
+                        // console.log("Video duration:", video.duration);
+
+                        if (Number.isFinite(start) && start > 0) {
+                            video.currentTime = Math.min(start, video.duration);
+                        }
+                    }}
                     style={{
                         width: "100%",
                         borderRadius: 12,

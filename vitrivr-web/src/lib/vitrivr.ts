@@ -56,7 +56,6 @@ function basenameFromPath(p: string): string {
 export function servedVideoUrl(schema: string, filePath: string): string {
     if (!MEDIA_BASE) return "";
     const normalized = filePath.replace(/\\/g, "/");
-    console.log("Media path prefix is: " + MEDIA_PATH_PREFIX);
     const prefix = MEDIA_PATH_PREFIX.replace(/\\/g, "/").replace(/\/?$/, "/");
     const relative = prefix && normalized.startsWith(prefix)
         ? normalized.slice(prefix.length)
@@ -64,7 +63,6 @@ export function servedVideoUrl(schema: string, filePath: string): string {
     if (!relative) return "";
     const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
     const subpath = (import.meta.env.VITE_MEDIA_SUBPATH as string | undefined) ?? "";
-    console.log("pathhhh" + new URL(`${subpath}${encodedPath}`, MEDIA_BASE).toString())
     return new URL(`${subpath}${encodedPath}`, MEDIA_BASE).toString();
 }
 
