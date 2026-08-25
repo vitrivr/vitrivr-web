@@ -8,6 +8,8 @@ import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
+import {getHourFromFilename, getVideoAtOffset, parseVideoURL} from "./VideoHourUtils.ts";
+import HourGallery from "./HourGallery.tsx";
 
 /**
  * VideoPage component that appear as soon a result is clicked. This component allows for watching the video, looking
@@ -34,14 +36,33 @@ export default function VideoPage() {
     const poster = id ? thumbnailUrl(schema, id) ?? "" : "";
     const src = item?.url ?? routeState?.src ?? "";
     const start = typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
-    let dayOfRecording, timeOfRecording, nameOfPersonRecording = "";
-    try {
-        dayOfRecording = src.split("/")[4];
-        timeOfRecording = src.split("/")[7].split(".")[0];
-        nameOfPersonRecording = src.split("/")[5]
-    } catch {
-        console.log("Video Resource is empty!")
-    }
+    const [hourOffset, setHourOffset] = useState(0);
+
+    useEffect(() => {
+        setHourOffset(0);
+    }, [src]);
+
+    const activeVideoSrc = getVideoAtOffset(src, hourOffset) ?? src;
+    const activeInfo = parseVideoURL(activeVideoSrc);
+    const activeHour = activeInfo ? getHourFromFilename(activeInfo.filename) : null;
+    const dayOfRecording = activeInfo?.day ?? "";
+    const nameOfPersonRecording = activeInfo?.source ?? "";
+    const timeOfRecording = activeHour !== null ? String(activeHour).padStart(2, "0") : "";
+
+    /*
+     * Move the whole 3-video window, when arrow is clciked
+     */
+    const goPreviousHour = () => {
+        setHourOffset((current) =>
+            current - 1
+        );
+    };
+
+    const goNextHour = () => {
+        setHourOffset((current) =>
+            current + 1
+        );
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -210,45 +231,90 @@ export default function VideoPage() {
                 </div>
             </header>
 
-            <div
+            <main
                 style={{
                     display: "grid",
                     gap: 16,
                     alignItems: "start",
                 }}
             >
+                {/* Hour navigation */}
                 <div
                     style={{
                         width: "100%",
-                        maxWidth: 1200,
+                        maxWidth: 1400,
                         margin: "0 auto",
+                        display: "grid",
+                        gridTemplateColumns: "minmax(180px, 1fr) minmax(0, 3fr) minmax(180px, 1fr)",
+                        gap: 16,
+                        alignItems: "center",
                     }}
                 >
-                    <video
-                        key={id}
-                        ref={videoRef}
+                    {/* Previous hour */}
+                    <HourGallery
                         src={src}
-                        poster={poster}
-                        controls
-                        preload="metadata"
-                        onLoadedMetadata={(e) => {
-                            const video = e.currentTarget;
+                        direction="previous"
+                        offset={hourOffset}
+                        onPrevious={goPreviousHour}
+                        onNext={goNextHour}
+                    />
 
-                            if (Number.isFinite(start) && start > 0) {
-                                video.currentTime = Math.min(start, video.duration);
-                            }
-                        }}
+                    {/* center video */}
+                    <div
                         style={{
-                            display: "block",
-                            width: "100%",
-                            borderRadius: 8,
-                            background: "#000",
+                            minWidth: 0,
                         }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                marginBottom: 8,
+                            }}
+                        >
+                            <strong style={{fontSize: 13,}}>
+                                {timeOfRecording ? `${timeOfRecording}:00` : "Current"}
+                            </strong>
+                        </div>
+
+                        <video
+                            key={activeVideoSrc}
+                            ref={videoRef}
+                            src={activeVideoSrc}
+                            poster={hourOffset === 0 ? poster : undefined}
+                            controls
+                            preload="metadata"
+                            onLoadedMetadata={(
+                                e
+                            ) => {
+                                const video = e.currentTarget;
+                                if (hourOffset === 0 && Number.isFinite(start) && start > 0) {
+                                    video.currentTime = Math.min(start, video.duration);
+                                }
+                            }}
+                            style={{
+                                display: "block",
+                                width: "100%",
+                                aspectRatio: "16 / 9",
+                                objectFit: "contain",
+                                borderRadius: 8,
+                                background: "#000",
+                            }}
+                        />
+                    </div>
+
+                    {/* Next hour */}
+                    <HourGallery
+                        src={src}
+                        direction="next"
+                        offset={hourOffset}
+                        onPrevious={goPreviousHour}
+                        onNext={goNextHour}
                     />
                 </div>
-                <POVs src={src}/>
+                <POVs src={activeVideoSrc}/>
                 <NearestNeighbor id={id}/>
-            </div>
+            </main>
         </div>
     );
 }
