@@ -1,7 +1,7 @@
 import {Routes, Route, Navigate} from "react-router-dom";
 import Layout from "./components/Layout";
 import {SearchCard} from "./components/SearchCard";
-import VideoPage from "./components/VideoPage";
+import VideoPage from "./components/VideoPage/VideoPage.tsx";
 import {SearchProvider} from "./state/SearchContext.tsx";
 import "./styles/styles.css"
 
