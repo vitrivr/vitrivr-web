@@ -275,6 +275,70 @@ function mapNeighbors(schema: string, resp: RetrievablesResponse): MediaItem[] {
     return out;
 }
 
+function DisclosureHeader({
+                              open,
+                              onClick,
+                              title,
+                              count,
+                              loading,
+                          }: {
+    open: boolean;
+    onClick: () => void;
+    title: string;
+    count?: number;
+    loading?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={open}
+            style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "12px 14px",
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                background: "#fff",
+                cursor: "pointer",
+                textAlign: "left",
+            }}
+        >
+            <span
+                style={{
+                    display: "inline-block",
+                    transform: open ? "rotate(90deg)" : "rotate(0deg)",
+                    transition: "transform 150ms ease",
+                }}
+            >
+                ▶
+            </span>
+
+            <strong style={{fontSize: 14}}>{title}</strong>
+
+            {loading && (
+                <span style={{fontSize: 12, opacity: 0.6}}>
+                    Loading…
+                </span>
+            )}
+
+            {!loading && count !== undefined && (
+                <span
+                    style={{
+                        marginLeft: "auto",
+                        fontSize: 12,
+                        opacity: 0.6,
+                    }}
+                >
+                    {count}
+                </span>
+            )}
+        </button>
+    );
+}
+
 export default function VideoPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -310,6 +374,8 @@ export default function VideoPage() {
     }
     const [sameHourVideos, setSameHourVideos] = useState<HourlyVideo[]>([]);
     const [sameHourLoading, setSameHourLoading] = useState(false);
+    const [showOtherPovs, setShowOtherPovs] = useState(false);
+    const [showNeighbors, setShowNeighbors] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -401,6 +467,135 @@ export default function VideoPage() {
         window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
     }, [id]);
 
+    useEffect(() => {
+        if (!showOtherPovs) return;
+
+        let cancelled = false;
+
+        async function loadSameHourVideos() {
+            const info = parseVideoURL(src);
+
+            if (!info) {
+                setSameHourVideos([]);
+                return;
+            }
+
+            const candidates: HourlyVideo[] = PEOPLE
+                .filter((person) => person !== info.person)
+                .map((person) => ({
+                    person,
+                    url:
+                        `${info.origin}/videos/` +
+                        `${encodeURIComponent(info.day)}/` +
+                        `${encodeURIComponent(person)}/video/` +
+                        `${encodeURIComponent(info.filename)}`,
+                }));
+
+            setSameHourLoading(true);
+
+            try {
+                const existing = await filterExistingVideos(candidates, 4);
+
+                if (!cancelled) {
+                    setSameHourVideos(existing);
+                }
+            } finally {
+                if (!cancelled) {
+                    setSameHourLoading(false);
+                }
+            }
+        }
+
+        loadSameHourVideos();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [src, showOtherPovs]);
+
+
+    useEffect(() => {
+        if (!showNeighbors) return;
+
+        let cancelled = false;
+
+        async function loadNeighbors() {
+            if (!id) return;
+
+            if (!currentVector || currentVector.length === 0) {
+                setNeighbors([]);
+                setNeighborsError(
+                    "No clip.vector found for this segment."
+                );
+                return;
+            }
+
+            // Don't re-fetch if this video already loaded neighbors.
+            if (neighbors.length > 0) {
+                return;
+            }
+
+            setNeighborsLoading(true);
+            setNeighborsError(null);
+
+            try {
+                const body = buildVectorQuery(currentVector, 1000);
+
+                // @ts-expect-error
+                const resp = await retrieval.postExecuteQuery(schema, body);
+
+                if (cancelled) return;
+
+                const mapped = mapNeighbors(
+                    schema,
+                    resp as RetrievablesResponse
+                ).filter((m) => m.id !== id);
+
+                setVectorsById((prev) => {
+                    const next = {...prev};
+
+                    for (const m of mapped) {
+                        if (m.clipVector && m.clipVector.length > 0) {
+                            next[m.id] = m.clipVector;
+                        }
+                    }
+
+                    return next;
+                });
+
+                setNeighbors(mapped);
+            } catch (e: any) {
+                if (!cancelled) {
+                    setNeighborsError(e?.message ?? String(e));
+                }
+            } finally {
+                if (!cancelled) {
+                    setNeighborsLoading(false);
+                }
+            }
+        }
+
+        loadNeighbors();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        showNeighbors,
+        id,
+        schema,
+        currentVector,
+    ]);
+
+
+    useEffect(() => {
+        setNeighbors([]);
+        setNeighborsError(null);
+        setShowNeighbors(false);
+
+        setSameHourVideos([]);
+        setShowOtherPovs(false);
+    }, [id]);
 
     useEffect(() => {
         let cancelled = false;
@@ -594,146 +789,171 @@ export default function VideoPage() {
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "minmax(0, 3fr) minmax(220px, 1fr)",
                     gap: 16,
                     alignItems: "start",
                 }}
             >
                 {/* Main video */}
-                <video
-                    key={id}
-                    ref={videoRef}
-                    src={src}
-                    poster={poster}
-                    controls
-                    preload="metadata"
-                    onLoadedMetadata={(e) => {
-                        const video = e.currentTarget;
-
-                        // console.log("Video start:", start);
-                        // console.log("Video duration:", video.duration);
-
-                        if (Number.isFinite(start) && start > 0) {
-                            video.currentTime = Math.min(start, video.duration);
-                        }
-                    }}
+                <div
                     style={{
                         width: "100%",
-                        borderRadius: 5,
-                        background: "#000",
-                    }}
-                />
-
-                {/* Same hour, different people */}
-                <aside
-                    style={{
-                        display: "grid",
-                        gap: 12,
-                        maxHeight: "75vh",
-                        overflowY: "auto",
-                        paddingRight: 4,
+                        maxWidth: 1200,
+                        margin: "0 auto",
                     }}
                 >
-                    <h3
-                        style={{
-                            margin: 0,
-                            fontSize: 14,
-                            fontWeight: 600,
-                        }}
-                    >
-                        Other POVs for {dayOfRecording} at {timeOfRecording}:00
-                    </h3>
+                    <video
+                        key={id}
+                        ref={videoRef}
+                        src={src}
+                        poster={poster}
+                        controls
+                        preload="metadata"
+                        onLoadedMetadata={(e) => {
+                            const video = e.currentTarget;
 
-                    {sameHourLoading && (
-                        <div style={{opacity: 0.7, fontSize: 13}}>
-                            Loading hourly videos…
-                        </div>
-                    )}
-                    {!sameHourLoading && sameHourVideos.length === 0 && (
-                        <div style={{opacity: 0.7, fontSize: 13}}>
-                            No other videos available.
-                        </div>
-                    )}
-
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                            gap: 10,
+                            if (Number.isFinite(start) && start > 0) {
+                                video.currentTime = Math.min(start, video.duration);
+                            }
                         }}
-                    >
-                        {sameHourVideos.map(({person, url}) => (
+                        style={{
+                            display: "block",
+                            width: "100%",
+                            borderRadius: 8,
+                            background: "#000",
+                        }}
+                    />
+                </div>
+
+                <div
+                    style={{
+                        display: "grid",
+                        gap: 10,
+                        maxWidth: 1200,
+                        width: "100%",
+                        margin: "0 auto",
+                    }}
+                >
+                    <section>
+                        <DisclosureHeader
+                            open={showOtherPovs}
+                            onClick={() => setShowOtherPovs((value) => !value)}
+                            title={`Other POVs · ${dayOfRecording} at ${timeOfRecording}:00`}
+                            count={
+                                showOtherPovs && !sameHourLoading
+                                    ? sameHourVideos.length
+                                    : undefined
+                            }
+                            loading={showOtherPovs && sameHourLoading}
+                        />
+
+                        {showOtherPovs && (
                             <div
-                                key={url}
                                 style={{
-                                    minWidth: 0,
+                                    paddingTop: 10,
                                     display: "grid",
-                                    gap: 5,
+                                    gridTemplateColumns:
+                                        "repeat(auto-fill, minmax(180px, 1fr))",
+                                    gap: 10,
                                 }}
                             >
-                                <video
-                                    src={url}
-                                    controls
-                                    preload="none"
-                                    style={{
-                                        display: "block",
-                                        width: "100%",
-                                        aspectRatio: "16 / 9",
-                                        objectFit: "contain",
-                                        borderRadius: 8,
-                                        background: "#000",
-                                    }}
-                                />
+                                {!sameHourLoading &&
+                                    sameHourVideos.map(({person, url}) => (
+                                        <div
+                                            key={url}
+                                            style={{
+                                                display: "grid",
+                                                gap: 5,
+                                                minWidth: 0,
+                                            }}
+                                        >
+                                            <video
+                                                src={url}
+                                                controls
+                                                preload="none"
+                                                style={{
+                                                    width: "100%",
+                                                    aspectRatio: "16 / 9",
+                                                    objectFit: "contain",
+                                                    borderRadius: 8,
+                                                    background: "#000",
+                                                }}
+                                            />
 
-                                <div
-                                    style={{
-                                        fontSize: 12,
-                                        fontWeight: 500,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                    title={person}
-                                >
-                                    {person}
-                                </div>
+                                            <div
+                                                style={{
+                                                    fontSize: 12,
+                                                    fontWeight: 500,
+                                                }}
+                                            >
+                                                {person}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                {!sameHourLoading &&
+                                    sameHourVideos.length === 0 && (
+                                        <div style={{opacity: 0.6, fontSize: 13}}>
+                                            No other POVs available.
+                                        </div>
+                                    )}
                             </div>
-                        ))}
-                    </div>
-                </aside>
+                        )}
+                    </section>
+
+                    <section>
+                        <DisclosureHeader
+                            open={showNeighbors}
+                            onClick={() => setShowNeighbors((value) => !value)}
+                            title="Nearest neighbors of the thumbnail"
+                            count={
+                                showNeighbors && !neighborsLoading
+                                    ? neighbors.length
+                                    : undefined
+                            }
+                            loading={showNeighbors && neighborsLoading}
+                        />
+
+                        {showNeighbors && (
+                            <div style={{paddingTop: 10}}>
+                                {neighborsError && (
+                                    <div style={{color: "#b00020"}}>
+                                        {neighborsError}
+                                    </div>
+                                )}
+
+                                {!neighborsLoading &&
+                                    !neighborsError &&
+                                    neighbors.length === 0 && (
+                                        <div style={{opacity: 0.6}}>
+                                            No neighbors found.
+                                        </div>
+                                    )}
+
+                                {neighbors.length > 0 && (
+                                    <div className="results-grid">
+                                        {neighbors.map((n) => (
+                                            <ResultItem
+                                                key={n.id}
+                                                id={n.id}
+                                                kind="video"
+                                                start={n.start}
+                                                end={n.end}
+                                                preload="none"
+                                                controls={false}
+                                                mediaClassName="ri-media"
+                                                getPosterSrc={() => n.thumbUrl ?? ""}
+                                                getVideoSrc={() => n.url}
+                                                caption={n.name}
+                                                onBeforeOpen={() => openNeighbor(n)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </section>
+                </div>
             </div>
-
-            <section style={{display: "grid", gap: 10}}>
-                <h3 style={{margin: 0, fontSize: 14, fontWeight: 600}}>Nearest neighbors</h3>
-
-                {neighborsLoading && <div style={{opacity: 0.8}}>Loading neighbors…</div>}
-                {neighborsError && <div style={{color: "#b00020"}}>{neighborsError}</div>}
-
-                {!neighborsLoading && !neighborsError && neighbors.length === 0 && (
-                    <div style={{opacity: 0.7}}>No neighbors found.</div>
-                )}
-
-                {neighbors.length > 0 && (
-                    <div className="results-grid">
-                        {neighbors.map((n) => (
-                            <ResultItem
-                                key={n.id}
-                                id={n.id}
-                                kind="video"
-                                start={n.start}
-                                end={n.end}
-                                preload="none"
-                                controls={false}
-                                mediaClassName="ri-media"
-                                getPosterSrc={() => n.thumbUrl ?? ""}
-                                getVideoSrc={() => n.url}
-                                caption={n.name}
-                                onBeforeOpen={() => openNeighbor(n)}
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
         </div>
     );
 }
