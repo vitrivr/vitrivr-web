@@ -1,16 +1,20 @@
 import {useEffect, useState} from "react";
 import DisclosureSection from "./DisclosureHeader.tsx";
+import {PovCard} from "./POVCard.tsx";
 
 /**
  * All the people contained in the CASTLE dataset 2024
  * TODO: think of a prettier and less hard coded solution.
  */
-const PEOPLE = ["Allie", "Bao", "Bjorn", "Cathal", "Florian", "Kitchen", "Klaus", "Living1", "Living2", "Luca",
-    "Meeting", "Onanong", "Reading", "Stevan", "Tien", "Werner"];
+const PEOPLE = ["Allie", "Bao", "Bjorn", "Cathal", "Florian", "Klaus", "Luca", "Onanong", "Stevan", "Tien", "Werner"];
+const ROOMS = ["Reading", "Living1", "Living2", "Kitchen", "Meeting"];
 
-type HourlyVideo = {
-    person: string;
+type PovKind = "person" | "room";
+
+export type HourlyVideo = {
+    name: string;
     url: string;
+    kind: PovKind;
 };
 
 type ParsedVideoUrl = {
@@ -134,18 +138,34 @@ export default function POVs({src,}: OtherPovsProps) {
         async function loadVideos() {
             if (!info) return;
 
-            const candidates: HourlyVideo[] = PEOPLE
-                .filter(
-                    (person) => person !== info.person
-                )
+            const peopleCandidates: HourlyVideo[] = PEOPLE
+                .filter((person) => person !== info.person)
                 .map((person) => ({
-                    person,
+                    name: person,
+                    kind: "person",
                     url:
                         `${info.origin}/videos/` +
                         `${encodeURIComponent(info.day)}/` +
                         `${encodeURIComponent(person)}/video/` +
                         `${encodeURIComponent(info.filename)}`,
                 }));
+
+            const roomCandidates: HourlyVideo[] = ROOMS
+                .filter((room) => room !== info.person)
+                .map((room) => ({
+                    name: room,
+                    kind: "room",
+                    url:
+                        `${info.origin}/videos/` +
+                        `${encodeURIComponent(info.day)}/` +
+                        `${encodeURIComponent(room)}/video/` +
+                        `${encodeURIComponent(info.filename)}`,
+                }));
+
+            const candidates = [
+                ...peopleCandidates,
+                ...roomCandidates,
+            ];
 
             setLoading(true);
 
@@ -178,6 +198,14 @@ export default function POVs({src,}: OtherPovsProps) {
         return null;
     }
 
+    const peopleVideos = videos.filter(
+        (video) => video.kind === "person"
+    );
+
+    const roomVideos = videos.filter(
+        (video) => video.kind === "room"
+    );
+
     return (
         <DisclosureSection
             open={open}
@@ -196,48 +224,75 @@ export default function POVs({src,}: OtherPovsProps) {
                     No other POVs available.
                 </div>
             )}
-
             {videos.length > 0 && (
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns:
-                            "repeat(auto-fill, minmax(180px, 1fr))",
-                        gap: 10,
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 20,
+                        alignItems: "start",
                     }}
                 >
-                    {videos.map(({person, url}) => (
-                        <div
-                            key={url}
-                            style={{
-                                display: "grid",
-                                gap: 5,
-                                minWidth: 0,
-                            }}
-                        >
-                            <video
-                                src={url}
-                                controls
-                                preload="none"
+                    {peopleVideos.length > 0 && (
+                        <div>
+                            <h4
                                 style={{
-                                    width: "100%",
-                                    aspectRatio: "16 / 9",
-                                    objectFit: "contain",
-                                    borderRadius: 8,
-                                    background: "#000",
+                                    margin: "0 0 8px",
+                                    fontSize: 14,
+                                    fontWeight: 600,
                                 }}
-                            />
+                            >
+                                People
+                            </h4>
 
                             <div
                                 style={{
-                                    fontSize: 12,
-                                    fontWeight: 500,
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(auto-fill, minmax(180px, 1fr))",
+                                    gap: 10,
+
                                 }}
                             >
-                                {person}
+                                {peopleVideos.map((video) => (
+                                    <PovCard
+                                        key={video.url}
+                                        video={video}
+                                    />
+                                ))}
                             </div>
                         </div>
-                    ))}
+                    )}
+
+                    {roomVideos.length > 0 && (
+                        <div>
+                            <h4
+                                style={{
+                                    margin: "0 0 8px",
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                }}
+                            >
+                                Rooms
+                            </h4>
+
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns:
+                                        "repeat(auto-fill, minmax(180px, 1fr))",
+                                    gap: 10,
+                                }}
+                            >
+                                {roomVideos.map((video) => (
+                                    <PovCard
+                                        key={video.url}
+                                        video={video}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </DisclosureSection>

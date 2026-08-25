@@ -10,7 +10,7 @@ import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
 
 /**
- * VideoPage component that appear as soon a result is clicked. This components allows for watching the video, looking
+ * VideoPage component that appear as soon a result is clicked. This component allows for watching the video, looking
  * at similar results (Nearest Neighbor Search) and watching the videos which were captured during the same time
  * and day.
  * @constructor

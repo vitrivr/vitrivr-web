@@ -188,11 +188,8 @@ export default function NearestNeighbor({id,}: NearestNeighborsProps) {
             setError(null);
 
             try {
-                const body = buildVectorQuery(
-                    currentVector!,
-                    1000
-                );
-
+                const body = buildVectorQuery(currentVector!, 1000);
+                // @ts-expect-error
                 const response = await retrieval.postExecuteQuery(schema, body);
                 if (cancelled) return;
                 const mapped = mapNeighbors(schema, response as RetrievablesResponse).filter((neighbor) => neighbor.id !== id);
