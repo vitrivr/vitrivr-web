@@ -36,6 +36,15 @@ type VideoProps = {
 type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNode };
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
+function captionFromVideoURL(url: string) {
+    if (!url) return null;
+     try {
+         return url.split("/")[4] + "/" + url.split("/")[5] + "/" + url.split("/")[7].split(".")[0] + ":00";
+     } catch {
+         return url;
+     }
+}
+
 export default function ResultItem(props: ResultItemProps) {
     const {schema} = useSearch();
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -52,6 +61,8 @@ export default function ResultItem(props: ResultItemProps) {
     const [textAnswer, setTextAnswer] = useState("");
     const [hovered, setHovered] = useState(false);
     let media: React.ReactNode;
+    let displayCaption: React.ReactNode = caption;
+
 
     if (props.kind === "video") {
         const {
@@ -68,13 +79,13 @@ export default function ResultItem(props: ResultItemProps) {
 
         const src = getVideoSrc(id);
         const poster = (getPosterSrc ?? thumbnailUrl)(schema, id);
+        displayCaption = captionFromVideoURL(src);
 
         const handleLoadedMetadata = () => {
             if (videoRef.current && start != null) {
                 videoRef.current.currentTime = start;
             }
         };
-
 
         media = (
             <video
@@ -235,7 +246,9 @@ export default function ResultItem(props: ResultItemProps) {
                     style={{textDecoration: "none", color: "inherit", display: "block"}}
                 >
                     {media}
-                    <figcaption className={captionClassName}>{caption}</figcaption>
+                    <figcaption className={captionClassName}>
+                        {displayCaption}
+                    </figcaption>
                 </Link>
 
                 {props.kind === "video" && (
