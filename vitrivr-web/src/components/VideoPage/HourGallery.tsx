@@ -130,7 +130,7 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                     key={videoUrl}
                     src={videoUrl}
                     controls
-                    preload="none"
+                    preload="metadata"
                     style={{
                         display: "block",
                         width: "100%",
