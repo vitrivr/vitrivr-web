@@ -16,7 +16,7 @@ type PovKind = "person" | "room";
 
 /**
  * This type slightly differs from a ResultItem, but essentially serves the same purpose. The only difference is that
- * with the hourly videos are not vitrivr results, but "bare" videos. Thus the thumbnails and the clip vectors need
+ * with the hourly videos are not vitrivr results, but "bare" videos. Thus, the thumbnails and the clip vectors need
  * to be generated.
  */
 export type HourlyVideo = {
@@ -24,7 +24,8 @@ export type HourlyVideo = {
     name: string;
     url: string;
     kind: PovKind;
-    clipVector?: number[];
+    thumbnail?: string;
+    CLIPVector?: number[];
 };
 
 type ParsedVideoUrl = {
@@ -37,11 +38,6 @@ type ParsedVideoUrl = {
 type OtherPovsProps = {
     src: string;
 };
-
-type POVAnalysis = {
-    thumbnail: string;
-    CLIPVector: number[];
-}
 
 /**
  * Function that parses the URL of the video to extract the day, person and filename from the path.
@@ -95,7 +91,7 @@ function videoExists(url: string): Promise<boolean> {
     });
 }
 
-async function generateThumbnailAndClip(video: HourlyVideo): Promise<POVAnalysis | undefined> {
+async function generateThumbnailAndClip(video: HourlyVideo): Promise<HourlyVideo | undefined> {
     try {
         const thumbnail = await generateVideoThumbnail(video.url);
         if (!thumbnail) {
@@ -104,7 +100,7 @@ async function generateThumbnailAndClip(video: HourlyVideo): Promise<POVAnalysis
         }
         const CLIPVector = await requestCLIPVector(thumbnail);
         console.log(thumbnail, CLIPVector);
-        return {thumbnail, CLIPVector,};
+        return {...video, thumbnail, CLIPVector,};
     } catch (error) {
         console.error("Failed to generate thumbnail / CLIP vector:", video.url, error);
         return undefined;
@@ -263,8 +259,8 @@ function generateVideoThumbnail(url: string, seekTime = 1): Promise<string | und
  * @param videos
  * @param concurrency
  */
-async function generatePOVData(videos: HourlyVideo[], concurrency = 2): Promise<Record<string, POVAnalysis>> {
-    const results: Record<string, POVAnalysis> = {};
+async function generatePOVData(videos: HourlyVideo[], concurrency = 2): Promise<HourlyVideo[]> {
+    const results: HourlyVideo[] = [];
     let index = 0;
     async function worker() {
         while (true) {
@@ -273,10 +269,9 @@ async function generatePOVData(videos: HourlyVideo[], concurrency = 2): Promise<
             if (currentIndex >= videos.length) {
                 return;
             }
-            const video = videos[currentIndex];
-            const result = await generateThumbnailAndClip(video);
+            const result = await generateThumbnailAndClip(videos[currentIndex]);
             if (result) {
-                results[video.id] = result; // this works
+                results.push(result);
             }
         }
     }
@@ -306,7 +301,6 @@ export default function POVs({src,}: OtherPovsProps) {
     const [videos, setVideos] = useState<HourlyVideo[]>([]);
     const [loading, setLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
-    const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
     const processingClipIds = useRef<Set<string>>(new Set());
     const {setVectorsById, setItems,} = useSearch();
 
@@ -338,15 +332,15 @@ export default function POVs({src,}: OtherPovsProps) {
                     name: video.name,
                     start: 0,
                     end: 0,
-                    clipVector: video.clipVector,
+                    clipVector: video.CLIPVector,
                 },
             ];
         });
 
-        if (video.clipVector?.length) {
+        if (video.CLIPVector?.length) {
             setVectorsById((previous) => ({
                 ...previous,
-                [video.id]: video.clipVector!,
+                [video.id]: video.CLIPVector!,
             }));
         }
     }
@@ -426,7 +420,7 @@ export default function POVs({src,}: OtherPovsProps) {
 
         const missing = videos.filter(
             (video) =>
-                !video.clipVector &&
+                !video.CLIPVector &&
                 !processingClipIds.current.has(video.id)
         );
 
@@ -450,49 +444,32 @@ export default function POVs({src,}: OtherPovsProps) {
                 return;
             }
 
-            // Save thumbnails
-            setThumbnails((previous) => {
-                const next = {...previous};
+            const generatedById = new Map(generated.map((video) => [video.id, video,]));
 
-                for (
-                    const [id, result]
-                    of Object.entries(generated)
-                    ) {
-                    next[id] = result.thumbnail;
-                }
-
-                return next;
-            });
-
-            // Save CLIP vectors in the POV video objects
             setVideos((previous) =>
-                previous.map((video) => {
-                    const result = generated[video.id];
-
-                    if (!result) {
-                        return video;
-                    }
-
-                    return {
-                        ...video,
-                        clipVector: result.CLIPVector,
-                    };
-                })
+                previous.map((video) =>
+                    generatedById.get(video.id) ??
+                    video
+                )
             );
 
-            // set the vectors to the correct results
             setVectorsById((previous) => {
                 const next = {...previous};
 
-                for (const [id, result] of Object.entries(generated)) {
-                    next[id] = result.CLIPVector;
+                for (const video of generated) {
+                    if (video.CLIPVector?.length) {
+                        next[video.id] =
+                            video.CLIPVector;
+                    }
                 }
 
                 return next;
             });
 
             for (const video of missing) {
-                processingClipIds.current.delete(video.id);
+                processingClipIds.current.delete(
+                    video.id
+                );
             }
         }
 
@@ -576,7 +553,7 @@ export default function POVs({src,}: OtherPovsProps) {
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
-                                        getPosterSrc={() => thumbnails[video.id] ?? ""}
+                                        getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
                                         onBeforeOpen={() => savePovBeforeOpen}
                                         caption={video.name}
@@ -616,7 +593,7 @@ export default function POVs({src,}: OtherPovsProps) {
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
-                                        getPosterSrc={() => thumbnails[video.id] ?? ""}
+                                        getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
                                         onBeforeOpen={() => savePovBeforeOpen}
                                         caption={video.name}
