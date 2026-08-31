@@ -52,10 +52,10 @@ import ResultItem from "./Results/ResultItem.tsx";
 import {
     buildTextQuery,
     buildTemporalQuery,
-    fileToBase64,
     buildSegmentMediaUrls,
     type VitrivrRetrievable
 } from "../lib/vitrivr.ts";
+import {fileToBase64} from "../lib/helpers.ts";
 import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";

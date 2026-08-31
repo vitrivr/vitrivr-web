@@ -1,7 +1,9 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import ResultItem from "../Results/ResultItem.tsx";
 import {uuid} from "../../utils/uuid.ts";
+import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
+import {useSearch} from "../../state/SearchContext.tsx";
 
 /**
  * All the people contained in the CASTLE dataset 2024
@@ -12,11 +14,17 @@ const ROOMS = ["Reading", "Living1", "Living2", "Kitchen", "Meeting"];
 
 type PovKind = "person" | "room";
 
+/**
+ * This type slightly differs from a ResultItem, but essentially serves the same purpose. The only difference is that
+ * with the hourly videos are not vitrivr results, but "bare" videos. Thus the thumbnails and the clip vectors need
+ * to be generated.
+ */
 export type HourlyVideo = {
     id: string;
     name: string;
     url: string;
     kind: PovKind;
+    clipVector?: number[];
 };
 
 type ParsedVideoUrl = {
@@ -29,6 +37,11 @@ type ParsedVideoUrl = {
 type OtherPovsProps = {
     src: string;
 };
+
+type POVAnalysis = {
+    thumbnail: string;
+    CLIPVector: number[];
+}
 
 /**
  * Function that parses the URL of the video to extract the day, person and filename from the path.
@@ -80,6 +93,22 @@ function videoExists(url: string): Promise<boolean> {
 
         video.src = url;
     });
+}
+
+async function generateThumbnailAndClip(video: HourlyVideo): Promise<POVAnalysis | undefined> {
+    try {
+        const thumbnail = await generateVideoThumbnail(video.url);
+        if (!thumbnail) {
+            console.warn("Could not generate thumbnail for:", video.url);
+            return undefined;
+        }
+        const CLIPVector = await requestCLIPVector(thumbnail);
+        console.log(thumbnail, CLIPVector);
+        return {thumbnail, CLIPVector,};
+    } catch (error) {
+        console.error("Failed to generate thumbnail / CLIP vector:", video.url, error);
+        return undefined;
+    }
 }
 
 /**
@@ -228,27 +257,43 @@ function generateVideoThumbnail(url: string, seekTime = 1): Promise<string | und
 }
 
 /**
- * Generates the thumbnails for all hourly POV videos and returns them.
- * @param videos HourlyVideo[]
+ * This generates CLIP vector and the thumbnail for the POV data. This is necessary because it is not a vitrivr result.
+ * It does this by requesting the CLIP vectors at the vitrivr descriptor server and the thumbnails are cut from the
+ * video itself.
+ * @param videos
  * @param concurrency
  */
-async function generateThumbnails(videos: HourlyVideo[], concurrency = 2): Promise<Record<string, string>> {
-    const thumbnails: Record<string, string> = {};
+async function generatePOVData(videos: HourlyVideo[], concurrency = 2): Promise<Record<string, POVAnalysis>> {
+    const results: Record<string, POVAnalysis> = {};
     let index = 0;
-
     async function worker() {
         while (true) {
             const currentIndex = index++;
-            if (currentIndex >= videos.length) {return; }
+
+            if (currentIndex >= videos.length) {
+                return;
+            }
             const video = videos[currentIndex];
-            const thumbnail = await generateVideoThumbnail(video.url);
-            if (thumbnail) {
-                thumbnails[video.id] = thumbnail;
+            const result = await generateThumbnailAndClip(video);
+            if (result) {
+                results[video.id] = result; // this works
             }
         }
     }
-    await Promise.all(Array.from({length: Math.min(concurrency, videos.length),}, () => worker()));
-    return thumbnails;
+
+    await Promise.all(
+        Array.from(
+            {
+                length: Math.min(
+                    concurrency,
+                    videos.length
+                ),
+            },
+            () => worker()
+        )
+    );
+
+    return results;
 }
 
 /**
@@ -262,6 +307,8 @@ export default function POVs({src,}: OtherPovsProps) {
     const [loading, setLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+    const processingClipIds = useRef<Set<string>>(new Set());
+    const {setVectorsById, setItems,} = useSearch();
 
     const info = parseVideoURL(src);
     useEffect(() => {
@@ -271,6 +318,38 @@ export default function POVs({src,}: OtherPovsProps) {
         setLoaded(false);
         setLoading(false);
     }, [src]);
+
+    function savePovBeforeOpen(video: HourlyVideo) {
+        setItems((previous) => {
+            if (
+                previous.some(
+                    (item) => item.id === video.id
+                )
+            ) {
+                return previous;
+            }
+
+            return [
+                ...previous,
+                {
+                    id: video.id,
+                    kind: "video",
+                    url: video.url,
+                    name: video.name,
+                    start: 0,
+                    end: 0,
+                    clipVector: video.clipVector,
+                },
+            ];
+        });
+
+        if (video.clipVector?.length) {
+            setVectorsById((previous) => ({
+                ...previous,
+                [video.id]: video.clipVector!,
+            }));
+        }
+    }
 
     useEffect(() => {
         if (!open || loaded || !info) {
@@ -341,24 +420,91 @@ export default function POVs({src,}: OtherPovsProps) {
     }, [open, loaded, info?.origin, info?.day, info?.person, info?.filename]);
 
     useEffect(() => {
-        if (!open || videos.length === 0) return;
+        if (!open || videos.length === 0) {
+            return;
+        }
+
+        const missing = videos.filter(
+            (video) =>
+                !video.clipVector &&
+                !processingClipIds.current.has(video.id)
+        );
+
+        if (missing.length === 0) {
+            return;
+        }
+
         let cancelled = false;
 
-        async function loadThumbnails() {
-            const missing = videos.filter((video) => !thumbnails[video.id]);
-            if (missing.length === 0) return;
-            const generated = await generateThumbnails(missing, 2);
-            if (!cancelled && Object.keys(generated).length > 0) {
-                setThumbnails((previous) => ({
-                    ...previous,
-                    ...generated,
-                }));
+        for (const video of missing) {
+            processingClipIds.current.add(video.id);
+        }
+
+        async function loadPovData() {
+            const generated = await generatePOVData(
+                missing,
+                2
+            );
+
+            if (cancelled) {
+                return;
+            }
+
+            // Save thumbnails
+            setThumbnails((previous) => {
+                const next = {...previous};
+
+                for (
+                    const [id, result]
+                    of Object.entries(generated)
+                    ) {
+                    next[id] = result.thumbnail;
+                }
+
+                return next;
+            });
+
+            // Save CLIP vectors in the POV video objects
+            setVideos((previous) =>
+                previous.map((video) => {
+                    const result = generated[video.id];
+
+                    if (!result) {
+                        return video;
+                    }
+
+                    return {
+                        ...video,
+                        clipVector: result.CLIPVector,
+                    };
+                })
+            );
+
+            // set the vectors to the correct results
+            setVectorsById((previous) => {
+                const next = {...previous};
+
+                for (const [id, result] of Object.entries(generated)) {
+                    next[id] = result.CLIPVector;
+                }
+
+                return next;
+            });
+
+            for (const video of missing) {
+                processingClipIds.current.delete(video.id);
             }
         }
-        loadThumbnails();
 
-        return () => {cancelled = true;};
-    }, [open, videos]);
+        loadPovData();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        open,
+        videos,
+    ]);
 
     if (!info) {
         return null;
@@ -432,6 +578,7 @@ export default function POVs({src,}: OtherPovsProps) {
                                         mediaClassName="ri-media"
                                         getPosterSrc={() => thumbnails[video.id] ?? ""}
                                         getVideoSrc={() => video.url}
+                                        onBeforeOpen={() => savePovBeforeOpen}
                                         caption={video.name}
                                     />
                                 ))}
@@ -471,6 +618,7 @@ export default function POVs({src,}: OtherPovsProps) {
                                         mediaClassName="ri-media"
                                         getPosterSrc={() => thumbnails[video.id] ?? ""}
                                         getVideoSrc={() => video.url}
+                                        onBeforeOpen={() => savePovBeforeOpen}
                                         caption={video.name}
                                     />
                                 ))}
