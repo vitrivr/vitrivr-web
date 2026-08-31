@@ -193,42 +193,6 @@ export default function VideoPage() {
                 </button>
 
                 <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {dayOfRecording}/{nameOfPersonRecording}/{timeOfRecording}</h2>
-
-                <div style={{marginLeft: "auto", display: "flex", gap: 10, alignItems: "center"}}>
-                    {kind === "text" && (
-                        <input
-                            value={textAnswer}
-                            onChange={(e) => setTextAnswer(e.target.value)}
-                            placeholder="Type answer (DRES)…"
-                            style={{
-                                width: 260,
-                                maxWidth: "50vw",
-                                border: "1px solid #ddd",
-                                borderRadius: 10,
-                                padding: "8px 10px",
-                                background: "#fff",
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") onSubmit();
-                            }}
-                        />
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={onSubmit}
-                        disabled={submitting}
-                        style={{
-                            border: "1px solid #ddd",
-                            borderRadius: 10,
-                            padding: "8px 12px",
-                            background: "#FF00FF",
-                            cursor: "pointer",
-                        }}
-                    >
-                        {submitting ? "Submitting…" : "Submit"}
-                    </button>
-                </div>
             </header>
 
             <main
@@ -284,9 +248,7 @@ export default function VideoPage() {
                             poster={hourOffset === 0 ? poster : undefined}
                             controls
                             preload="metadata"
-                            onLoadedMetadata={(
-                                e
-                            ) => {
+                            onLoadedMetadata={(e) => {
                                 const video = e.currentTarget;
                                 if (hourOffset === 0 && Number.isFinite(start) && start > 0) {
                                     video.currentTime = Math.min(start, video.duration);
@@ -301,6 +263,52 @@ export default function VideoPage() {
                                 background: "#000",
                             }}
                         />
+
+                        {/* Submission controls */}
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                alignItems: "center",
+                                gap: 10,
+                                marginTop: 10,
+                            }}
+                        >
+                            {kind === "text" && (
+                                <input
+                                    value={textAnswer}
+                                    onChange={(e) => setTextAnswer(e.target.value)}
+                                    placeholder="Type answer (DRES)…"
+                                    style={{
+                                        width: 260,
+                                        maxWidth: "60%",
+                                        border: "1px solid #ddd",
+                                        borderRadius: 10,
+                                        padding: "8px 10px",
+                                        background: "#fff",
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") onSubmit();
+                                    }}
+                                />
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={onSubmit}
+                                disabled={submitting}
+                                style={{
+                                    border: "1px solid #ddd",
+                                    borderRadius: 10,
+                                    padding: "8px 16px",
+                                    background: "#FF00FF",
+                                    cursor: submitting ? "not-allowed" : "pointer",
+                                    fontWeight: 600,
+                                }}
+                            >
+                                {submitting ? "Submitting…" : "Submit"}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Next hour */}

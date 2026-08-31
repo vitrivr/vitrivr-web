@@ -365,12 +365,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
  * @param emotions emotion label such as happy, sad, etc.
  * @param emotionType where the emotions occurs such as face, asr or ocr.
  */
-export function buildTextQuery(
-    field: string,
-    prompt: string,
-    emotions: string = "",
-    emotionType: string = ""
-) {
+export function buildTextQuery(field: string, prompt: string, emotions: string = "", emotionType: string = "") {
     const LIMIT = "1000";
 
     let emotionField = "emotionssound";

@@ -161,6 +161,7 @@ export default function NearestNeighbor({id,}: NearestNeighborsProps) {
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const currentVector = useMemo(() => vectorsById?.[id], [id, vectorsById]);
+    const [hovered, setHovered] = useState(false);
 
     useEffect(() => {
         setOpen(false);

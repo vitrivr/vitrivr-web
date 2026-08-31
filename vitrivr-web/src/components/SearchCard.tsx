@@ -49,12 +49,7 @@ import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultItem from "./Results/ResultItem.tsx";
-import {
-    buildTextQuery,
-    buildTemporalQuery,
-    buildSegmentMediaUrls,
-    type VitrivrRetrievable
-} from "../lib/vitrivr.ts";
+import {buildTextQuery, buildTemporalQuery, buildSegmentMediaUrls, type VitrivrRetrievable} from "../lib/vitrivr.ts";
 import {fileToBase64} from "../lib/helpers.ts";
 import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
@@ -82,7 +77,6 @@ const queryTypeItems =
     ] as const satisfies RadioOption<QueryType>[];
 
 type MediaKind = "image" | "video" | "custom";
-
 
 type MediaItem = {
     id: string;
@@ -209,10 +203,7 @@ function pickFloatArray(
 }
 
 
-function pickDescriptorScalar(
-    r: { descriptors?: Record<string, unknown> },
-    key: string
-): number | undefined {
+function pickDescriptorScalar(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
     const v = r.descriptors?.[key];
 
     if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -280,7 +271,6 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
         if (!id) return null;
 
         const kind = mapTypeToKind(r.type);
-
         const startRaw = pickDescriptorScalar(r as any, "time.start") ?? 0;
         const endRaw = pickDescriptorScalar(r as any, "time.end") ?? 0;
         const start = nsToSecondsMaybe(startRaw);
@@ -403,11 +393,8 @@ export function SearchCard() {
     };
 
 
-    const onSearchRef = useRef<() => void>(() => {
-    });
-    onSearchRef.current = () => {
-        void onSearch();
-    };
+    const onSearchRef = useRef<() => void>(() => {});
+    onSearchRef.current = () => {void onSearch();};
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
