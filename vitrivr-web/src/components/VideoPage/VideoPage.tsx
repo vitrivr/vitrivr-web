@@ -10,6 +10,8 @@ import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
 import {getHourFromFilename, getVideoAtOffset, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
+import {generateVideoThumbnail} from "./utils.ts";
+import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
 
 /**
  * VideoPage component that appear as soon a result is clicked. This component allows for watching the video, looking
@@ -30,6 +32,8 @@ export default function VideoPage() {
     const {session, openLogin} = useAuth();
     const {evaluationId} = useAuth();
     const [submitting, setSubmitting] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [nnVector, setNnVector] = useState<number[] | null>(null);
 
     const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
     const [textAnswer, setTextAnswer] = useState("");
@@ -89,6 +93,41 @@ export default function VideoPage() {
     useEffect(() => {
         window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
     }, [id]);
+
+    const onSearch = async (): Promise<void> => {
+        const video = videoRef.current;
+
+        if (!video) {
+            console.error("Video element is not available.");
+            return;
+        }
+
+        setSearching(true);
+
+        try {
+            video.pause();
+            const currentTimestamp = video.currentTime;
+            const thumbnail = await generateVideoThumbnail(
+                activeVideoSrc,
+                currentTimestamp
+            );
+
+            if (!thumbnail) {
+                throw new Error("Could not generate thumbnail.");
+            }
+            const clipVector = await requestCLIPVector(thumbnail);
+
+            if (!clipVector?.length) {
+                throw new Error("Could not generate CLIP vector.");
+            }
+            setNnVector(clipVector);
+        } catch (error) {
+            console.error("Nearest-neighbor search failed:", error);
+            alert(error instanceof Error ? error.message : "Nearest-neighbor search failed.");
+        } finally {
+            setSearching(false);
+        }
+    };
 
 
     const onSubmit = async () => {
@@ -264,6 +303,22 @@ export default function VideoPage() {
                             }}
                         />
 
+                        <button
+                            type="button"
+                            onClick={onSearch}
+                            disabled={searching}
+                            style={{
+                                border: "1px solid #ddd",
+                                borderRadius: 10,
+                                padding: "8px 16px",
+                                background: "#A5A8F0",
+                                cursor: searching ? "not-allowed" : "pointer",
+                                fontWeight: 600,
+                            }}
+                        >
+                            {searching ? "Searching NN…" : "Search NN"}
+                        </button>
+
                         {/* Submission controls */}
                         <div
                             style={{
@@ -321,7 +376,7 @@ export default function VideoPage() {
                     />
                 </div>
                 <POVs src={activeVideoSrc}/>
-                <NearestNeighbor id={id}/>
+                <NearestNeighbor id={id} queryVector={nnVector}/>
             </main>
         </div>
     );

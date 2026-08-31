@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {buildVectorQuery, servedVideoUrl, thumbnailUrl,} from "../../lib/vitrivr";
 import {useSearch} from "../../state/SearchContext";
@@ -34,6 +34,7 @@ type RetrievablesResponse = {
 
 type NearestNeighborsProps = {
     id: string;
+    queryVector: number[] | null;
 };
 
 function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
@@ -116,11 +117,7 @@ function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem
             continue;
         }
 
-        const clipVector = pickFloatArray(
-            retrievable,
-            "clip.vector"
-        );
-
+        const clipVector = pickFloatArray(retrievable, "clip.vector");
         const filePath = (retrievable.descriptors?.["file.path"] as string | undefined) ||
             (retrievable.relationship?.partOf?.descriptors?.["file.path"] as string | undefined);
 
@@ -152,16 +149,14 @@ function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem
  * has a pink submit button for DRES. The results are clickable. If you click on a result the video is openend
  * and can be watched and the nearest neighbor search results of that video are again displayed.
  */
-export default function NearestNeighbor({id,}: NearestNeighborsProps) {
+export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProps) {
     const navigate = useNavigate();
-    const {schema, vectorsById, setVectorsById, setItems} = useSearch();
     const [open, setOpen] = useState(false);
     const [neighbors, setNeighbors] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const currentVector = useMemo(() => vectorsById?.[id], [id, vectorsById]);
-    const [hovered, setHovered] = useState(false);
+    const {schema, setVectorsById, setItems} = useSearch();
 
     useEffect(() => {
         setOpen(false);
@@ -172,13 +167,7 @@ export default function NearestNeighbor({id,}: NearestNeighborsProps) {
     }, [id]);
 
     useEffect(() => {
-        if (!open || loaded) {
-            return;
-        }
-
-        if (!currentVector || currentVector.length === 0) {
-            setError("No clip.vector found for this segment.");
-            setLoaded(true);
+        if (!queryVector?.length) {
             return;
         }
 
@@ -186,15 +175,23 @@ export default function NearestNeighbor({id,}: NearestNeighborsProps) {
 
         async function loadNeighbors() {
             setLoading(true);
+            setLoaded(false);
             setError(null);
+            setOpen(true);
 
             try {
-                const body = buildVectorQuery(currentVector!, 1000);
+                const body = buildVectorQuery(queryVector!, 1000);
+
                 // @ts-expect-error
                 const response = await retrieval.postExecuteQuery(schema, body);
                 if (cancelled) return;
-                const mapped = mapNeighbors(schema, response as RetrievablesResponse).filter((neighbor) => neighbor.id !== id);
 
+                const mapped = mapNeighbors(
+                    schema,
+                    response as RetrievablesResponse
+                ).filter(
+                    (neighbor) => neighbor.id !== id
+                );
                 setVectorsById((previous) => {
                     const next = {...previous};
 
@@ -225,11 +222,9 @@ export default function NearestNeighbor({id,}: NearestNeighborsProps) {
             cancelled = true;
         };
     }, [
-        open,
-        loaded,
+        queryVector,
         id,
         schema,
-        currentVector,
         setVectorsById,
     ]);
 
