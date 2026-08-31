@@ -251,7 +251,7 @@ export default function ResultItem(props: ResultItemProps) {
                     </figcaption>
                 </Link>
 
-                {props.kind === "video" && (
+                {props.kind === "video" && hovered && (
                     <button
                         type="button"
                         onClick={onSubmit}
