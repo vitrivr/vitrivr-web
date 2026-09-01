@@ -34,6 +34,7 @@ export default function VideoPage() {
     const [submitting, setSubmitting] = useState(false);
     const [searching, setSearching] = useState(false);
     const [nnVector, setNnVector] = useState<number[] | null>(null);
+    const [hasNeighbors, setHasNeighbors] = useState(false);
 
     const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
     const [textAnswer, setTextAnswer] = useState("");
@@ -380,7 +381,7 @@ export default function VideoPage() {
                     />
                 </div>
                 <POVs src={activeVideoSrc} timestamp={playbackTimestamp} />
-                <NearestNeighbor id={id} queryVector={nnVector}/>
+                <NearestNeighbor id={id} queryVector={nnVector} onResultsChange={setHasNeighbors}/>
             </main>
         </div>
     );

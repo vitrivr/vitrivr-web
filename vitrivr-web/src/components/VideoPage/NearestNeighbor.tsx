@@ -35,6 +35,7 @@ type RetrievablesResponse = {
 type NearestNeighborsProps = {
     id: string;
     queryVector: number[] | null;
+    onResultsChange: (hasResults: boolean) => void;
 };
 
 function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
@@ -149,7 +150,7 @@ function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem
  * has a pink submit button for DRES. The results are clickable. If you click on a result the video is openend
  * and can be watched and the nearest neighbor search results of that video are again displayed.
  */
-export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProps) {
+export default function NearestNeighbor({id, queryVector, onResultsChange}: NearestNeighborsProps) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [neighbors, setNeighbors] = useState<MediaItem[]>([]);
@@ -179,6 +180,9 @@ export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProp
             setError(null);
             setOpen(true);
 
+            setNeighbors([]); // set the neighbors to none, such that during the search no results appear.
+            onResultsChange?.(false);
+
             try {
                 const body = buildVectorQuery(queryVector!, 1000);
 
@@ -205,6 +209,11 @@ export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProp
                 });
 
                 setNeighbors(mapped);
+                const hasResults = mapped.length > 0;
+                onResultsChange?.(hasResults);
+                if (hasResults) {
+                    setOpen(true);
+                }
                 setLoaded(true);
             } catch (error: unknown) {
                 if (cancelled) return;
@@ -257,6 +266,10 @@ export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProp
         );
     }
 
+    if (neighbors.length === 0) {
+        return null;
+    }
+
     return (
         <DisclosureSection
             open={open}
@@ -277,43 +290,32 @@ export default function NearestNeighbor({id, queryVector,}: NearestNeighborsProp
                 </div>
             )}
 
-            {!loading &&
-                loaded &&
-                !error &&
-                neighbors.length === 0 && (
-                    <div style={{opacity: 0.6}}>
-                        No neighbors found.
-                    </div>
-                )}
-
-            {neighbors.length > 0 && (
-                <div className="results-grid">
-                    {neighbors.map((neighbor) => (
-                        <ResultItem
-                            key={neighbor.id}
-                            id={neighbor.id}
-                            kind="video"
-                            start={neighbor.start}
-                            end={neighbor.end}
-                            preload="none"
-                            controls={false}
-                            mediaClassName="ri-media"
-                            getPosterSrc={() =>
-                                neighbor.thumbUrl ?? ""
-                            }
-                            getVideoSrc={() =>
-                                neighbor.url
-                            }
-                            caption={neighbor.name}
-                            onBeforeOpen={() =>
-                                openNeighbor(
-                                    neighbor
-                                )
-                            }
-                        />
-                    ))}
-                </div>
-            )}
+            <div className="results-grid">
+                {neighbors.map((neighbor) => (
+                    <ResultItem
+                        key={neighbor.id}
+                        id={neighbor.id}
+                        kind="video"
+                        start={neighbor.start}
+                        end={neighbor.end}
+                        preload="none"
+                        controls={false}
+                        mediaClassName="ri-media"
+                        getPosterSrc={() =>
+                            neighbor.thumbUrl ?? ""
+                        }
+                        getVideoSrc={() =>
+                            neighbor.url
+                        }
+                        caption={neighbor.name}
+                        onBeforeOpen={() =>
+                            openNeighbor(
+                                neighbor
+                            )
+                        }
+                    />
+                ))}
+            </div>
         </DisclosureSection>
     );
 }
