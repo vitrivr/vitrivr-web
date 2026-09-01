@@ -2,13 +2,18 @@ import {useMemo} from "react";
 import {getHourFromFilename, getVideoAtOffset, parseVideoURL,} from "./VideoHourUtils.ts";
 
 type HourGalleryProps = {
-    src: string;
+    src: string; // url of the video
     direction: "previous" | "next";
-    offset: number;
+    offset: number; // timestamp
     onPrevious: () => void;
     onNext: () => void;
 };
 
+/**
+ * Gallery of three videos on top of the videoPage. The middle video is the main video, which is surrounded by
+ * the videos of the previous hour and the succeeding hour. Next to the videos there are buttons for
+ * skipping the entire three video windows to the left (previous) or the right (succeeding).
+ */
 export default function HourGallery({src, direction, offset, onPrevious, onNext,}: HourGalleryProps) {
     const info = useMemo(() => parseVideoURL(src), [src]);
     if (!info) {

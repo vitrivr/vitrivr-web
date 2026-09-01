@@ -10,7 +10,7 @@ import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
 import {getHourFromFilename, getVideoAtOffset, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
-import {generateVideoThumbnail} from "./utils.ts";
+import {generateVideoThumbnail} from "./ThumbnailUtils.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
 
 /**
@@ -96,6 +96,9 @@ export default function VideoPage() {
         window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
     }, [id]);
 
+    /**
+     * Is called whenever a nearest neighbor search is prompted.
+     */
     const onSearch = async (): Promise<void> => {
         const video = videoRef.current;
 
@@ -132,6 +135,9 @@ export default function VideoPage() {
     };
 
 
+    /**
+     * For submitting a video to DRES.
+     */
     const onSubmit = async () => {
         if (!session) {
             openLogin();

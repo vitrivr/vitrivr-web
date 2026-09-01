@@ -2,7 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import ResultItem from "../Results/ResultItem.tsx";
 import {useSearch} from "../../state/SearchContext.tsx";
-import {filterExistingVideos, generatePOVData, type HourlyVideo, parseVideoURL, uuidFromUuidV4} from "./utils.ts";
+import {filterExistingVideos, generatePOVData, type HourlyVideo, parseVideoURL, uuidFromUuidV4} from "./ThumbnailUtils.ts";
 
 /**
  * All the people contained in the CASTLE dataset 2024

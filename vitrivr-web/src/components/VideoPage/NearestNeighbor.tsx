@@ -53,6 +53,11 @@ function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): 
     return undefined;
 }
 
+/**
+ * Transforms dictionary of records into a number array.
+ * @param r dictionary of records from the vitrivr response
+ * @param key
+ */
 function pickFloatArray(r: { descriptors?: Record<string, unknown> }, key: string): number[] | undefined {
     const value = r.descriptors?.[key];
     if (!Array.isArray(value)) {
@@ -108,6 +113,11 @@ function videoNameFromUrl(url: string): string {
     }
 }
 
+/**
+ * Maps each result to a mediaItem.
+ * @param schema
+ * @param response of vitrivr
+ */
 function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem[] {
     const retrievables = response.retrievables ?? [];
     const output: MediaItem[] = [];
