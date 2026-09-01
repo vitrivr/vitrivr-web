@@ -19,15 +19,15 @@ const ROOMS = ["Reading", "Living1", "Living2", "Kitchen", "Meeting"];
 
 type OtherPovsProps = {
     src: string;
+    timestamp: number;
 };
 
 
 /**
  * POV component that contains the videos of all participants of that corresponding time and day.
- * @param src
  * @constructor
  */
-export default function POVs({src,}: OtherPovsProps) {
+export default function POVs({src, timestamp}: OtherPovsProps) {
     const [open, setOpen] = useState(false);
     const [videos, setVideos] = useState<HourlyVideo[]>([]);
     const [loading, setLoading] = useState(false);
@@ -61,7 +61,7 @@ export default function POVs({src,}: OtherPovsProps) {
                     kind: "video",
                     url: video.url,
                     name: video.name,
-                    start: 0,
+                    start: timestamp,
                     end: 0,
                     clipVector: video.CLIPVector,
                 },
@@ -92,6 +92,7 @@ export default function POVs({src,}: OtherPovsProps) {
                     id: uuidFromUuidV4(),
                     name: person,
                     kind: "person",
+                    seekTime: timestamp,
                     url:
                         `${info.origin}/videos/` +
                         `${encodeURIComponent(info.day)}/` +
@@ -105,6 +106,7 @@ export default function POVs({src,}: OtherPovsProps) {
                     id: uuidFromUuidV4(),
                     name: room,
                     kind: "room",
+                    seekTime: timestamp,
                     url:
                         `${info.origin}/videos/` +
                         `${encodeURIComponent(info.day)}/` +
@@ -279,14 +281,14 @@ export default function POVs({src,}: OtherPovsProps) {
                                         key={video.id}
                                         id={video.id}
                                         kind="video"
-                                        start={0} // TODO: change this when HLS works
-                                        end={0} // TODO: change this when HLS works
+                                        start={timestamp}
+                                        end={0}
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
                                         getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
-                                        onBeforeOpen={() => savePovBeforeOpen}
+                                        onBeforeOpen={() => savePovBeforeOpen(video)}
                                         caption={video.name}
                                     />
                                 ))}
@@ -319,14 +321,14 @@ export default function POVs({src,}: OtherPovsProps) {
                                         key={video.id}
                                         id={video.id}
                                         kind="video"
-                                        start={0} // TODO: change this when HLS works
-                                        end={0} // TODO: change this when HLS works
+                                        start={timestamp}
+                                        end={0}
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
                                         getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
-                                        onBeforeOpen={() => savePovBeforeOpen}
+                                        onBeforeOpen={() => savePovBeforeOpen(video)}
                                         caption={video.name}
                                     />
                                 ))}

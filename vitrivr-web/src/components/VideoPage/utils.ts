@@ -13,6 +13,7 @@ export type HourlyVideo = {
     name: string;
     url: string;
     kind: PovKind;
+    seekTime: number;
     thumbnail?: string;
     CLIPVector?: number[];
 };
@@ -78,7 +79,7 @@ export function videoExists(url: string): Promise<boolean> {
 
 export async function generateThumbnailAndClip(video: HourlyVideo): Promise<HourlyVideo | undefined> {
     try {
-        const thumbnail = await generateVideoThumbnail(video.url);
+        const thumbnail = await generateVideoThumbnail(video.url, video.seekTime);
         if (!thumbnail) {
             console.warn("Could not generate thumbnail for:", video.url);
             return undefined;
@@ -133,7 +134,7 @@ export const uuidFromUuidV4 = () => {
  * @param url string
  * @param seekTime
  */
-export function generateVideoThumbnail(url: string, seekTime = 1): Promise<string | undefined> {
+export function generateVideoThumbnail(url: string, seekTime: number): Promise<string | undefined> {
     return new Promise((resolve) => {
         const video = document.createElement("video");
         const canvas = document.createElement("canvas");

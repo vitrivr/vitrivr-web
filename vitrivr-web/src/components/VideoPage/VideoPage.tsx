@@ -52,6 +52,7 @@ export default function VideoPage() {
     const dayOfRecording = activeInfo?.day ?? "";
     const nameOfPersonRecording = activeInfo?.source ?? "";
     const timeOfRecording = activeHour !== null ? String(activeHour).padStart(2, "0") : "";
+    const [playbackTimestamp, setPlaybackTimestamp] = useState(start);
 
     /*
      * Move the whole 3-video window, when arrow is clciked
@@ -293,6 +294,9 @@ export default function VideoPage() {
                                     video.currentTime = Math.min(start, video.duration);
                                 }
                             }}
+                            onTimeUpdate={(e) => {
+                                setPlaybackTimestamp(e.currentTarget.currentTime);
+                            }}
                             style={{
                                 display: "block",
                                 width: "100%",
@@ -375,7 +379,7 @@ export default function VideoPage() {
                         onNext={goNextHour}
                     />
                 </div>
-                <POVs src={activeVideoSrc}/>
+                <POVs src={activeVideoSrc} timestamp={playbackTimestamp} />
                 <NearestNeighbor id={id} queryVector={nnVector}/>
             </main>
         </div>
