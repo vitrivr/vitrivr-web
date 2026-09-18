@@ -2,8 +2,8 @@ import type {BlockState} from "../components/SearchCard.tsx";
 
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
 export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
-export const MEDIA_BASE = import.meta.env.VITE_MEDIA_ORIGIN;
-export const MEDIA_PATH_PREFIX: string = import.meta.env.VITE_MEDIA_PATH_PREFIX ?? "";
+export const SEGMENT_ORIGIN = import.meta.env.VITE_SEGMENT_ORIGIN;
+export const MEDIA_PATH_ORIGIN: string = import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "";
 
 type TextInput = { type: "TEXT"; data: string };
 type FloatVectorInput = { type: "FLOATVECTOR"; data: number[] };
@@ -22,15 +22,11 @@ type RawSchema = string | { name?: string; [key: string]: unknown };
  * @param id - Segment or media identifier used to locate the thumbnail
  * @returns The absolute thumbnail URL, or an empty string if it cannot be built
  */
-export function thumbnailUrl(schema: string, id: string): string {
+export function thumbnailURL(id: string): string {
     if (!THUMBNAIL_BASE) return "";
     const clean = (id ?? "").trim();
     if (!clean) return "";
-    /* Include schema in the path so a single media-http server serving the parent
-       data directory can route requests for multiple schemas thumbnails. */
-    const s = (schema ?? "").trim();
-    const schemaSeg = s ? `${encodeURIComponent(s)}/` : "";
-    return `${THUMBNAIL_BASE}/${schemaSeg}thumbnails/${encodeURIComponent(clean)}.jpg`;
+    return `${THUMBNAIL_BASE}/${encodeURIComponent(clean)}.jpg`;
 }
 
 
@@ -47,23 +43,32 @@ function basenameFromPath(p: string): string {
 }
 
 /**
+ * TODO change this for the segment
  * Builds a public video URL from a source file path.
  *
- * @param schema - Active vitrivr schema name
  * @param filePath - Original file path descriptor from the backend
  * @returns A playable video URL, or an empty string if it cannot be built
  */
-export function servedVideoUrl(schema: string, filePath: string): string {
-    if (!MEDIA_BASE) return "";
-    const normalized = filePath.replace(/\\/g, "/");
-    const prefix = MEDIA_PATH_PREFIX.replace(/\\/g, "/").replace(/\/?$/, "/");
-    const relative = prefix && normalized.startsWith(prefix)
-        ? normalized.slice(prefix.length)
-        : basenameFromPath(normalized);
-    if (!relative) return "";
-    const encodedPath = relative.split("/").map(encodeURIComponent).join("/");
-    const subpath = (import.meta.env.VITE_MEDIA_SUBPATH as string | undefined) ?? "";
-    return new URL(`${subpath}${encodedPath}`, MEDIA_BASE).toString();
+export function segmentURL(filePath: string): string {
+    if (!SEGMENT_ORIGIN) return "";
+    const clean = (filePath ?? "").trim();
+    const url = new URL(`${SEGMENT_ORIGIN}/${encodeURIComponent(clean)}`).toString();
+    console.log(url.toString());
+    return url;
+}
+
+/**
+ * TODO change this for the media
+ * Builds a public video URL from a source file path.
+ *
+ * @param filePath - Original file path descriptor from the backend
+ * @returns A playable video URL, or an empty string if it cannot be built
+ */
+export function videoURL(filePath: string | undefined): string {
+    if (filePath === undefined) return "";
+    const url = new URL(`${MEDIA_PATH_ORIGIN}/${(filePath)}`, SEGMENT_ORIGIN).toString();
+    console.log(url.toString());
+    return url.toString();
 }
 
 
@@ -79,6 +84,7 @@ export type VitrivrRetrievable = {
     descriptors?: Record<string, unknown>;
     relationship?: {
         partOf?: {
+            id: any;
             descriptors?: Record<string, unknown>;
         };
     };
@@ -86,6 +92,7 @@ export type VitrivrRetrievable = {
 
 
 /**
+ * TODO: überarbeiten
  * Extracts a usable file path from a retrievable.
  *
  * The method first checks the retrievable's own descriptors for `file.path`.
@@ -118,11 +125,11 @@ export type BuiltMediaUrls = {
  * @param r - Segment-like retrievable object
  * @returns An object containing video and thumbnail URLs plus path metadata
  */
-export function buildSegmentMediaUrls(schema: string, r: VitrivrRetrievable): BuiltMediaUrls {
+export function buildSegmentMediaUrls(r: VitrivrRetrievable): BuiltMediaUrls {
     const id = (r.id ?? "").trim();
     const filePath = pickFilePath(r);
-    const url = filePath ? servedVideoUrl(schema, filePath) : "";
-    const thumbUrl = id ? thumbnailUrl(schema, id) : "";
+    const url = filePath ? segmentURL(filePath) : "";
+    const thumbUrl = id ? thumbnailURL(id) : "";
     const filename = filePath ? basenameFromPath(filePath) : undefined;
 
     return {url, thumbUrl, filePath: filePath ?? undefined, filename};

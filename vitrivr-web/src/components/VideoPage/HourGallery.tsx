@@ -17,16 +17,24 @@ type HourGalleryProps = {
 export default function HourGallery({src, direction, offset, onPrevious, onNext,}: HourGalleryProps) {
     const info = useMemo(() => parseVideoURL(src), [src]);
     if (!info) {
-        return null;
+        return (
+            <div
+                style={{color: "red"}}>Could not parse video URL: {src}
+            </div>);
     }
     const originalHour = getHourFromFilename(info.filename);
     if (originalHour === null) {
-        return null;
+        return (
+            <div style={{color: "red"}}>
+                Could not extract hour from: {info.filename}
+            </div>
+        );
     }
     const videoOffset = direction === "previous" ? offset - 1 : offset + 1;
     const displayedHour = originalHour + videoOffset;
     const videoUrl = getVideoAtOffset(src, videoOffset);
     const handleClick = direction === "previous" ? onPrevious : onNext;
+
     if (!videoUrl) {
         return (
             <div

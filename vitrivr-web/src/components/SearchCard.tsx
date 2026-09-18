@@ -56,7 +56,7 @@ import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
-import {useSearch} from "../state/SearchContext.tsx";
+import {buildHlsUrl, useSearch} from "../state/SearchContext.tsx";
 import SchemaSelector from "./SchemaSelector.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
@@ -78,10 +78,12 @@ const queryTypeItems =
 
 type MediaKind = "image" | "video" | "custom";
 
-type MediaItem = {
+export type MediaItem = {
     id: string;
     kind: MediaKind;
     rawType?: string;
+    parentId?: string;
+    mediaItemName?: string;
     name: string;
     url: string;
     thumbUrl?: string;
@@ -90,6 +92,7 @@ type MediaItem = {
     clipVector?: number[];
 };
 
+
 type RetrievablesResponse = {
     retrievables?: Array<{
         id?: string;
@@ -97,6 +100,8 @@ type RetrievablesResponse = {
         score?: number;
         relationship?: {
             partOf?: {
+                id?: string;
+                type?: string;
                 descriptors?: Record<string, unknown>;
             };
         };
@@ -145,14 +150,10 @@ const makeBlockState = (): BlockState => ({
 });
 
 function videoDedupeKey(item: MediaItem): string {
-    try {
-        const u = new URL(item.url);
-        const parts = u.pathname.split("/");
-        return parts[parts.length - 1] ?? item.id;
-    } catch {
-        const parts = (item.url ?? "").split("/");
-        return parts[parts.length - 1] ?? item.id;
+    if (item.kind !== "video") {
+        return item.id;
     }
+    return item.parentId ?? item.id;
 }
 
 function dedupeVideos(list: MediaItem[]): MediaItem[] {
@@ -173,17 +174,6 @@ function dedupeVideos(list: MediaItem[]): MediaItem[] {
     }
 
     return out;
-}
-
-function videoNameFromUrl(url: string): string {
-    try {
-        const u = new URL(url);
-        const base = u.pathname.split("/").pop() ?? "";
-        return base.replace(/\.[^.]+$/, ""); // drop extension
-    } catch {
-        const base = (url ?? "").split("?")[0].split("#")[0].split("/").pop() ?? "";
-        return base.replace(/\.[^.]+$/, "");
-    }
 }
 
 
@@ -261,11 +251,19 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
+function mediaNameFromPath(path: unknown): string | undefined {
+    if (typeof path !== "string" || !path.trim()) {
+        return undefined;
+    }
+    const splitArray = path.split("/")
+    const len = splitArray.length
+    const filepath = splitArray[len-4] + "/" + splitArray[len-3] + "/" + splitArray[len-2] + "/" + splitArray[len-1];
+    return filepath.toString();
+}
+
 
 function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
     const list = (resp.retrievables ?? []) as VitrivrRetrievable[];
-    console.log("Length of Results is", list.length);
-
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
         if (!id) return null;
@@ -277,22 +275,35 @@ function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
         const end = nsToSecondsMaybe(endRaw);
 
         if (kind === "video") {
-            const {url, thumbUrl} = buildSegmentMediaUrls(schema, r);
+            const parent = r.relationship?.partOf;
+            const parentId = parent?.id?.trim();
 
-            if (!url) {
-                debugLog("drop: video without file.path", {idx, id, type: r.type, r});
+            if (!parentId) {
+                debugLog("drop: video segment without parent SOURCE:VIDEO id", {
+                    idx,
+                    id,
+                    type: r.type,
+                    r,
+                });
                 return null;
             }
 
+            const filePath = parent?.descriptors?.["file.path"];
+            const mediaItemName = mediaNameFromPath(filePath);
+            const url = buildHlsUrl(parentId);
+            const {thumbUrl} = buildSegmentMediaUrls(r);
+
             return {
                 id,
+                parentId,
                 kind,
                 rawType: r.type,
                 url,
                 thumbUrl,
                 start,
                 end,
-                name: videoNameFromUrl(url),
+                name: mediaItemName ?? parentId,
+                mediaItemName,
                 clipVector: pickFloatArray(r as any, "clip.vector"),
             };
         }
@@ -537,6 +548,7 @@ export function SearchCard() {
             });
 
             setItems(media);
+            console.log(media.pop()?.id) // this is the wrong id, we need the parent id
             setLoading(false);
         } catch (err) {
             console.log(String(err))
@@ -673,6 +685,7 @@ export function SearchCard() {
                                                                                    kind,
                                                                                    url,
                                                                                    name,
+                                                                                   mediaItemName,
                                                                                    thumbUrl,
                                                                                    rawType,
                                                                                    start,
@@ -699,6 +712,7 @@ export function SearchCard() {
                                                     kind="video"
                                                     start={start}
                                                     end={end}
+                                                    mediaItemName={mediaItemName ?? name}
                                                     preload="none"
                                                     controls={false}
                                                     mediaClassName="ri-media"

@@ -1,7 +1,6 @@
 import React, {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
-import {thumbnailUrl} from "../../lib/vitrivr";
-import {useSearch} from "../../state/SearchContext.tsx";
+import {thumbnailURL} from "../../lib/vitrivr";
 import {submitText, submitVideo} from "../../dres/generated/api/dresSubmit.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
 import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
@@ -26,6 +25,7 @@ type VideoProps = {
     end: number;
     getVideoSrc: (id: string) => string;
     getPosterSrc?: (id: string) => string;
+    mediaItemName: string;
     controls?: boolean;
     autoPlay?: boolean;
     loop?: boolean;
@@ -36,17 +36,7 @@ type VideoProps = {
 type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNode };
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
-function captionFromVideoURL(url: string) {
-    if (!url) return null;
-     try {
-         return url.split("/")[4] + "/" + url.split("/")[5] + "/" + url.split("/")[7].split(".")[0] + ":00";
-     } catch {
-         return url;
-     }
-}
-
 export default function ResultItem(props: ResultItemProps) {
-    const {schema} = useSearch();
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const {
         id,
@@ -78,8 +68,8 @@ export default function ResultItem(props: ResultItemProps) {
         } = props;
 
         const src = getVideoSrc(id);
-        const poster = (getPosterSrc ?? thumbnailUrl)(schema, id);
-        displayCaption = captionFromVideoURL(src);
+        const poster = (getPosterSrc ?? thumbnailURL)(id);
+        displayCaption = caption;
 
         const handleLoadedMetadata = () => {
             if (videoRef.current && start != null) {
@@ -105,7 +95,7 @@ export default function ResultItem(props: ResultItemProps) {
         media = props.renderMedia(id);
     } else {
         const {getImageSrc, alt = `Image for ${id}`, mediaClassName = "sb__image"} = props;
-        const src = (getImageSrc ?? thumbnailUrl)(schema, id);
+        const src = (getImageSrc ?? thumbnailURL)(id);
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
@@ -177,25 +167,28 @@ export default function ResultItem(props: ResultItemProps) {
         }
 
         if (kind === "item") {
-            setSubmitting(true);
             const start = Math.max(0, Math.round(props.start * 1000));
             const end = Math.max(0, Math.round(props.end * 1000));
-            const splitLen = props.getVideoSrc(props.id).split("/").length
-            const videoName = props.getVideoSrc(id).split("/")[splitLen - 1].split(".")[0]
-            console.log("Submission", videoName, end, start)
+            const videoName = props.mediaItemName;
+            console.log("Submission", videoName, end, start);
             setSubmitting(true);
+
             try {
                 const res = await submitVideo({
                     session,
                     mediaItemName: videoName,
                     evaluationId,
-                    start: start > 0 ? Math.round(start) : undefined,
-                    end: end > 0 ? Math.round(end) : undefined,
+                    start: start > 0 ? start : undefined,
+                    end: end > 0 ? end : undefined,
                 });
+
                 alert("Submitted! " + JSON.stringify(res.data.submission));
-                console.log("DRES submitText response:", res);
             } catch (err: any) {
-                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
+                alert(
+                    err?.response?.data?.description ??
+                    err?.message ??
+                    "Submit failed."
+                );
             } finally {
                 setSubmitting(false);
             }
@@ -206,7 +199,7 @@ export default function ResultItem(props: ResultItemProps) {
         props.kind === "video"
             ? {
                 src: (props as any).getVideoSrc?.(id),
-                poster: thumbnailUrl(schema, id),
+                poster: thumbnailURL(id),
                 start: (props as any).start,
                 end: (props as any).end,
             }

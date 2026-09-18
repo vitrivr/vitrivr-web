@@ -1,22 +1,13 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {buildVectorQuery, servedVideoUrl, thumbnailUrl,} from "../../lib/vitrivr";
+import {buildVectorQuery, thumbnailURL,} from "../../lib/vitrivr";
 import {useSearch} from "../../state/SearchContext";
 import {retrieval} from "../../vitirvr/api/client";
 import ResultItem from "../Results/ResultItem";
 import DisclosureSection from "./DisclosureHeader.tsx";
+import type {MediaItem} from "../SearchCard.tsx";
+export const VITE_SEGMENT_ORIGIN = import.meta.env.VITE_MEDIA_SEGMENT;
 
-type MediaItem = {
-    id: string;
-    kind: "video";
-    url: string;
-    name: string;
-    thumbUrl?: string;
-    start: number;
-    end: number;
-    rawType?: string;
-    clipVector?: number[];
-};
 
 type RetrievablesResponse = {
     retrievables?: Array<{
@@ -25,6 +16,8 @@ type RetrievablesResponse = {
         score?: number;
         relationship?: {
             partOf?: {
+                id?: string;
+                type?: string;
                 descriptors?: Record<string, unknown>;
             };
         };
@@ -77,20 +70,6 @@ function nsToSeconds(value: number): number {
     return value / 1_000_000_000;
 }
 
-function basenameFromPath(path: string): string {
-    const normalized = path.replace(/\\/g, "/");
-    const parts = normalized.split("/");
-    return parts[parts.length - 1] ?? "";
-}
-
-function toServedVideoUrl(schema: string, filePath: string): string {
-    const origin = import.meta.env.VITE_MEDIA_ORIGIN || "";
-    if (!origin) return "";
-    const filename = basenameFromPath(filePath);
-    if (!filename) return "";
-    return servedVideoUrl(schema, filePath);
-}
-
 /**
  * Extracts the video name from the url. E.g. http://10.34.64.212:8080/videos/day3/Florian/video/11.mp4 then 11.mp4 is
  * extracted.
@@ -115,10 +94,9 @@ function videoNameFromUrl(url: string): string {
 
 /**
  * Maps each result to a mediaItem.
- * @param schema
  * @param response of vitrivr
  */
-function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem[] {
+function mapNeighbors(response: RetrievablesResponse): MediaItem[] {
     const retrievables = response.retrievables ?? [];
     const output: MediaItem[] = [];
     for (const retrievable of retrievables) {
@@ -129,23 +107,25 @@ function mapNeighbors(schema: string, response: RetrievablesResponse): MediaItem
         }
 
         const clipVector = pickFloatArray(retrievable, "clip.vector");
-        const filePath = (retrievable.descriptors?.["file.path"] as string | undefined) ||
-            (retrievable.relationship?.partOf?.descriptors?.["file.path"] as string | undefined);
-
-        if (!filePath) continue;
-
         const start = nsToSeconds(pickNumber(retrievable, "time.start") ?? 0);
         const end = nsToSeconds(pickNumber(retrievable, "time.end") ?? 0);
-        const url = toServedVideoUrl(schema, filePath);
+        const parentId = retrievable.relationship?.partOf?.id?.trim();
+        const filePath = retrievable.relationship?.partOf?.descriptors?.["file.path"] as | string | undefined;
 
-        if (!url) continue;
+        if (!parentId || !filePath) {
+            continue;
+        }
+        const mediaItemName = filePath.replace(/\\/g, "/").split("/media/test/").pop();
+        const hlsUrl = VITE_SEGMENT_ORIGIN + `${encodeURIComponent(parentId)}/master.m3u8`;
 
         output.push({
             id,
+            parentId,
             kind: "video",
-            url,
-            name: videoNameFromUrl(url),
-            thumbUrl: thumbnailUrl(schema, id),
+            mediaItemName: mediaItemName ?? filePath,
+            url: hlsUrl,
+            name: mediaItemName ?? filePath,
+            thumbUrl: thumbnailURL(id),
             start,
             end,
             rawType: retrievable.type,
@@ -201,7 +181,6 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                 if (cancelled) return;
 
                 const mapped = mapNeighbors(
-                    schema,
                     response as RetrievablesResponse
                 ).filter(
                     (neighbor) => neighbor.id !== id
@@ -276,6 +255,18 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
         );
     }
 
+    if (loading) {
+        return <div>Loading nearest neighbors…</div>;
+    }
+
+    if (error) {
+        return <div style={{color: "red"}}>{error}</div>;
+    }
+
+    if (loaded && neighbors.length === 0) {
+        return <div>No nearest neighbors found.</div>;
+    }
+
     if (neighbors.length === 0) {
         return null;
     }
@@ -306,6 +297,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                         key={neighbor.id}
                         id={neighbor.id}
                         kind="video"
+                        mediaItemName={videoNameFromUrl(neighbor.url)}
                         start={neighbor.start}
                         end={neighbor.end}
                         preload="none"

@@ -1,6 +1,6 @@
 "use client";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
-import {thumbnailUrl} from "../../lib/vitrivr.ts";
+import {thumbnailURL, videoURL} from "../../lib/vitrivr.ts";
 import {useSearch} from "../../state/SearchContext.tsx";
 import {useEffect, useRef, useState} from "react";
 import {useAuth} from "../../state/AuthContext.tsx";
@@ -8,10 +8,11 @@ import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
-import {getHourFromFilename, getVideoAtOffset, parseVideoURL} from "./VideoHourUtils.ts";
+import {getHourFromFilename, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
 import {generateVideoThumbnail} from "./ThumbnailUtils.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
+import HlsVideoPlayer from "./HLSVideoPlayer.tsx";
 
 /**
  * VideoPage component that appear as soon a result is clicked. This component allows for watching the video, looking
@@ -24,9 +25,6 @@ export default function VideoPage() {
     const navigate = useNavigate();
     const {id} = useParams<{ id: string }>();
     const videoRef = useRef<HTMLVideoElement | null>(null);
-    const routeState = location.state as | { src?: string; poster?: string; start?: number; end?: number; } | null;
-    const {items, schema} = useSearch();
-    const item = items.find((it) => it.id === id);
 
     // DRES Info
     const {session, openLogin} = useAuth();
@@ -34,29 +32,59 @@ export default function VideoPage() {
     const [submitting, setSubmitting] = useState(false);
     const [searching, setSearching] = useState(false);
     const [nnVector, setNnVector] = useState<number[] | null>(null);
-    const [hasNeighbors, setHasNeighbors] = useState(false);
+    const [, setHasNeighbors] = useState(false);
+
+    const routeState = location.state as
+        | {
+        src?: string;
+        poster?: string;
+        start?: number;
+        end?: number;
+        mediaItemName?: string;
+        sourcePath?: string;
+        parentId?: string;
+    }
+        | null;
+
+    const {items} = useSearch();
+    const item = items.find((it) => it.id === id);
+    const mediaItemName = item?.mediaItemName ?? routeState?.mediaItemName;
+    const src = item?.url ?? routeState?.src ?? "";
+    const start =
+        typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
+
+    const mp4Location = mediaItemName ? videoURL(mediaItemName): "";
+
+    /*
+     * HLS URLs cannot be manipulated by getVideoAtOffset().
+     */
+    const activeVideoSrc = src;
+
+    console.log("[VideoPage]", {
+        segmentId: id,
+        item,
+        mediaItemName,
+        mp4Location,
+        hlsSrc: src,
+    });
 
     const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
     const [textAnswer, setTextAnswer] = useState("");
-    const poster = id ? thumbnailUrl(schema, id) ?? "" : "";
-    const src = item?.url ?? routeState?.src ?? "";
-    const start = typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
+    const poster = id ? thumbnailURL(id) ?? "" : "";
     const [hourOffset, setHourOffset] = useState(0);
+    console.log("Item media name is: "+item?.mediaItemName)
 
     useEffect(() => {
         setHourOffset(0);
     }, [src]);
 
-    const activeVideoSrc = getVideoAtOffset(src, hourOffset) ?? src;
     const activeInfo = parseVideoURL(activeVideoSrc);
     const activeHour = activeInfo ? getHourFromFilename(activeInfo.filename) : null;
-    const dayOfRecording = activeInfo?.day ?? "";
-    const nameOfPersonRecording = activeInfo?.source ?? "";
     const timeOfRecording = activeHour !== null ? String(activeHour).padStart(2, "0") : "";
     const [playbackTimestamp, setPlaybackTimestamp] = useState(start);
 
     /*
-     * Move the whole 3-video window, when arrow is clciked
+     * Move the whole 3-video window, when arrow is clicked
      */
     const goPreviousHour = () => {
         setHourOffset((current) =>
@@ -107,16 +135,17 @@ export default function VideoPage() {
             return;
         }
 
+        if (!mp4Location) {
+            console.error("Cannot perform NN search: original MP4 URL is missing.", {item, mediaItemName});
+            return;
+        }
+
         setSearching(true);
 
         try {
             video.pause();
             const currentTimestamp = video.currentTime;
-            const thumbnail = await generateVideoThumbnail(
-                activeVideoSrc,
-                currentTimestamp
-            );
-
+            const thumbnail = await generateVideoThumbnail(mp4Location, currentTimestamp);
             if (!thumbnail) {
                 throw new Error("Could not generate thumbnail.");
             }
@@ -128,7 +157,6 @@ export default function VideoPage() {
             setNnVector(clipVector);
         } catch (error) {
             console.error("Nearest-neighbor search failed:", error);
-            alert(error instanceof Error ? error.message : "Nearest-neighbor search failed.");
         } finally {
             setSearching(false);
         }
@@ -239,7 +267,7 @@ export default function VideoPage() {
                     🏠 Home
                 </button>
 
-                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {dayOfRecording}/{nameOfPersonRecording}/{timeOfRecording}</h2>
+                <h2 style={{margin: 0, fontSize: 18, fontWeight: 600}}>Video: {item?.mediaItemName}</h2>
             </header>
 
             <main
@@ -263,7 +291,7 @@ export default function VideoPage() {
                 >
                     {/* Previous hour */}
                     <HourGallery
-                        src={src}
+                        src={mp4Location}
                         direction="previous"
                         offset={hourOffset}
                         onPrevious={goPreviousHour}
@@ -287,31 +315,14 @@ export default function VideoPage() {
                                 {timeOfRecording ? `${timeOfRecording}:00` : "Current"}
                             </strong>
                         </div>
-
-                        <video
+                        <HlsVideoPlayer
                             key={activeVideoSrc}
                             ref={videoRef}
                             src={activeVideoSrc}
                             poster={hourOffset === 0 ? poster : undefined}
-                            controls
+                            startTime={hourOffset === 0 ? start : 0}
+                            onTimeUpdate={setPlaybackTimestamp}
                             preload="metadata"
-                            onLoadedMetadata={(e) => {
-                                const video = e.currentTarget;
-                                if (hourOffset === 0 && Number.isFinite(start) && start > 0) {
-                                    video.currentTime = Math.min(start, video.duration);
-                                }
-                            }}
-                            onTimeUpdate={(e) => {
-                                setPlaybackTimestamp(e.currentTarget.currentTime);
-                            }}
-                            style={{
-                                display: "block",
-                                width: "100%",
-                                aspectRatio: "16 / 9",
-                                objectFit: "contain",
-                                borderRadius: 8,
-                                background: "#000",
-                            }}
                         />
 
                         <button
@@ -379,7 +390,7 @@ export default function VideoPage() {
 
                     {/* Next hour */}
                     <HourGallery
-                        src={src}
+                        src={mp4Location}
                         direction="next"
                         offset={hourOffset}
                         onPrevious={goPreviousHour}

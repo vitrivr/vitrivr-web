@@ -2,16 +2,16 @@
 import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
 import {makeBlockState} from "./makeBlockState";
-
-type MediaKind = "image" | "video" | "custom";
-export type MediaItem = {
-    start: number;
-    end: number;
-    name: string;
-    id: string; kind: MediaKind; thumbUrl?: string; rawType?: string; url: string
-};
+import type {MediaItem} from "../components/SearchCard";
 
 type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVideos: boolean };
+
+const HLS_BASE_URL = (import.meta.env.VITE_MEDIA_SEGMENT ?? "").replace(/\/+$/, "");
+
+// TODO Fixme
+export function buildHlsUrl(parentId: string): string {
+    return `${HLS_BASE_URL}/${encodeURIComponent(parentId)}/master.m3u8`;
+}
 
 type SearchState = {
     schema: string;

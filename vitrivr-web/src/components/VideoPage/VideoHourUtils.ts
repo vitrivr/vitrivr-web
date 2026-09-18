@@ -1,3 +1,5 @@
+export const MEDIA_PATH_ORIGIN: string = import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "";
+
 export type ParsedVideoUrl = {
     origin: string;
     day: string;
@@ -14,62 +16,60 @@ export function parseVideoURL(url: string): ParsedVideoUrl | null {
     if (!url) return null;
 
     try {
-        const parsed = new URL(url);
-        // TODO: adjust this to the actual schema of the filename. not all filenames contain "videos"
-        // the expected format is like this: http://10.34.64.212:8080/videos/day4/Luca/video/08.mp4
-        const match = parsed.pathname.match(/^\/videos\/([^/]+)\/([^/]+)\/video\/([^/]+)$/);
-        if (!match) return null;
+        const splitted = url.split("/")
+        const len = splitted.length
+        const hour = splitted[len-1]
+        const name = splitted[len-2]
+        const day = splitted[len-3]
+
 
         return {
-            origin: parsed.origin,
-            day: match[1],
-            source: match[2],
-            filename: match[3],
+            origin: MEDIA_PATH_ORIGIN,
+            day: day,
+            source: name,
+            filename: hour,
         };
     } catch {
+        console.log("Could not parse URL");
         return null;
     }
 }
 
 export function getHourFromFilename(filename: string): number | null {
-    const match = filename.match(/^(\d{1,2})\.mp4$/);
-    if (!match) return null;
-    const hour = Number(match[1]);
-    if (
-        !Number.isInteger(hour) ||
-        hour < 0 ||
-        hour > 23
-    ) {
+    const match = filename.match(/^(\d+)\.[^.]+$/);
+    if (!match) {
         return null;
     }
-
-    return hour;
-}
-
-export function buildHourUrl(info: ParsedVideoUrl, hour: number): string {
-    const paddedHour = String(hour).padStart(2, "0");
-    return (
-        `${info.origin}/videos/` +
-        `${encodeURIComponent(info.day)}/` +
-        `${encodeURIComponent(info.source)}/video/` +
-        `${paddedHour}.mp4`
-    );
+    const hour = Number(match[1]);
+    return Number.isFinite(hour) ? hour : null;
 }
 
 export function getVideoAtOffset(src: string, offset: number): string | null {
-    const info = parseVideoURL(src);
-    if (!info) return null;
-    const currentHour = getHourFromFilename(info.filename);
-    if (currentHour === null) {
+    try {
+        const url = new URL(src);
+        const parts = url.pathname.split("/").filter(Boolean);
+        const filename = parts.at(-1);
+
+        if (!filename) {
+            return null;
+        }
+
+        const currentHour =
+            getHourFromFilename(filename);
+
+        if (currentHour === null) {
+            return null;
+        }
+
+        const targetHour = currentHour + offset;
+        if (targetHour < 0 || targetHour > 23) {
+            return null;
+        }
+
+        parts[parts.length - 1] = `${targetHour}.mp4`;
+        url.pathname = "/" + parts.join("/");
+        return url.toString();
+    } catch {
         return null;
     }
-
-    const targetHour = currentHour + offset;
-
-    // For now we do not cross day boundaries.
-    if (targetHour < 9 || targetHour > 20) {
-        return null;
-    }
-
-    return buildHourUrl(info, targetHour);
 }
