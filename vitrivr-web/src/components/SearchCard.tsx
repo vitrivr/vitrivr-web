@@ -262,7 +262,7 @@ function mediaNameFromPath(path: unknown): string | undefined {
 }
 
 
-function mediaFrom(schema: string, resp: RetrievablesResponse): MediaItem[] {
+function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
     const list = (resp.retrievables ?? []) as VitrivrRetrievable[];
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
@@ -519,7 +519,7 @@ export function SearchCard() {
 
             debugLog("query response (truncated)", pretty);
 
-            const media = mediaFrom(schema, resp as RetrievablesResponse);
+            const media = mediaFrom(resp as RetrievablesResponse);
             const rawCount =
                 (resp as RetrievablesResponse)?.retrievables?.length ?? 0;
 

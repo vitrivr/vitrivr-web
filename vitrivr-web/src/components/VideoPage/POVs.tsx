@@ -286,6 +286,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
+                                        mediaItemName={""}
                                         getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
                                         onBeforeOpen={() => savePovBeforeOpen(video)}
@@ -326,6 +327,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
                                         preload="none"
                                         controls={false}
                                         mediaClassName="ri-media"
+                                        mediaItemName={""}
                                         getPosterSrc={() => video.thumbnail ?? ""}
                                         getVideoSrc={() => video.url}
                                         onBeforeOpen={() => savePovBeforeOpen(video)}
