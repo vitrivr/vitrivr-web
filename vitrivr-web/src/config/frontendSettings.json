@@ -10,5 +10,31 @@
     "Stevan",
     "Tien",
     "Werner"
+  ],
+  "recordingDays": [
+    "day1",
+    "day2",
+    "day3",
+    "day4"
+  ],
+  "sourcePersons": [
+    "Allie",
+    "Bao",
+    "Bjorn",
+    "Cathal",
+    "Florian",
+    "Klaus",
+    "Luca",
+    "Onanong",
+    "Stevan",
+    "Tien",
+    "Werner"
+  ],
+  "sourceLocations": [
+    "Kitchen",
+    "Living1",
+    "Living2",
+    "Meeting",
+    "Reading"
   ]
 }

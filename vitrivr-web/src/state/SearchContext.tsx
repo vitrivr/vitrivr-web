@@ -1,6 +1,7 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
+import {emptyQueryFilters, type QueryFilters} from "../lib/queryFilters.ts";
 import {makeBlockState} from "./makeBlockState";
 import type {MediaItem} from "../components/SearchCard";
 
@@ -14,6 +15,8 @@ export function buildHlsUrl(parentId: string): string {
 }
 
 type SearchState = {
+    queryFilters: QueryFilters;
+    setQueryFilters: React.Dispatch<React.SetStateAction<QueryFilters>>;
     resultView: "ranked" | "video";
     setResultView: React.Dispatch<React.SetStateAction<"ranked" | "video">>;
     schema: string;
@@ -59,6 +62,7 @@ export function SearchProvider({children, initial}: {
         });
     };
 
+    const [queryFilters, setQueryFilters] = useState<QueryFilters>(emptyQueryFilters);
     const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
     const [items, setItems] = useState<SearchState["items"]>([]);
     const [mediaFilter, setMediaFilter] = useState<MediaFilter>({
@@ -87,6 +91,8 @@ export function SearchProvider({children, initial}: {
     return (
         <SearchCtx.Provider
             value={{
+                queryFilters,
+                setQueryFilters,
                 resultView,
                 setResultView,
                 schema,

@@ -44,6 +44,8 @@
  */
 
 "use client";
+import {applyQueryFilters, emptyQueryFilters} from "../lib/queryFilters.ts";
+import QueryScopeFilters from "./QueryBuilderComponents/QueryScopeFilters.tsx";
 import {buildPersonQuery, selectedPersonNames} from "../lib/personQuery.ts";
 import {useEffect, useRef, useState} from "react";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
@@ -334,6 +336,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 export function SearchCard() {
     const {
         blocks, setBlocks,
+        queryFilters, setQueryFilters,
         resultView, setResultView,
         items, setItems,
         mediaFilter, setMediaFilter,
@@ -409,6 +412,7 @@ export function SearchCard() {
         setVectorsById({}); // not sure if keep this
 
         setBlocks([makeBlockState()]);
+        setQueryFilters(emptyQueryFilters());
 
         setScrollY(0);
         window.scrollTo(0, 0);
@@ -500,7 +504,7 @@ export function SearchCard() {
                 if (b.modality === "person") {
                     const body = buildPersonQuery(selectedPersonNames(b));
                     // @ts-expect-error Generated operator inputs omit named references.
-                    resp = await retrieval.postExecuteQuery(schema, body);
+                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
                 } else if (b.modality === "emotions") {
                     const chosen = (b.emotion ?? "").trim();
                     if (!chosen) {
@@ -511,20 +515,20 @@ export function SearchCard() {
                     console.log("Building emotions query")
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, body);
+                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
 
                 } else if (b.queryType === "image") {
                     const base64image = await fileToBase64(b.file);
                     const body = buildTextQuery(b.modality, base64image);
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, body);
+                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
 
                 } else {
                     const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, body);
+                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
                 }
 
             } else {
@@ -533,7 +537,7 @@ export function SearchCard() {
                 printVitrivrRequest(body);
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
-                resp = await retrieval.postExecuteQuery(schema, body);
+                resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
             }
 
             const pretty = truncateJson(resp);
@@ -591,6 +595,7 @@ export function SearchCard() {
                             <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>
                         </div>
                         <div className="panel__body stack">
+                            <QueryScopeFilters value={queryFilters} onChange={setQueryFilters}/>
                             <div className="sc-blockGrid">
                                 {blocks.map((b) => (
                                     <QueryBlock

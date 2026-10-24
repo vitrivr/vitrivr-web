@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
+import {applyQueryFilters} from "../../lib/queryFilters.ts";
 import {buildVectorQuery, thumbnailURL,} from "../../lib/vitrivr";
 import {buildHlsUrl, useSearch} from "../../state/SearchContext";
 import {retrieval} from "../../vitirvr/api/client";
@@ -49,7 +50,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
     const [loading, setLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const {schema, setVectorsById, setItems} = useSearch();
+    const {schema, queryFilters, setVectorsById, setItems} = useSearch();
 
     useEffect(() => {
         setOpen(false);
@@ -84,7 +85,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                 const body = buildVectorQuery(queryVector!, 1000);
 
                 // @ts-expect-error Generated operator input types omit named references.
-                const response = await retrieval.postExecuteQuery(schema, body);
+                const response = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
                 if (cancelled) return;
 
                 const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}).filter(
@@ -128,6 +129,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
         queryVector,
         id,
         schema,
+        queryFilters,
         setVectorsById,
         onResultsChange,
     ]);
