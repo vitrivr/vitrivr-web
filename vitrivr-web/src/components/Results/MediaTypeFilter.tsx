@@ -43,6 +43,7 @@ export type MediaFilter = { image: boolean; video: boolean; custom: boolean; uni
 
 export type MediaTypeFilterProps = {
     open: boolean;
+    grouped?: boolean;
     value: MediaFilter;
     counts?: { image: number; video: number; custom: number };
     onChange: (next: MediaFilter) => void;
@@ -52,6 +53,7 @@ export type MediaTypeFilterProps = {
 
 export default function MediaTypeFilter({
                                             open,
+                                            grouped = false,
                                             value,
                                             counts = {image: 0, video: 0, custom: 0},
                                             onChange,
@@ -137,10 +139,11 @@ export default function MediaTypeFilter({
             <label className="mtf__row" style={{marginTop: 6}}>
                 <input
                     type="checkbox"
-                    checked={value.uniqueVideos}
+                    checked={!grouped && value.uniqueVideos}
+                    disabled={grouped}
                     onChange={setKey("uniqueVideos")}
                 />
-                <span>Hide duplicate videos</span>
+                <span>{grouped ? "All segments shown in grouped view" : "Hide duplicate videos"}</span>
             </label>
         </div>
     );

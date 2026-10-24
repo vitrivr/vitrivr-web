@@ -14,6 +14,8 @@ export function buildHlsUrl(parentId: string): string {
 }
 
 type SearchState = {
+    resultView: "ranked" | "video";
+    setResultView: React.Dispatch<React.SetStateAction<"ranked" | "video">>;
     schema: string;
     setSchema: (s: string) => void;
 
@@ -57,6 +59,7 @@ export function SearchProvider({children, initial}: {
         });
     };
 
+    const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
     const [items, setItems] = useState<SearchState["items"]>([]);
     const [mediaFilter, setMediaFilter] = useState<MediaFilter>({
         image: true,
@@ -84,6 +87,8 @@ export function SearchProvider({children, initial}: {
     return (
         <SearchCtx.Provider
             value={{
+                resultView,
+                setResultView,
                 schema,
                 setSchema,
                 blocks,

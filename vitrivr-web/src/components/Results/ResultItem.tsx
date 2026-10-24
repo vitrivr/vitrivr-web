@@ -247,8 +247,9 @@ export default function ResultItem(props: ResultItemProps) {
                 >
                     <div className="ri-preview" style={{position: "relative"}}>
                         {media}
-                        {props.kind === "video" && props.showDuration && Number.isFinite(props.end - props.start) && (
-                            <span className="sc-duration" aria-label="Segment duration">{Math.floor(Math.max(0, props.end - props.start) / 60).toString().padStart(2, "0")}:{Math.floor(Math.max(0, props.end - props.start) % 60).toString().padStart(2, "0")}</span>
+                        {props.searchRank != null && <span className="sc-rank" aria-label={`Original result rank ${props.searchRank}`}>#{props.searchRank}</span>}
+                        {props.kind === "video" && props.showDuration && Number.isFinite(props.start) && (
+                            <span className="sc-duration" aria-label="Segment start time">{Math.floor(Math.max(0, props.start) / 60).toString().padStart(2, "0")}:{Math.floor(Math.max(0, props.start) % 60).toString().padStart(2, "0")}</span>
                         )}
                     </div>
                     <figcaption title={typeof displayCaption === "string" ? displayCaption : undefined} className={captionClassName}>

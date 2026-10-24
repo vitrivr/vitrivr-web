@@ -1,3 +1,4 @@
+import {buildPersonQuery, buildPersonSearch, selectedPersonNames} from "./personQuery.ts";
 import type {BlockState} from "../components/SearchCard.tsx";
 
 export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
@@ -218,6 +219,17 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     for (const b of blocks) {
         const inName = `in${opIdx}`;
 
+        if (b.modality === "person") {
+            const names = selectedPersonNames(b);
+            const search = buildPersonSearch(names, `person-${opIdx}`);
+            Object.assign(inputs, search.inputs);
+            Object.assign(operations, search.operations);
+            temporalInputs[inName] = search.output;
+            summary.push(`person: ${names.join(" AND ")}`);
+            opIdx++;
+            continue;
+        }
+
         if (b.modality === "emotions") {
             const chosen = (b.emotion ?? "").trim();
             if (!chosen) {
@@ -373,6 +385,7 @@ export function buildTemporalQuery(blocks: BlockState[]) {
  * @param emotionType where the emotions occurs such as face, asr or ocr.
  */
 export function buildTextQuery(field: string, prompt: string, emotions: string = "", emotionType: string = "") {
+    if (field === "person") return buildPersonQuery(prompt);
     const LIMIT = "1000";
 
     let emotionField = "emotionssound";

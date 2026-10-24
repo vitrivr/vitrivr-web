@@ -42,6 +42,8 @@
 import {useEffect} from "react";
 import RadioGroup, {type RadioOption} from "./RadioGroup.tsx";
 import Dropdown, {type DropdownItem} from "./Dropdown.tsx";
+import {selectedPersonNames} from "../../lib/personQuery.ts";
+import PersonSelector from "./PersonSelector.tsx";
 import Input from "./Input.tsx";
 //import FileUploader from "./FileUploader.tsx"; // was removed because of the VBS
 import type {BlockState} from "../SearchCard.tsx";
@@ -76,12 +78,13 @@ export default function QueryBlock({
                                        emotionItems,
                                        schema,
                                    }: QueryBlockProps) {
+    const isPerson = block.modality === "person";
     const isEmotion = block.modality === "emotions";
     const isTextQuery = block.queryType === "text";
     const isCLIP = block.modality === "clip";
     const upperSchema = (schema ?? "").toUpperCase();
     const restrictAudioAndEmotion = upperSchema === "LHE" || upperSchema === "MVK";
-    const isOcrOrAsr = block.modality === "ocr" || block.modality === "asr";
+    const requiresText = block.modality === "ocr" || block.modality === "asr" || isPerson;
 
 
     const allowedModalityOptions = restrictAudioAndEmotion
@@ -119,11 +122,11 @@ export default function QueryBlock({
     }, [restrictAudioAndEmotion]);
 
     useEffect(() => {
-        if (isOcrOrAsr && block.queryType !== "text") {
+        if (requiresText && block.queryType !== "text") {
             onChange({queryType: "text", file: null});
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOcrOrAsr]);
+    }, [requiresText]);
 
 
     return (
@@ -139,13 +142,13 @@ export default function QueryBlock({
                     options={allowedModalityOptions}
                     value={block.modality}
                     onChange={(v) => {
-                        const nextIsOcrOrAsr = v === "ocr" || v === "asr";
+                        const nextRequiresText = v === "ocr" || v === "asr" || v === "person";
 
                         onChange({
                             modality: v,
                             emotion: undefined,
-                            // if switching to OCR/ASR -> force text query
-                            ...(nextIsOcrOrAsr ? {queryType: "text", file: null} : {}),
+                            // Label and OCR/ASR searches require text input.
+                            ...(nextRequiresText ? {queryType: "text", file: null} : {}),
                         });
                     }}
                     orientation="horizontal"
@@ -192,6 +195,11 @@ export default function QueryBlock({
             </div>
 
             <div>
+                {isPerson ? <>
+                    <span className="label">People</span>
+                    <PersonSelector value={selectedPersonNames(block)}
+                        onChange={personNames => onChange({personNames, textQuery: ""})}/>
+                </> : <>
                 <label className="label" htmlFor={`query-${block.id}`}>Query input</label>
                 {(isTextQuery || isEmotion) ? (
                     <Input
@@ -208,6 +216,7 @@ export default function QueryBlock({
                         className=""
                     />
                 )}
+                </>}
             </div>
         </div>
     );

@@ -44,11 +44,13 @@
  */
 
 "use client";
+import {buildPersonQuery, selectedPersonNames} from "../lib/personQuery.ts";
 import {useEffect, useRef, useState} from "react";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
-import ResultItem from "./Results/ResultItem.tsx";
+import ResultsGrid from "./Results/ResultsGrid.tsx";
+import {groupResultsByVideo} from "./Results/groupResults.ts";
 import {buildTextQuery, buildTemporalQuery, buildSegmentMediaUrls, type VitrivrRetrievable} from "../lib/vitrivr.ts";
 import {fileToBase64} from "../lib/helpers.ts";
 import {retrieval} from "../vitirvr/api/client";
@@ -63,11 +65,12 @@ import {uuid} from "../utils/uuid";
 
 
 const PAGE_SIZE = 100;
+const GROUP_PAGE_SIZE = 10;
 const DEBUG = (import.meta.env.VITE_DEBUG ?? "").toString() === "1";
 const RAW_TRUNCATE = 100_000;
 
 type QueryType = Extract<BlockState['queryType'], string>;
-type Modality = "clip" | "emotions" | "ocr" | "asr";
+type Modality = "clip" | "emotions" | "ocr" | "asr" | "person";
 
 const queryTypeItems =
     [
@@ -114,6 +117,7 @@ export type EmotionTarget = "face" | "sound" | "ocr";
 export type BlockState = {
     id: string;
     modality: Modality;
+    personNames?: string[];
     emotion?: string;
     emotionTarget?: "face" | "sound" | "ocr";
     queryType: "text" | "image";
@@ -127,6 +131,7 @@ const modalityOptions =
         {value: "emotions", label: "Emotions"},
         {value: "ocr", label: "OCR"},
         {value: "asr", label: "ASR"},
+        {value: "person", label: "Person"},
     ] as const satisfies RadioOption<Modality>[];
 
 const emotionItems: DropdownItem[] = [
@@ -327,14 +332,15 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
 
 export function SearchCard() {
-    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const {
         blocks, setBlocks,
+        resultView, setResultView,
         items, setItems,
         mediaFilter, setMediaFilter,
         raw, setRaw,
         setScrollY, scrollY, setVectorsById,
     } = useSearch();
+    const [visibleCount, setVisibleCount] = useState(resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
 
     useEffect(() => {
         if (scrollY > 0) {
@@ -375,11 +381,16 @@ export function SearchCard() {
         }
     }, []);
 
-    let filteredItems = items.filter(i => mediaFilter[i.kind]);
+    // Assign ranks before filtering/grouping so badges always refer to the original result order.
+    let filteredItems: MediaItem[] = items.map((item, index) => ({...item, searchRank: item.searchRank ?? index + 1}))
+        .filter(i => mediaFilter[i.kind]);
 
-    if (mediaFilter.uniqueVideos) {
+    if (mediaFilter.uniqueVideos && resultView === "ranked") {
         filteredItems = dedupeVideos(filteredItems);
     }
+    const resultGroups = resultView === "video" ? groupResultsByVideo(filteredItems) : [];
+    const navigationCount = resultView === "video" ? resultGroups.length : filteredItems.length;
+    const pageSize = resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE;
     const addBlock = () =>
         updateBlocks(prev => [...prev, makeBlockState()]);
     const removeBlock = (id: string) =>
@@ -388,7 +399,7 @@ export function SearchCard() {
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
 
     const resetAll = () => {
-        setVisibleCount(PAGE_SIZE);
+        setVisibleCount(pageSize);
         setLoading(false);
         setError(null);
         setFlash({show: false, message: ""});
@@ -427,8 +438,15 @@ export function SearchCard() {
     }, [loading, filterOpen]);
 
     const onSearch = async () => {
-        setVisibleCount(PAGE_SIZE);
+        setVisibleCount(pageSize);
         for (const b of blocks) {
+            if (b.modality === "person") {
+                if (selectedPersonNames(b).length === 0) {
+                    setFlash({show: true, message: "Please select at least one person in each Person block."});
+                    return;
+                }
+                continue;
+            }
             const isTextQuery = b.queryType === "text";
             const isEmotion = b.modality === "emotions";
             const needsText = isTextQuery || isEmotion;
@@ -479,7 +497,11 @@ export function SearchCard() {
             if (blocks.length == 1) {
                 const b = blocks[0];
 
-                if (b.modality === "emotions") {
+                if (b.modality === "person") {
+                    const body = buildPersonQuery(selectedPersonNames(b));
+                    // @ts-expect-error Generated operator inputs omit named references.
+                    resp = await retrieval.postExecuteQuery(schema, body);
+                } else if (b.modality === "emotions") {
                     const chosen = (b.emotion ?? "").trim();
                     if (!chosen) {
                         setFlash({show: true, message: "Please select an emotion."});
@@ -548,7 +570,7 @@ export function SearchCard() {
             });
 
             setItems(media);
-            console.log(media.pop()?.id) // this is the wrong id, we need the parent id
+            console.log(media.at(-1)?.id) // this is the wrong id, we need the parent id
             setLoading(false);
         } catch (err) {
             console.log(String(err))
@@ -610,6 +632,18 @@ export function SearchCard() {
                                     <h2 className="panel__title">Results <span className="sc-resultCount" role="status">{filteredItems.length} results</span></h2>
                                 </div>
 
+                                <div className="sc-resultsControls">
+                                    <label className="sc-viewSelect">
+                                        View
+                                        <select value={resultView} onChange={(event) => {
+                                            const view = event.target.value === "video" ? "video" : "ranked";
+                                            setResultView(view);
+                                            setVisibleCount(view === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
+                                        }}>
+                                            <option value="ranked">Ranked grid</option>
+                                            <option value="video">By video</option>
+                                        </select>
+                                    </label>
                                 <div style={{position: "relative"}}>
                                     <button
                                         type="button"
@@ -625,9 +659,11 @@ export function SearchCard() {
                                         open={filterOpen}
                                         value={mediaFilter}
                                         counts={counts}
+                                        grouped={resultView === "video"}
                                         onChange={setMediaFilter}
                                         onClose={() => setFilterOpen(false)}
                                     />
+                                </div>
                                 </div>
                             </div>
 
@@ -641,87 +677,39 @@ export function SearchCard() {
                                         <p>{loading ? "Results will appear here when your search is ready." : items.length ? "Adjust the media filters to see more results." : "Choose a schema and modality, then enter a query to find matching media."}</p>
                                     </div>
                                 )}
-                                <div className="results-grid sc-resultsGrid">
-                                    {filteredItems.slice(0, visibleCount).map(({
-                                                                                   id,
-                                                                                   kind,
-                                                                                   url,
-                                                                                   name,
-                                                                                   mediaItemName,
-                                                                                   thumbUrl,
-                                                                                   rawType,
-                                                                                   start,
-                                                                                   end
-                                                                               }) => {
-                                        if (kind === "image") {
-                                            return (
-                                                <ResultItem
-                                                    key={id}
-                                                    id={id}
-                                                    kind="image"
-                                                    mediaClassName="ri-media"
-                                                    // getImageSrc={() => url}
-                                                    onBeforeOpen={beforeNavigate}
-                                                />
-                                            );
-                                        }
+                                {resultView === "video" ? (
+                                    <div className="sc-videoGroups">
+                                        {resultGroups.slice(0, visibleCount).map(group => (
+                                            <section className="sc-videoGroup" key={group.key} aria-label={group.label}>
+                                                <div className="sc-videoGroupHeading">
+                                                    <h3 title={group.label}>{group.label}</h3>
+                                                    <span>{group.items.length} match{group.items.length === 1 ? "" : "es"}</span>
+                                                </div>
+                                                <ResultsGrid items={group.items} beforeNavigate={beforeNavigate}/>
+                                            </section>
+                                        ))}
+                                    </div>
+                                ) : <ResultsGrid items={filteredItems.slice(0, visibleCount)} beforeNavigate={beforeNavigate}/>}
 
-                                        if (kind === "video") {
-                                            return (
-                                                <ResultItem
-                                                    key={id}
-                                                    id={id}
-                                                    kind="video"
-                                                    showDuration
-                                                    start={start}
-                                                    end={end}
-                                                    mediaItemName={mediaItemName ?? name}
-                                                    preload="none"
-                                                    controls={false}
-                                                    mediaClassName="ri-media"
-                                                    getPosterSrc={() => thumbUrl ?? ""}
-                                                    getVideoSrc={() => url}
-                                                    caption={name}
-                                                    onBeforeOpen={beforeNavigate}
-                                                />
-                                            );
-                                        }
-
-                                        return (
-                                            <ResultItem
-                                                key={id}
-                                                id={id}
-                                                kind="custom"
-                                                onBeforeOpen={beforeNavigate}
-                                                renderMedia={() => (
-                                                    <div className="sb__unknown">
-                                                        <div className="sb__caption">Type: {rawType ?? "unknown"}</div>
-                                                    </div>
-                                                )}
-                                            />
-                                        );
-                                    })}
-                                </div>
-
-                                {filteredItems.length > visibleCount && (
+                                {navigationCount > visibleCount && (
                                     <div className="row" style={{justifyContent: "center"}}>
-                                        <button className="btn" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+                                        <button className="btn" onClick={() => setVisibleCount((v) => v + pageSize)}>
                                             Show more
                                         </button>
                                     </div>
                                 )}
 
-                                {filteredItems.length > PAGE_SIZE && (
+                                {navigationCount > pageSize && (
                                     <div className="row" style={{justifyContent: "center"}}>
-                                        {filteredItems.length > visibleCount && (
+                                        {navigationCount > visibleCount && (
                                             <button className="btn btn-ghost"
-                                                    onClick={() => setVisibleCount(filteredItems.length)}>
+                                                    onClick={() => setVisibleCount(navigationCount)}>
                                                 Show all
                                             </button>
                                         )}
-                                        {visibleCount > PAGE_SIZE && (
+                                        {visibleCount > pageSize && (
                                             <button className="btn btn-ghost"
-                                                    onClick={() => setVisibleCount(PAGE_SIZE)}>
+                                                    onClick={() => setVisibleCount(pageSize)}>
                                                 Show less
                                             </button>
                                         )}
