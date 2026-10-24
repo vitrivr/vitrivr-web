@@ -95,13 +95,14 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
         }
     };
 
-    if (loading) return <span style={{fontSize: 12, color: "#666"}}>Loading schemas…</span>;
-    if (error) return <span style={{fontSize: 12, color: "crimson"}}>Error loading schemas: {error}</span>;
-    if (!schemas.length) return <span style={{fontSize: 12, color: "#666"}}>No schemas available</span>;
+    if (loading) return <span className="schema-status" role="status">Loading schemas…</span>;
+    if (error) return <span className="schema-status schema-status--error" role="alert">Error loading schemas: {error}</span>;
+    if (!schemas.length) return <span className="schema-status" role="status">No schemas available</span>;
 
     return (
         <label style={{fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6}}>
             <select
+                aria-label="Schema"
                 value={(value && schemas.includes(value)) ? value : schemas[0]}
                 onChange={handleChange}
                 style={{

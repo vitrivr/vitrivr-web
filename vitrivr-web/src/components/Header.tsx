@@ -22,7 +22,7 @@ import {useAuth} from "../state/AuthContext";
 import {useState} from "react";
 import EvaluationPicker from "./EvaluationPicker";
 
-function Header() {
+function Header({theme, onToggleTheme}: {theme?: "light" | "dark"; onToggleTheme?: () => void}) {
     const {status, user, logout, openLogin} = useAuth();
     const [showEvalPicker, setShowEvalPicker] = useState(false);
 
@@ -48,6 +48,11 @@ function Header() {
 
                     {/* RIGHT */}
                     <div className="header__actions">
+                        {theme && <button type="button" className="header__btn theme-toggle"
+                            onClick={onToggleTheme} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+                            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}>
+                            <span aria-hidden="true">{theme === "light" ? "☾" : "☼"}</span>
+                        </button>}
                         {status === "loggedIn" ? (
                             <div className="header__auth">
                                 <button

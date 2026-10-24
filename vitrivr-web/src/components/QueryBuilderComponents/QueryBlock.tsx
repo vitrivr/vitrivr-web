@@ -127,47 +127,15 @@ export default function QueryBlock({
 
 
     return (
-        <div
-            style={{
-                position: "relative",
-                background: "#ffffff",
-                borderRadius: "20px",
-                padding: "16px",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                width: "100%",     // fill grid column
-                minWidth: 0,       // allow shrinking inside grid
-                height: "auto",    // grow with content
-                // remove maxWidth/maxHeight
-            }}
-        >
-            {onRemove && (
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    aria-label="Remove block"
-                    style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        width: 26,
-                        height: 26,
-                        borderRadius: "50%",
-                        border: "1px solid #ccc",
-                        background: "#fff",
-                        cursor: "pointer",
-                        fontSize: 18,
-                        lineHeight: "24px",
-                        textAlign: "center",
-                        padding: 0,
-                    }}
-                >
-                    ×
-                </button>
-            )}
-
+        <div className="sc-queryBlock">
+            {onRemove && <div className="sc-blockHeader">
+                <span>Query block</span>
+                <button type="button" className="sc-removeBlock" onClick={onRemove} aria-label="Remove query block">Remove ×</button>
+            </div>}
             <div style={{marginBottom: 16}}>
                 <RadioGroup
                     label="Modalities"
+                    className="sc-modalities"
                     options={allowedModalityOptions}
                     value={block.modality}
                     onChange={(v) => {
@@ -224,9 +192,11 @@ export default function QueryBlock({
             </div>
 
             <div>
+                <label className="label" htmlFor={`query-${block.id}`}>Query input</label>
                 {(isTextQuery || isEmotion) ? (
                     <Input
                         type="text"
+                        id={`query-${block.id}`}
                         value={block.textQuery}
                         onChange={(val: string) => onChange({textQuery: val})}
                         placeholder="Type your query…"

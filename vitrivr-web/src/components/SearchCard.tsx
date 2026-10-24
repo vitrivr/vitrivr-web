@@ -79,6 +79,7 @@ const queryTypeItems =
 type MediaKind = "image" | "video" | "custom";
 
 export type MediaItem = {
+    searchRank?: number;
     id: string;
     kind: MediaKind;
     rawType?: string;
@@ -560,59 +561,19 @@ export function SearchCard() {
     const beforeNavigate = () => setScrollY(window.scrollY);
 
     return (
-        <div className="layout">
+        <div className="sc-search">
             <div className="sc-page">
-                <div className="stack">
-
-                    {/* Query card */}
-                    <section className="panel sc-queryPanel">
+                <div className="sc-workspace">
+                    <section className="panel sc-queryPanel" aria-label="Query Builder">
                         <div className="panel__head row-between">
-                            <div className="stack-xs">
-                                <h3 className="panel__title">Query Builder</h3>
-                                <p className="panel__subtitle">
-                                    {blocks.length} block{blocks.length === 1 ? "" : "s"}
-                                </p>
-                            </div>
-
-                            <div className="row">
-                                <div className="row">
-                                    <span className="muted" style={{fontSize: 16}}>Schema</span>
-                                    <SchemaSelector value={schema} onChange={setSchema}/>
-                                </div>
-                                <button
-                                    className="btn"
-                                    type="button"
-                                    onClick={resetAll}
-                                    disabled={loading && items.length === 0 && raw === ""}
-                                    title="Reset query and clear results"
-                                    style={{
-                                        backgroundColor: "#f8c8dc",   // light pink
-                                        borderColor: "#f2a7c7",
-                                        color: "#5a1a33",
-                                    }}
-                                >
-                                    Reset
-                                </button>
-
-                                <button
-                                    className="btn icon-btn btn-tooltip"
-                                    type="button"
-                                    onClick={addBlock}
-                                    aria-label="Add query block"
-                                    title="Add a new query block"
-                                    data-tooltip="Add a new query block"
-                                    style={{
-                                        backgroundColor: "#F0FFF0",   // light pink
-                                        borderColor: "#ADEBB3",
-                                        color: "#2E6F40",
-                                    }}
-                                >
-                                    +
-                                </button>
-                            </div>
+                            <h2 className="panel__title">Query Builder</h2>
+                            <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>
                         </div>
-
                         <div className="panel__body stack">
+                            <div className="stack-xs">
+                                <span className="label">Schema</span>
+                                <SchemaSelector value={schema} onChange={setSchema}/>
+                            </div>
                             <div className="sc-blockGrid">
                                 {blocks.map((b) => (
                                     <QueryBlock
@@ -636,23 +597,22 @@ export function SearchCard() {
                                 {flash.message}
                             </Flash>
 
-                            <div className="row-between">
+                            <div className="stack sc-queryActions">
+                                <button className="btn sc-addBlock" type="button" onClick={addBlock}>+ Add query block</button>
                                 <button className="btn btn-primary" disabled={loading} onClick={onSearch}>
-                                    {loading ? "Searching…" : "Search"}
+                                    <span>{loading ? "Searching…" : "Search"}</span>
+                                    <span className="sc-shortcut">Ctrl / ⌘ ↵</span>
                                 </button>
-
-                                <span className="muted" style={{fontSize: 12}}>
-            </span>
+                                <button className="btn sc-reset" type="button" onClick={resetAll}
+                                    disabled={loading && items.length === 0 && raw === ""}>Reset</button>
                             </div>
                         </div>
                     </section>
 
-                    {/* Results card (ONLY when there are results) */}
-                    {filteredItems.length > 0 && (
-                        <section className="panel">
+                    <section className="panel sc-resultsPanel" aria-label="Results" aria-busy={loading}>
                             <div className="panel__head row-between">
                                 <div className="stack-xs">
-                                    <h3 className="panel__title">Results</h3>
+                                    <h2 className="panel__title">Results <span className="sc-resultCount" role="status">{filteredItems.length} results</span></h2>
                                 </div>
 
                                 <div style={{position: "relative"}}>
@@ -679,6 +639,13 @@ export function SearchCard() {
                             <div className="panel__body stack">
                                 {error && <div className="alert alert--error">{error}</div>}
 
+                                {filteredItems.length === 0 && (
+                                    <div className="sc-empty" role="status">
+                                        <span className="sc-emptyIcon" aria-hidden="true">⌕</span>
+                                        <h3>{loading ? "Searching your collection…" : items.length ? "No matching media" : raw ? "No results found" : "Explore your collection"}</h3>
+                                        <p>{loading ? "Results will appear here when your search is ready." : items.length ? "Adjust the media filters to see more results." : "Choose a schema and modality, then enter a query to find matching media."}</p>
+                                    </div>
+                                )}
                                 <div className="results-grid sc-resultsGrid">
                                     {filteredItems.slice(0, visibleCount).map(({
                                                                                    id,
@@ -710,6 +677,7 @@ export function SearchCard() {
                                                     key={id}
                                                     id={id}
                                                     kind="video"
+                                                    showDuration
                                                     start={start}
                                                     end={end}
                                                     mediaItemName={mediaItemName ?? name}
@@ -773,7 +741,6 @@ export function SearchCard() {
                                 )}
                             </div>
                         </section>
-                    )}
                 </div>
             </div>
         </div>

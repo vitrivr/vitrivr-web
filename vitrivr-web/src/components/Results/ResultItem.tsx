@@ -7,6 +7,7 @@ import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generate
 
 type BaseProps = {
     id: string,
+    searchRank?: number,
     caption?: React.ReactNode,
     className?: string,
     captionClassName?: string,
@@ -21,6 +22,7 @@ type ImageProps = {
 };
 type VideoProps = {
     kind: "video";
+    showDuration?: boolean;
     start: number;
     end: number;
     getVideoSrc: (id: string) => string;
@@ -49,6 +51,7 @@ export default function ResultItem(props: ResultItemProps) {
     const {evaluationId} = useAuth();
     const [kind, setKind] = useState<SubmissionKind>("unknown");
     const [textAnswer, setTextAnswer] = useState("");
+    const [focused, setFocused] = useState(false);
     const [hovered, setHovered] = useState(false);
     let media: React.ReactNode;
     let displayCaption: React.ReactNode = caption;
@@ -208,10 +211,14 @@ export default function ResultItem(props: ResultItemProps) {
     return (
         <div
             className="ri-wrap"
+            onFocus={() => setFocused(true)}
+            onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+            }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {props.kind === "video" && hovered && kind === "text" && (
+            {props.kind === "video" && (hovered || focused) && kind === "text" && (
                 <div
                     className="ri-floatText"
                     onClick={(e) => {
@@ -238,13 +245,18 @@ export default function ResultItem(props: ResultItemProps) {
                     onClick={() => props.onBeforeOpen?.()}
                     style={{textDecoration: "none", color: "inherit", display: "block"}}
                 >
-                    {media}
-                    <figcaption className={captionClassName}>
+                    <div className="ri-preview" style={{position: "relative"}}>
+                        {media}
+                        {props.kind === "video" && props.showDuration && Number.isFinite(props.end - props.start) && (
+                            <span className="sc-duration" aria-label="Segment duration">{Math.floor(Math.max(0, props.end - props.start) / 60).toString().padStart(2, "0")}:{Math.floor(Math.max(0, props.end - props.start) % 60).toString().padStart(2, "0")}</span>
+                        )}
+                    </div>
+                    <figcaption title={typeof displayCaption === "string" ? displayCaption : undefined} className={captionClassName}>
                         {displayCaption}
                     </figcaption>
                 </Link>
 
-                {props.kind === "video" && hovered && (
+                {props.kind === "video" && (hovered || focused) && (
                     <button
                         type="button"
                         onClick={onSubmit}
