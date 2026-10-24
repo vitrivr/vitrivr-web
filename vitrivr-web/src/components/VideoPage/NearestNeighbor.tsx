@@ -256,15 +256,15 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
     }
 
     if (loading) {
-        return <div>Loading nearest neighbors…</div>;
+        return <div className="vp-message" role="status">Loading nearest neighbors…</div>;
     }
 
     if (error) {
-        return <div style={{color: "red"}}>{error}</div>;
+        return <div className="vp-message vp-message--error" role="alert">{error}</div>;
     }
 
     if (loaded && neighbors.length === 0) {
-        return <div>No nearest neighbors found.</div>;
+        return <div className="vp-message" role="status">No nearest neighbors found.</div>;
     }
 
     if (neighbors.length === 0) {
@@ -286,7 +286,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
             loading={loading}
         >
             {error && (
-                <div style={{color: "#b00020"}}>
+                <div className="vp-message vp-message--error">
                     {error}
                 </div>
             )}

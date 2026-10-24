@@ -21,23 +21,12 @@ export default function DisclosureSection({
                                               children,
                                           }: DisclosureSectionProps) {
     return (
-        <section>
+        <section className="vp-section">
             <button
                 type="button"
                 onClick={onToggle}
                 aria-expanded={open}
-                style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "12px 14px",
-                    border: "1px solid #ddd",
-                    borderRadius: 10,
-                    background: "#fff",
-                    cursor: "pointer",
-                    textAlign: "left",
-                }}
+                className="vp-disclosure"
             >
                 <span
                     style={{
@@ -69,7 +58,7 @@ export default function DisclosureSection({
             </button>
 
             {open && (
-                <div style={{paddingTop: 10}}>
+                <div className="vp-sectionBody">
                     {children}
                 </div>
             )}

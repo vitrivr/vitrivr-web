@@ -19,13 +19,13 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
     if (!info) {
         return (
             <div
-                style={{color: "red"}}>Could not parse video URL: {src}
+                className="vp-message vp-message--error">Could not parse video URL: {src}
             </div>);
     }
     const originalHour = getHourFromFilename(info.filename);
     if (originalHour === null) {
         return (
-            <div style={{color: "red"}}>
+            <div className="vp-message vp-message--error">
                 Could not extract hour from: {info.filename}
             </div>
         );
@@ -57,8 +57,8 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                         display: "grid",
                         placeItems: "center",
                         borderRadius: 8,
-                        background: "#eee",
-                        color: "#777",
+                        background: "var(--surface-2)",
+                        color: "var(--text-3)",
                         fontSize: 13,
                         position: "relative",
                     }}
@@ -79,14 +79,15 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                             transform: "translateY(-50%)",
 
                             ...(direction === "previous"
-                                ? {left: -40}
-                                : {right: -40}),
+                                ? {left: 8}
+                                : {right: 8}),
 
                             width: 32,
                             height: 32,
                             borderRadius: "50%",
-                            border: "1px solid #ccc",
-                            background: "#fff",
+                            border: "1px solid var(--line)",
+                            background: "var(--surface)",
+                            color: "var(--text)",
                             cursor: "pointer",
                             display: "grid",
                             placeItems: "center",
@@ -168,8 +169,8 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                         transform: "translateY(-50%)",
 
                         ...(direction === "previous"
-                            ? {left: -40}
-                            : {right: -40}),
+                            ? {left: 8}
+                            : {right: 8}),
                         width: 32,
                         height: 32,
                         borderRadius: "50%",

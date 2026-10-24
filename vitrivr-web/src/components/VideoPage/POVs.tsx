@@ -1,8 +1,9 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
+import {loadPovPreviews} from "./loadPovPreviews.ts";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import ResultItem from "../Results/ResultItem.tsx";
 import {useSearch} from "../../state/SearchContext.tsx";
-import {filterExistingVideos, generatePOVData, type HourlyVideo, parseVideoURL, uuidFromUuidV4} from "./ThumbnailUtils.ts";
+import {videoExists, generateVideoThumbnail, type HourlyVideo, parseVideoURL, uuidFromUuidV4} from "./ThumbnailUtils.ts";
 
 /**
  * All the people contained in the CASTLE dataset 2024
@@ -27,22 +28,20 @@ type OtherPovsProps = {
  * POV component that contains the videos of all participants of that corresponding time and day.
  * @constructor
  */
-export default function POVs({src, timestamp}: OtherPovsProps) {
+export default function POVs(props: OtherPovsProps) {
+    return <PovGallery key={props.src} {...props}/>;
+}
+
+function PovGallery({src, timestamp}: OtherPovsProps) {
     const [open, setOpen] = useState(false);
     const [videos, setVideos] = useState<HourlyVideo[]>([]);
     const [loading, setLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
-    const processingClipIds = useRef<Set<string>>(new Set());
-    const {setVectorsById, setItems,} = useSearch();
-
-    const info = parseVideoURL(src);
-    useEffect(() => {
-        setOpen(false);
-        setVideos([]);
-        setVideos([]);
-        setLoaded(false);
-        setLoading(false);
-    }, [src]);
+    const {setItems} = useSearch();
+    const info = useMemo(() => parseVideoURL(src), [src]);
+    const timestampRef = useRef(timestamp);
+    timestampRef.current = timestamp;
+    const previewTime = useRef<number | null>(null);
 
     function savePovBeforeOpen(video: HourlyVideo) {
         setItems((previous) => {
@@ -68,153 +67,38 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
             ];
         });
 
-        if (video.CLIPVector?.length) {
-            setVectorsById((previous) => ({
-                ...previous,
-                [video.id]: video.CLIPVector!,
-            }));
-        }
     }
 
     useEffect(() => {
-        if (!open || loaded || !info) {
-            return;
-        }
-
-        let cancelled = false;
-
-        async function loadVideos() {
-            if (!info) return;
-
-            const peopleCandidates: HourlyVideo[] = PEOPLE
-                .filter((person) => person !== info.person)
-                .map((person) => ({
-                    id: uuidFromUuidV4(),
-                    name: person,
-                    kind: "person",
-                    seekTime: timestamp,
-                    url:
-                        `${info.origin}/videos/` +
-                        `${encodeURIComponent(info.day)}/` +
-                        `${encodeURIComponent(person)}/video/` +
-                        `${encodeURIComponent(info.filename)}`,
-                }));
-
-            const roomCandidates: HourlyVideo[] = ROOMS
-                .filter((room) => room !== info.person)
-                .map((room) => ({
-                    id: uuidFromUuidV4(),
-                    name: room,
-                    kind: "room",
-                    seekTime: timestamp,
-                    url:
-                        `${info.origin}/videos/` +
-                        `${encodeURIComponent(info.day)}/` +
-                        `${encodeURIComponent(room)}/video/` +
-                        `${encodeURIComponent(info.filename)}`,
-                }));
-
-            const candidates = [
-                ...peopleCandidates,
-                ...roomCandidates,
-            ];
-
-            setLoading(true);
-
-            try {
-                const existing =
-                    await filterExistingVideos(
-                        candidates,
-                        4
-                    );
-
-                if (!cancelled) {
-                    setVideos(existing);
-                    setLoaded(true);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        loadVideos();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [open, loaded, info?.origin, info?.day, info?.person, info?.filename]);
-
-    useEffect(() => {
-        if (!open || videos.length === 0) {
-            return;
-        }
-
-        const missing = videos.filter(
-            (video) =>
-                !video.CLIPVector &&
-                !processingClipIds.current.has(video.id)
-        );
-
-        if (missing.length === 0) {
-            return;
-        }
-
-        let cancelled = false;
-
-        for (const video of missing) {
-            processingClipIds.current.add(video.id);
-        }
-
-        async function loadPovData() {
-            const generated = await generatePOVData(
-                missing,
-                2
-            );
-
-            if (cancelled) {
-                return;
-            }
-
-            const generatedById = new Map(generated.map((video) => [video.id, video,]));
-
-            setVideos((previous) =>
-                previous.map((video) =>
-                    generatedById.get(video.id) ??
-                    video
-                )
-            );
-
-            setVectorsById((previous) => {
-                const next = {...previous};
-
-                for (const video of generated) {
-                    if (video.CLIPVector?.length) {
-                        next[video.id] =
-                            video.CLIPVector;
-                    }
-                }
-
-                return next;
+        if (!open || loaded || !info) return;
+        const controller = new AbortController();
+        // Hold one frame time for this gallery; playback updates must not restart requests.
+        const seekTime = previewTime.current ?? timestampRef.current;
+        previewTime.current = seekTime;
+        const candidates: HourlyVideo[] = [
+            ...PEOPLE.filter(person => person !== info.person).map(name => ({name, kind: "person" as const})),
+            ...ROOMS.filter(room => room !== info.person).map(name => ({name, kind: "room" as const})),
+        ].map(({name, kind}) => ({
+            id: uuidFromUuidV4(), name, kind, seekTime,
+            url: `${info.origin}/videos/${encodeURIComponent(info.day)}/${encodeURIComponent(name)}/video/${encodeURIComponent(info.filename)}`,
+        }));
+        const order = new Map(candidates.map((video, index) => [video.url, index]));
+        setLoading(true);
+        void loadPovPreviews(candidates, controller.signal, (video) => {
+            setVideos(previous => {
+                const existing = previous.find(candidate => candidate.url === video.url);
+                const updated = existing ? {...existing, ...video, id: existing.id} : video;
+                return [...previous.filter(candidate => candidate.url !== video.url), updated]
+                    .sort((a, b) => order.get(a.url)! - order.get(b.url)!);
             });
-
-            for (const video of missing) {
-                processingClipIds.current.delete(
-                    video.id
-                );
+        }, {exists: videoExists, thumbnail: generateVideoThumbnail}).finally(() => {
+            if (!controller.signal.aborted) {
+                setLoaded(true);
+                setLoading(false);
             }
-        }
-
-        loadPovData();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        open,
-        videos,
-    ]);
+        });
+        return () => controller.abort();
+    }, [open, loaded, info]);
 
     if (!info) {
         return null;
@@ -234,7 +118,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
             onToggle={() => setOpen((value) => !value)}
             title={`Other POVs · ${info.day} at ${info.filename.replace(/\.[^.]+$/, "")}:00`}
             count={open && loaded ? videos.length : undefined}
-            loading={loading}
+            loading={open && loading}
         >
             {!loading && loaded && videos.length === 0 && (
                 <div
@@ -247,13 +131,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
                 </div>
             )}
             {videos.length > 0 && (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 20,
-                        alignItems: "start",
-                    }}
+                <div className="vp-povGroups"
                 >
                     {peopleVideos.length > 0 && (
                         <div>
@@ -271,7 +149,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
                                 style={{
                                     display: "grid",
                                     gridTemplateColumns:
-                                        "repeat(auto-fill, minmax(180px, 1fr))",
+                                        "repeat(auto-fill, minmax(min(180px, 100%), 1fr))",
                                     gap: 10,
 
                                 }}
@@ -313,7 +191,7 @@ export default function POVs({src, timestamp}: OtherPovsProps) {
                                 style={{
                                     display: "grid",
                                     gridTemplateColumns:
-                                        "repeat(auto-fill, minmax(180px, 1fr))",
+                                        "repeat(auto-fill, minmax(min(180px, 100%), 1fr))",
                                     gap: 10,
                                 }}
                             >

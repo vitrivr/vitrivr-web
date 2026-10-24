@@ -1,4 +1,4 @@
-export const MEDIA_PATH_ORIGIN: string = import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "";
+export const MEDIA_PATH_ORIGIN: string = import.meta.env?.VITE_MEDIA_PATH_ORIGIN ?? "";
 
 export type ParsedVideoUrl = {
     origin: string;
@@ -72,4 +72,8 @@ export function getVideoAtOffset(src: string, offset: number): string | null {
     } catch {
         return null;
     }
+}
+/** Keep the original stream at its search result; use hourly files for navigation. */
+export function getPlaybackSource(originalSrc: string, hourlySrc: string, offset: number): string | null {
+    return offset === 0 ? originalSrc : getVideoAtOffset(hourlySrc, offset);
 }

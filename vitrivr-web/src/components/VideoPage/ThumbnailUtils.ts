@@ -53,26 +53,59 @@ export function parseVideoURL(url: string): ParsedVideoUrl | null {
 /**
  * Checks whether a video exists for the url.
  */
-export function videoExists(url: string): Promise<boolean> {
+const availabilityCache = new Map<string, {exists: boolean; expires: number}>();
+
+export async function videoExists(url: string, signal?: AbortSignal): Promise<boolean> {
+    if (signal?.aborted) return false;
+    const cached = availabilityCache.get(url);
+    if (cached && cached.expires > Date.now()) return cached.exists;
+
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, {once: true});
+    const timeout = setTimeout(abort, 3000);
+    let exists: boolean | undefined;
+    try {
+        // Avoid downloading/decoding video metadata when the server supports HEAD.
+        const response = await fetch(url, {method: "HEAD", signal: controller.signal});
+        if (response.ok) exists = true;
+        else if (response.status === 404 || response.status === 410) exists = false;
+    } catch { /* Servers without HEAD/CORS support fall back to media metadata. */ }
+    finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", abort);
+    }
+    if (signal?.aborted) return false;
+    exists ??= await videoMetadataExists(url, signal);
+    if (!signal?.aborted) {
+        if (availabilityCache.size >= 128) availabilityCache.delete(availabilityCache.keys().next().value!);
+        availabilityCache.set(url, {exists, expires: Date.now() + (exists ? 300_000 : 15_000)});
+    }
+    return exists;
+}
+
+function videoMetadataExists(url: string, signal?: AbortSignal): Promise<boolean> {
     return new Promise((resolve) => {
         const video = document.createElement("video");
-        const cleanup = () => {
+        let finished = false;
+        const abort = () => finish(false);
+        const timeout = setTimeout(abort, 5000);
+        function finish(exists: boolean) {
+            if (finished) return;
+            finished = true;
+            clearTimeout(timeout);
+            signal?.removeEventListener("abort", abort);
+            video.onloadedmetadata = null;
+            video.onerror = null;
             video.removeAttribute("src");
             video.load();
-        };
-
+            resolve(exists);
+        }
+        if (signal?.aborted) { finish(false); return; }
+        signal?.addEventListener("abort", abort, {once: true});
         video.preload = "metadata";
-
-        video.onloadedmetadata = () => {
-            cleanup();
-            resolve(true);
-        };
-
-        video.onerror = () => {
-            cleanup();
-            resolve(false);
-        };
-
+        video.onloadedmetadata = () => finish(true);
+        video.onerror = () => finish(false);
         video.src = url;
     });
 }
@@ -134,7 +167,22 @@ export const uuidFromUuidV4 = () => {
  * @param url string
  * @param seekTime
  */
-export function generateVideoThumbnail(url: string, seekTime: number): Promise<string | undefined> {
+const thumbnailCache = new Map<string, string>();
+
+export async function generateVideoThumbnail(url: string, seekTime: number, signal?: AbortSignal): Promise<string | undefined> {
+    if (signal?.aborted) return undefined;
+    const key = `${url}@${seekTime}`;
+    const cached = thumbnailCache.get(key);
+    if (cached) return cached;
+    const thumbnail = await captureVideoThumbnail(url, seekTime, signal);
+    if (thumbnail && !signal?.aborted) {
+        if (thumbnailCache.size >= 48) thumbnailCache.delete(thumbnailCache.keys().next().value!);
+        thumbnailCache.set(key, thumbnail);
+    }
+    return thumbnail;
+}
+
+function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSignal): Promise<string | undefined> {
     return new Promise((resolve) => {
         const video = document.createElement("video");
         const canvas = document.createElement("canvas");
@@ -145,7 +193,12 @@ export function generateVideoThumbnail(url: string, seekTime: number): Promise<s
             finish(undefined);
         }, 10_000);
 
+        const abort = () => finish(undefined);
+        if (signal?.aborted) { finish(undefined); return; }
+        signal?.addEventListener("abort", abort, {once: true});
+
         function cleanup() {
+            signal?.removeEventListener("abort", abort);
             window.clearTimeout(timeout);
             video.onloadedmetadata = null;
             video.onloadeddata = null;
@@ -192,7 +245,7 @@ export function generateVideoThumbnail(url: string, seekTime: number): Promise<s
             }
         }
 
-        video.preload = "auto";
+        video.preload = "metadata";
         video.muted = true;
         video.playsInline = true;
 
@@ -220,11 +273,15 @@ export function generateVideoThumbnail(url: string, seekTime: number): Promise<s
                 console.log("Seeking thumbnail to:", targetTime);
                 if (targetTime <= 0.01) {
                     video.onloadeddata = captureFrame;
+                    video.preload = "auto";
+                    if (video.readyState >= 2) captureFrame();
                 } else {
                     video.currentTime = targetTime;
                 }
             } else {
                 video.onloadeddata = captureFrame;
+                video.preload = "auto";
+                if (video.readyState >= 2) captureFrame();
             }
         };
 
