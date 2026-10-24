@@ -57,7 +57,6 @@ import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {buildHlsUrl, useSearch} from "../state/SearchContext.tsx";
-import SchemaSelector from "./SchemaSelector.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
 import {uuid} from "../utils/uuid";
@@ -570,10 +569,6 @@ export function SearchCard() {
                             <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>
                         </div>
                         <div className="panel__body stack">
-                            <div className="stack-xs">
-                                <span className="label">Schema</span>
-                                <SchemaSelector value={schema} onChange={setSchema}/>
-                            </div>
                             <div className="sc-blockGrid">
                                 {blocks.map((b) => (
                                     <QueryBlock

@@ -1,3 +1,4 @@
+import {useState} from "react";
 import {Routes, Route, Navigate} from "react-router-dom";
 import Layout from "./components/Layout";
 import {SearchCard} from "./components/SearchCard";
@@ -15,15 +16,20 @@ function Home() {
 
 export default function App() {
     const initialBlocks: never[] = [];
+    const [searchSession, setSearchSession] = useState(0);
+    const resetSearch = () => {
+        setSearchSession(session => session + 1);
+        window.scrollTo(0, 0);
+    };
     return (
-        <Layout>
-            <SearchProvider initial={{blocks: initialBlocks}}>
+        <SearchProvider key={searchSession} initial={{blocks: initialBlocks}}>
+            <Layout onHome={resetSearch}>
                 <Routes>
                     <Route path="/" element={<Home/>}/>
                     <Route path="/video/:id" element={<VideoPage/>}/>
                     <Route path="*" element={<Navigate to="/" replace/>}/>
                 </Routes>
-            </SearchProvider>
-        </Layout>
+            </Layout>
+        </SearchProvider>
     );
 }

@@ -100,18 +100,12 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
     if (!schemas.length) return <span className="schema-status" role="status">No schemas available</span>;
 
     return (
-        <label style={{fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6}}>
+        <label style={{fontSize: 13, display: "flex", alignItems: "center", gap: 6}}>
             <select
                 aria-label="Schema"
                 value={(value && schemas.includes(value)) ? value : schemas[0]}
                 onChange={handleChange}
-                style={{
-                    fontSize: 14,
-                    padding: "2px 6px",
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                    background: "#90D5FF"
-                }}
+                className="schema-select"
             >
                 {schemas.map((name) => (
                     <option key={name} value={name}>{name}</option>

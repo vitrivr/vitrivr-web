@@ -19,13 +19,19 @@
 
 import "./Header.css";
 import {useAuth} from "../state/AuthContext";
-import {useState} from "react";
+import {useId, useRef, useState} from "react";
+import {Link} from "react-router-dom";
+import {useSearch} from "../state/SearchContext";
+import SchemaSelector from "./SchemaSelector";
 import EvaluationPicker from "./EvaluationPicker";
 
-function Header({theme, onToggleTheme}: {theme?: "light" | "dark"; onToggleTheme?: () => void}) {
+function Header({theme, onToggleTheme, onHome}: {theme?: "light" | "dark"; onToggleTheme?: () => void; onHome: () => void}) {
     const {status, user, logout, openLogin} = useAuth();
     const [showEvalPicker, setShowEvalPicker] = useState(false);
 
+    const {schema, setSchema} = useSearch();
+    const settingsRef = useRef<HTMLDialogElement>(null);
+    const settingsTitle = useId();
     const username = user?.username ?? "unknown";
 
     return (
@@ -34,25 +40,34 @@ function Header({theme, onToggleTheme}: {theme?: "light" | "dark"; onToggleTheme
 
             <header className="header">
                 <div className="header__inner">
-                    {/* LEFT */}
-                    <div className="header__left">
-                        <div className="header__brand">VITRIVR</div>
-                        <div className="header__dot">·</div>
-                        <div className="header__subtitle">Multimedia Retrieval</div>
-                    </div>
-
-                    {/* CENTER */}
-                    <div className="header__center" aria-label="vitrivr logo">
+                    <Link to="/" className="header__home" aria-label="vitrivr start page — reset search"
+                        onClick={(event) => {
+                            if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) onHome();
+                        }}>
                         <img src="/vitrivr.svg" className="header__logo" alt="vitrivr"/>
-                    </div>
+                    </Link>
 
                     {/* RIGHT */}
                     <div className="header__actions">
                         {theme && <button type="button" className="header__btn theme-toggle"
                             onClick={onToggleTheme} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
                             title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}>
-                            <span aria-hidden="true">{theme === "light" ? "☾" : "☼"}</span>
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                {theme === "dark" ? <>
+                                    <circle cx="12" cy="12" r="4"/>
+                                    <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>
+                                </> : <path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/>}
+                            </svg>
                         </button>}
+                        <button type="button" className="header__btn header__settingsButton"
+                            onClick={() => settingsRef.current?.showModal()} aria-haspopup="dialog"
+                            title="Settings" aria-label="Settings">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+                                <path d="M4 7h16M4 17h16"/>
+                                <circle cx="9" cy="7" r="3" fill="var(--surface)"/>
+                                <circle cx="15" cy="17" r="3" fill="var(--surface)"/>
+                            </svg>
+                        </button>
                         {status === "loggedIn" ? (
                             <div className="header__auth">
                                 <button
@@ -86,6 +101,19 @@ function Header({theme, onToggleTheme}: {theme?: "light" | "dark"; onToggleTheme
                     </div>
                 </div>
             </header>
+            <dialog ref={settingsRef} className="header__settings" aria-labelledby={settingsTitle}
+                onClick={(event) => { if (event.target === event.currentTarget) settingsRef.current?.close(); }}>
+                <div className="header__settingsContent">
+                    <div className="row-between">
+                        <h2 id={settingsTitle}>Settings</h2>
+                        <button type="button" className="header__btn" onClick={() => settingsRef.current?.close()} aria-label="Close settings">×</button>
+                    </div>
+                    <div className="stack-xs">
+                        <span className="label">Schema</span>
+                        <SchemaSelector value={schema} onChange={setSchema}/>
+                    </div>
+                </div>
+            </dialog>
         </>
     );
 }

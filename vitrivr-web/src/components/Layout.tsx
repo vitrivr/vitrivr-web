@@ -6,7 +6,7 @@ import AuthGate from "./AuthGate";
 import EvaluationPicker from "./EvaluationPicker";
 import {useAuth} from "../state/AuthContext";
 
-function Layout({children}: PropsWithChildren) {
+function Layout({children, onHome}: PropsWithChildren<{onHome: () => void}>) {
     const isSearch = useLocation().pathname === "/";
     const [theme, setTheme] = useState<"light" | "dark">(() => {
         try {
@@ -23,7 +23,7 @@ function Layout({children}: PropsWithChildren) {
     const {status, evaluationId} = useAuth();
     return (
         <div className={isSearch ? `search-shell search-shell--${theme}` : undefined}>
-            <Header theme={isSearch ? theme : undefined} onToggleTheme={toggleTheme}/>
+            <Header onHome={onHome} theme={isSearch ? theme : undefined} onToggleTheme={toggleTheme}/>
             <main className="layout">{children}</main>
             <AuthGate/>
             {status === "loggedIn" && !evaluationId && <EvaluationPicker/>}
