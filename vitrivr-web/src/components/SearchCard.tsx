@@ -63,7 +63,8 @@ import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {buildHlsUrl, useSearch} from "../state/SearchContext.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
-import {uuid} from "../utils/uuid";
+import {makeBlockState} from "../state/makeBlockState.ts";
+import {enabledQueryModalities, type Modality} from "../config/queryModalities.ts";
 
 
 const PAGE_SIZE = 100;
@@ -72,7 +73,6 @@ const DEBUG = (import.meta.env.VITE_DEBUG ?? "").toString() === "1";
 const RAW_TRUNCATE = 100_000;
 
 type QueryType = Extract<BlockState['queryType'], string>;
-type Modality = "clip" | "emotions" | "ocr" | "asr" | "person";
 
 const queryTypeItems =
     [
@@ -127,15 +127,6 @@ export type BlockState = {
     file: File | null;
 };
 
-const modalityOptions =
-    [
-        {value: "clip", label: "CLIP"},
-        {value: "emotions", label: "Emotions"},
-        {value: "ocr", label: "OCR"},
-        {value: "asr", label: "ASR"},
-        {value: "person", label: "Person"},
-    ] as const satisfies RadioOption<Modality>[];
-
 const emotionItems: DropdownItem[] = [
     {value: "anger", label: "anger"},
     {value: "disgust", label: "disgust"},
@@ -145,16 +136,6 @@ const emotionItems: DropdownItem[] = [
     {value: "sad", label: "sad"},
     {value: "surprise", label: "surprise"},
 ];
-
-const makeBlockState = (): BlockState => ({
-    id: uuid(),
-    modality: modalityOptions[0].value,
-    emotion: undefined,
-    emotionTarget: "face",
-    queryType: "text",
-    textQuery: "",
-    file: null,
-});
 
 function videoDedupeKey(item: MediaItem): string {
     if (item.kind !== "video") {
@@ -354,7 +335,7 @@ export function SearchCard() {
     function updateBlocks(recipe: (prev: BlockState[]) => BlockState[]) {
         setBlocks(prev => {
             const next = recipe(prev);
-            return next.length === 0 ? [makeBlockState()] : next;
+            return next.length === 0 ? [makeBlockState(schema)] : next;
         });
     }
 
@@ -366,6 +347,8 @@ export function SearchCard() {
         schema,
         setSchema,
     } = useSearch();
+
+    const modalityOptions = enabledQueryModalities(schema);
 
     const counts = {
         image: items.filter(i => i.kind === "image").length,
@@ -395,7 +378,7 @@ export function SearchCard() {
     const navigationCount = resultView === "video" ? resultGroups.length : filteredItems.length;
     const pageSize = resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE;
     const addBlock = () =>
-        updateBlocks(prev => [...prev, makeBlockState()]);
+        updateBlocks(prev => [...prev, makeBlockState(schema)]);
     const removeBlock = (id: string) =>
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
@@ -411,7 +394,7 @@ export function SearchCard() {
         setRaw("");
         setVectorsById({}); // not sure if keep this
 
-        setBlocks([makeBlockState()]);
+        setBlocks([makeBlockState(schema)]);
         setQueryFilters(emptyQueryFilters());
 
         setScrollY(0);
@@ -442,6 +425,10 @@ export function SearchCard() {
     }, [loading, filterOpen]);
 
     const onSearch = async () => {
+        if (blocks.some(block => !modalityOptions.some(option => option.value === block.modality))) {
+            setFlash({show: true, message: "Select a query type enabled in the frontend settings and supported by this schema."});
+            return;
+        }
         setVisibleCount(pageSize);
         for (const b of blocks) {
             if (b.modality === "person") {
@@ -620,8 +607,8 @@ export function SearchCard() {
                             </Flash>
 
                             <div className="stack sc-queryActions">
-                                <button className="btn sc-addBlock" type="button" onClick={addBlock}>+ Add query block</button>
-                                <button className="btn btn-primary" disabled={loading} onClick={onSearch}>
+                                <button className="btn sc-addBlock" type="button" disabled={modalityOptions.length === 0} onClick={addBlock}>+ Add query block</button>
+                                <button className="btn btn-primary" disabled={loading || modalityOptions.length === 0} onClick={onSearch}>
                                     <span>{loading ? "Searching…" : "Search"}</span>
                                     <span className="sc-shortcut">Ctrl / ⌘ ↵</span>
                                 </button>

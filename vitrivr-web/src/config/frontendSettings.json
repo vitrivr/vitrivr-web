@@ -1,4 +1,16 @@
 {
+  "enabledResourceFilters": [
+    "day",
+    "sourceType",
+    "source"
+  ],
+  "enabledQueryTypes": [
+    "clip",
+    "emotions",
+    "ocr",
+    "asr",
+    "person"
+  ],
   "personNames": [
     "Allie",
     "Bjorn",

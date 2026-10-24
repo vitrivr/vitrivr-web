@@ -90,6 +90,8 @@ export default function QueryBlock({
     const allowedModalityOptions = restrictAudioAndEmotion
         ? modalityOptions.filter((o) => o.value !== "emotions" && o.value !== "asr")
         : modalityOptions;
+    const isModalityAllowed = allowedModalityOptions.some(option => option.value === block.modality);
+    const fallbackModality = allowedModalityOptions[0]?.value;
 
 
     useEffect(() => {
@@ -108,9 +110,10 @@ export default function QueryBlock({
     }, [isEmotion]);
 
     useEffect(() => {
-        if (restrictAudioAndEmotion && (block.modality === "emotions" || block.modality === "asr")) {
+        if (!isModalityAllowed && fallbackModality) {
             onChange({
-                modality: "clip",
+                modality: fallbackModality,
+                personNames: undefined,
                 emotion: undefined,
                 emotionTarget: undefined,
                 queryType: "text",
@@ -118,8 +121,7 @@ export default function QueryBlock({
                 file: null,
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [restrictAudioAndEmotion]);
+    }, [isModalityAllowed, fallbackModality, onChange]);
 
     useEffect(() => {
         if (requiresText && block.queryType !== "text") {
@@ -128,6 +130,10 @@ export default function QueryBlock({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [requiresText]);
 
+
+    if (allowedModalityOptions.length === 0) {
+        return <p className="muted" role="status">No query types are enabled for this schema. Update enabledQueryTypes in the frontend settings.</p>;
+    }
 
     return (
         <div className="sc-queryBlock">

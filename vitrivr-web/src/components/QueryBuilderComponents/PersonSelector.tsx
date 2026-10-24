@@ -1,4 +1,4 @@
-import settings from "../../config/frontendSettings.json";
+import settings from "../../config/frontendSettings.json" with {type: "json"};
 
 export default function PersonSelector({value, onChange}: {value: string[]; onChange: (names: string[]) => void}) {
     const names = [...new Set([...settings.personNames, ...value].map(name => name.trim()).filter(Boolean))];
