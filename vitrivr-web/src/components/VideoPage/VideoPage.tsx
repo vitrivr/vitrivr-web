@@ -32,6 +32,9 @@ export default function VideoPage() {
     const {evaluationId} = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const [searching, setSearching] = useState(false);
+    const [nnError, setNnError] = useState<string | null>(null);
+    const [nnStage, setNnStage] = useState("");
+    const nnRequest = useRef<AbortController | null>(null);
     const [nnVector, setNnVector] = useState<number[] | null>(null);
     const [, setHasNeighbors] = useState(false);
 
@@ -131,6 +134,13 @@ export default function VideoPage() {
     useEffect(() => {
         setPlaybackTimestamp(hourOffset === 0 ? start : 0);
         setNnVector(null);
+        setNnError(null);
+        setSearching(false);
+        setNnStage("");
+        return () => {
+            nnRequest.current?.abort();
+            nnRequest.current = null;
+        };
     }, [activeVideoSrc, hourOffset, start]);
 
     /**
@@ -139,35 +149,44 @@ export default function VideoPage() {
     const onSearch = async (): Promise<void> => {
         const video = videoRef.current;
 
-        if (!video) {
-            console.error("Video element is not available.");
+        setNnError(null);
+        if (!video || video.readyState < 2) {
+            setNnError("Wait for the video to load before searching for similar frames.");
             return;
         }
-
         if (!activeMp4Src) {
-            console.error("Cannot perform NN search: original MP4 URL is missing.", {item, mediaItemName});
+            setNnError("The original video file is unavailable for frame search.");
             return;
         }
-
+        nnRequest.current?.abort();
+        const controller = new AbortController();
+        nnRequest.current = controller;
+        const timeout = window.setTimeout(() => controller.abort(), 60_000);
         setSearching(true);
-
+        setNnVector(null);
         try {
             video.pause();
-            const currentTimestamp = video.currentTime;
-            const thumbnail = await generateVideoThumbnail(activeMp4Src, currentTimestamp);
-            if (!thumbnail) {
-                throw new Error("Could not generate thumbnail.");
-            }
-            const clipVector = await requestCLIPVector(thumbnail);
-
-            if (!clipVector?.length) {
-                throw new Error("Could not generate CLIP vector.");
-            }
-            setNnVector(clipVector);
+            setNnStage("Capturing frame…");
+            const thumbnail = await generateVideoThumbnail(activeMp4Src, video.currentTime, controller.signal);
+            if (controller.signal.aborted) return;
+            if (!thumbnail) throw new Error("Could not capture the video frame. Check that the original video is available and permits frame capture.");
+            setNnStage("Finding similar frames…");
+            const clipVector = await requestCLIPVector(thumbnail, controller.signal);
+            if (!controller.signal.aborted) setNnVector(clipVector);
         } catch (error) {
-            console.error("Nearest-neighbor search failed:", error);
+            if (!controller.signal.aborted) {
+                setNnError(error instanceof TypeError
+                    ? "Could not reach the image descriptor server. Check its connection and proxy configuration."
+                    : error instanceof Error ? error.message : String(error));
+            }
         } finally {
-            setSearching(false);
+            window.clearTimeout(timeout);
+            if (nnRequest.current === controller) {
+                if (controller.signal.aborted) setNnError("Frame search timed out. Please try again.");
+                setSearching(false);
+                setNnStage("");
+                nnRequest.current = null;
+            }
         }
     };
 
@@ -266,9 +285,10 @@ export default function VideoPage() {
                             poster={hourOffset === 0 ? poster : undefined}
                             startTime={hourOffset === 0 ? start : 0}
                             onTimeUpdate={setPlaybackTimestamp} preload="metadata"/>
+                        {nnError && <div className="vp-message vp-message--error" role="alert">{nnError}</div>}
                         <div className="vp-playerActions">
                             <button type="button" className="btn btn-primary" onClick={onSearch} disabled={searching}>
-                                {searching ? "Searching NN…" : "Search NN"}
+                                {searching ? nnStage || "Searching NN…" : "Search NN"}
                             </button>
                             <div className="vp-submission">
                                 {kind === "text" && <input className="vp-answer" aria-label="DRES text answer"

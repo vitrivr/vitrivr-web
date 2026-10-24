@@ -1,74 +1,19 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {buildVectorQuery, thumbnailURL,} from "../../lib/vitrivr";
-import {useSearch} from "../../state/SearchContext";
+import {buildHlsUrl, useSearch} from "../../state/SearchContext";
 import {retrieval} from "../../vitirvr/api/client";
 import ResultItem from "../Results/ResultItem";
+import {mapNeighborResults} from "./neighborResults.ts";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import type {MediaItem} from "../SearchCard.tsx";
-export const VITE_SEGMENT_ORIGIN = import.meta.env.VITE_MEDIA_SEGMENT;
 
-
-type RetrievablesResponse = {
-    retrievables?: Array<{
-        id?: string;
-        type?: string;
-        score?: number;
-        relationship?: {
-            partOf?: {
-                id?: string;
-                type?: string;
-                descriptors?: Record<string, unknown>;
-            };
-        };
-        descriptors?: Record<string, unknown>;
-    }>;
-};
 
 type NearestNeighborsProps = {
     id: string;
     queryVector: number[] | null;
     onResultsChange: (hasResults: boolean) => void;
 };
-
-function pickNumber(r: { descriptors?: Record<string, unknown> }, key: string): number | undefined {
-    const value = r.descriptors?.[key];
-
-    if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-    }
-
-    if (typeof value === "string") {
-        const number = Number(value.trim());
-        return Number.isFinite(number) ? number : undefined;
-    }
-
-    return undefined;
-}
-
-/**
- * Transforms dictionary of records into a number array.
- * @param r dictionary of records from the vitrivr response
- * @param key
- */
-function pickFloatArray(r: { descriptors?: Record<string, unknown> }, key: string): number[] | undefined {
-    const value = r.descriptors?.[key];
-    if (!Array.isArray(value)) {
-        return undefined;
-    }
-    const output: number[] = [];
-    for (const item of value) {
-        if (typeof item !== "number" || !Number.isFinite(item)) {
-            return undefined;
-        }
-        output.push(item);
-    }
-    return output;
-}
-
-function nsToSeconds(value: number): number {
-    return value / 1_000_000_000;
-}
 
 /**
  * Extracts the video name from the url. E.g. http://10.34.64.212:8080/videos/day3/Florian/video/11.mp4 then 11.mp4 is
@@ -90,49 +35,6 @@ function videoNameFromUrl(url: string): string {
 
         return filename.replace(/\.[^.]+$/, "");
     }
-}
-
-/**
- * Maps each result to a mediaItem.
- * @param response of vitrivr
- */
-function mapNeighbors(response: RetrievablesResponse): MediaItem[] {
-    const retrievables = response.retrievables ?? [];
-    const output: MediaItem[] = [];
-    for (const retrievable of retrievables) {
-        const id = retrievable.id?.trim();
-
-        if (!id || retrievable.type !== "SEGMENT") {
-            continue;
-        }
-
-        const clipVector = pickFloatArray(retrievable, "clip.vector");
-        const start = nsToSeconds(pickNumber(retrievable, "time.start") ?? 0);
-        const end = nsToSeconds(pickNumber(retrievable, "time.end") ?? 0);
-        const parentId = retrievable.relationship?.partOf?.id?.trim();
-        const filePath = retrievable.relationship?.partOf?.descriptors?.["file.path"] as | string | undefined;
-
-        if (!parentId || !filePath) {
-            continue;
-        }
-        const mediaItemName = filePath.replace(/\\/g, "/").split("/media/test/").pop();
-        const hlsUrl = VITE_SEGMENT_ORIGIN + `${encodeURIComponent(parentId)}/master.m3u8`;
-
-        output.push({
-            id,
-            parentId,
-            kind: "video",
-            mediaItemName: mediaItemName ?? filePath,
-            url: hlsUrl,
-            name: mediaItemName ?? filePath,
-            thumbUrl: thumbnailURL(id),
-            start,
-            end,
-            rawType: retrievable.type,
-            clipVector,
-        });
-    }
-    return output;
 }
 
 /**
@@ -159,6 +61,11 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
 
     useEffect(() => {
         if (!queryVector?.length) {
+            setNeighbors([]);
+            setLoaded(false);
+            setLoading(false);
+            setError(null);
+            onResultsChange(false);
             return;
         }
 
@@ -176,13 +83,11 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
             try {
                 const body = buildVectorQuery(queryVector!, 1000);
 
-                // @ts-expect-error
+                // @ts-expect-error Generated operator input types omit named references.
                 const response = await retrieval.postExecuteQuery(schema, body);
                 if (cancelled) return;
 
-                const mapped = mapNeighbors(
-                    response as RetrievablesResponse
-                ).filter(
+                const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}).filter(
                     (neighbor) => neighbor.id !== id
                 );
                 setVectorsById((previous) => {
@@ -224,6 +129,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
         id,
         schema,
         setVectorsById,
+        onResultsChange,
     ]);
 
     function openNeighbor(
@@ -297,7 +203,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                         key={neighbor.id}
                         id={neighbor.id}
                         kind="video"
-                        mediaItemName={videoNameFromUrl(neighbor.url)}
+                        mediaItemName={neighbor.mediaItemName ?? videoNameFromUrl(neighbor.url)}
                         start={neighbor.start}
                         end={neighbor.end}
                         preload="none"

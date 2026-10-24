@@ -1,4 +1,5 @@
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
+import {mediaCaptureUrl} from "../../lib/mediaProxy.ts";
 import {uuid} from "../../utils/uuid.ts";
 
 type PovKind = "person" | "room";
@@ -174,7 +175,9 @@ export async function generateVideoThumbnail(url: string, seekTime: number, sign
     const key = `${url}@${seekTime}`;
     const cached = thumbnailCache.get(key);
     if (cached) return cached;
-    const thumbnail = await captureVideoThumbnail(url, seekTime, signal);
+    const captureUrl = mediaCaptureUrl(url, import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "",
+        import.meta.env.VITE_MEDIA_CAPTURE_PROXY ?? (import.meta.env.DEV ? "/frame-media" : ""));
+    const thumbnail = await captureVideoThumbnail(captureUrl, seekTime, signal);
     if (thumbnail && !signal?.aborted) {
         if (thumbnailCache.size >= 48) thumbnailCache.delete(thumbnailCache.keys().next().value!);
         thumbnailCache.set(key, thumbnail);
@@ -250,7 +253,7 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
         video.playsInline = true;
 
         try {
-            if (new URL(url).origin !== window.location.origin) {
+            if (new URL(url, window.location.href).origin !== window.location.origin) {
                 video.crossOrigin = "anonymous";
             }
         } catch (error) {

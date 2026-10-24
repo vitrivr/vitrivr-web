@@ -1,9 +1,11 @@
-export const DESCRIPTOR_SERVER = import.meta.env.VITE_PYTHON_DESCRIPTOR_SERVER;
+export const DESCRIPTOR_SERVER = import.meta.env.VITE_DESCRIPTOR_API_BASE
+    ?? (import.meta.env.DEV ? "/descriptor-api" : import.meta.env.VITE_PYTHON_DESCRIPTOR_SERVER);
 
-export async function requestCLIPVector(base64Image: string): Promise<number[]> {
+export async function requestCLIPVector(base64Image: string, signal?: AbortSignal): Promise<number[]> {
     if (!base64Image) {
         throw new Error("base64Image is required");
     }
+    if (!DESCRIPTOR_SERVER) throw new Error("The image descriptor server is not configured.");
     const formData = new FormData(); // this allows us to skip the header part.
     formData.append("data", base64Image);
 
@@ -12,14 +14,15 @@ export async function requestCLIPVector(base64Image: string): Promise<number[]> 
         {
             method: "POST",
             body: formData,
+            signal,
         }
     );
     if (!response.ok) {
-        throw new Error("Could not find clip image: " + response.statusText + response.status);
+        throw new Error(`Image vector extraction failed (HTTP ${response.status}).`);
     }
     const data: unknown = await response.json();
 
-    if (!Array.isArray(data) || !data.every((value) => typeof value === "number" && Number.isFinite(value))) {
+    if (!Array.isArray(data) || data.length === 0 || !data.every((value) => typeof value === "number" && Number.isFinite(value))) {
         throw new Error("Invalid CLIP vector.");
     }
 
