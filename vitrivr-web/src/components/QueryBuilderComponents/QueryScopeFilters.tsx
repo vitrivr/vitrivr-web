@@ -1,18 +1,41 @@
-import {useId} from "react";
+import {useEffect, useId, useRef} from "react";
 import settings from "../../config/frontendSettings.json" with {type: "json"};
 import {activeQueryFilters, enabledResourceFilters, emptyQueryFilters, type QueryFilters} from "../../lib/queryFilters.ts";
 
-export default function QueryScopeFilters({value: storedValue, onChange}: {value: QueryFilters; onChange: (filters: QueryFilters) => void}) {
+type Props = {
+    value: QueryFilters;
+    onChange: (filters: QueryFilters) => void;
+    deduplication?: {enabled: boolean; onChange: (enabled: boolean) => void; disabled?: boolean; description: string};
+};
+
+export default function QueryScopeFilters({value: storedValue, onChange, deduplication}: Props) {
     const id = useId();
+    const menuRef = useRef<HTMLDetailsElement>(null);
+    useEffect(() => {
+        const closeOutside = (event: MouseEvent) => {
+            const menu = menuRef.current;
+            if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+        };
+        const closeOnEscape = (event: KeyboardEvent) => {
+            const menu = menuRef.current;
+            if (event.key === "Escape" && menu?.open) {
+                menu.open = false;
+                menu.querySelector<HTMLElement>("summary")?.focus();
+            }
+        };
+        document.addEventListener("mousedown", closeOutside);
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.removeEventListener("mousedown", closeOutside);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, []);
     const enabled = enabledResourceFilters();
     const value = activeQueryFilters(storedValue, enabled);
-    if (enabled.length === 0) return null;
+    if (enabled.length === 0 && !deduplication) return null;
     const hasFilters = Boolean(value.day || value.source || value.sourceType);
     const cameraSummary = value.sourceType === "person" ? "Person cameras" : value.sourceType === "room" ? "Location cameras" : "All cameras";
-    const summary = [
-        enabled.includes("day") ? value.day || "All days" : "",
-        enabled.includes("source") ? value.source || cameraSummary : enabled.includes("sourceType") ? cameraSummary : "",
-    ].filter(Boolean).join(" · ");
+    const activeCount = Number(Boolean(value.day)) + Number(Boolean(value.source || value.sourceType));
     const compactClass = `sc-scopeField${enabled.includes("day") && enabled.includes("sourceType") ? "" : " sc-scopeField--wide"}`;
     const controls = {
         day: <label className={compactClass} htmlFor={`${id}-day`} key="day">Day
@@ -48,12 +71,49 @@ export default function QueryScopeFilters({value: storedValue, onChange}: {value
         </label>,
     };
     return (
-        <details className="sc-scopeFilters">
-            <summary><span>Search scope</span><span className="sc-scopeSummary">{summary}</span></summary>
-            <div className="sc-scopeFields">
-                {enabled.map(key => controls[key])}
-                {hasFilters && <button type="button" className="sc-personClear" onClick={() => onChange(emptyQueryFilters())}>Clear scope filters</button>}
+        <div className="sc-searchRefinements">
+            <div className="sc-refineToolbar">
+                {enabled.length > 0 && <details className="sc-scopeMenu" ref={menuRef}>
+                    <summary aria-label="Recording scope filters">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--input-bg)"/><circle cx="15" cy="17" r="3" fill="var(--input-bg)"/>
+                        </svg>
+                        Scope
+                        {activeCount > 0 && <span className="sc-scopeBadge" aria-label={`${activeCount} active filters`}>{activeCount}</span>}
+                        <span className="sc-scopeChevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div className="sc-scopePanel">
+                        <div className="sc-scopePanelHead">
+                            <strong>Recording scope</strong>
+                            <button type="button" aria-label="Close recording scope" onClick={() => {
+                                if (menuRef.current) {
+                                    menuRef.current.open = false;
+                                    menuRef.current.querySelector<HTMLElement>("summary")?.focus();
+                                }
+                            }}>×</button>
+                        </div>
+                        <div className="sc-scopeFields">
+                            {enabled.map(key => controls[key])}
+                            {hasFilters && <button type="button" className="sc-personClear" onClick={() => onChange(emptyQueryFilters())}>Clear filters</button>}
+                        </div>
+                    </div>
+                </details>}
+                {deduplication && <label className="sc-dedupControl" title={`Visual deduplication. ${deduplication.description} Applies on the next search.`}>
+                    <span>Deduplication</span>
+                    <input type="checkbox" role="switch" aria-label="Visual deduplication" className="sc-dedupSwitch"
+                        checked={deduplication.enabled} disabled={deduplication.disabled}
+                        onChange={event => deduplication.onChange(event.target.checked)}/>
+                </label>}
             </div>
-        </details>
+            {hasFilters && <div className="sc-scopeChips" role="group" aria-label="Active recording filters">
+                {value.day && <button type="button" title={`Remove day filter: ${value.day}`} onClick={() => onChange({...value, day: ""})}>
+                    <span>{value.day}</span><span aria-hidden="true">×</span>
+                </button>}
+                {(value.source || value.sourceType) && <button type="button" title={`Remove camera filter: ${value.source || cameraSummary}`}
+                    onClick={() => onChange({...value, source: "", sourceType: ""})}>
+                    <span>{value.source || cameraSummary}</span><span aria-hidden="true">×</span>
+                </button>}
+            </div>}
+        </div>
     );
 }

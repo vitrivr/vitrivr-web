@@ -44,6 +44,7 @@
  */
 
 "use client";
+import {applyVisualDeduplication, visualDeduplicationSettings} from "../lib/visualDeduplication.ts";
 import {applyQueryFilters, emptyQueryFilters} from "../lib/queryFilters.ts";
 import QueryScopeFilters from "./QueryBuilderComponents/QueryScopeFilters.tsx";
 import {buildPersonQuery, selectedPersonNames} from "../lib/personQuery.ts";
@@ -318,6 +319,7 @@ export function SearchCard() {
     const {
         blocks, setBlocks,
         queryFilters, setQueryFilters,
+        visualDeduplicationEnabled, setVisualDeduplicationEnabled,
         resultView, setResultView,
         items, setItems,
         mediaFilter, setMediaFilter,
@@ -396,6 +398,7 @@ export function SearchCard() {
 
         setBlocks([makeBlockState(schema)]);
         setQueryFilters(emptyQueryFilters());
+        setVisualDeduplicationEnabled(visualDeduplicationSettings.enabled);
 
         setScrollY(0);
         window.scrollTo(0, 0);
@@ -491,7 +494,7 @@ export function SearchCard() {
                 if (b.modality === "person") {
                     const body = buildPersonQuery(selectedPersonNames(b));
                     // @ts-expect-error Generated operator inputs omit named references.
-                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
                 } else if (b.modality === "emotions") {
                     const chosen = (b.emotion ?? "").trim();
                     if (!chosen) {
@@ -502,20 +505,20 @@ export function SearchCard() {
                     console.log("Building emotions query")
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
 
                 } else if (b.queryType === "image") {
                     const base64image = await fileToBase64(b.file);
                     const body = buildTextQuery(b.modality, base64image);
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
 
                 } else {
                     const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
                 }
 
             } else {
@@ -524,7 +527,7 @@ export function SearchCard() {
                 printVitrivrRequest(body);
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
-                resp = await retrieval.postExecuteQuery(schema, applyQueryFilters(body, queryFilters));
+                resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
             }
 
             const pretty = truncateJson(resp);
@@ -582,7 +585,9 @@ export function SearchCard() {
                             <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>
                         </div>
                         <div className="panel__body stack">
-                            <QueryScopeFilters value={queryFilters} onChange={setQueryFilters}/>
+                            <QueryScopeFilters value={queryFilters} onChange={setQueryFilters}
+                                deduplication={{enabled: visualDeduplicationEnabled, onChange: setVisualDeduplicationEnabled, disabled: loading,
+                                    description: `Similarity ≥ ${visualDeduplicationSettings.similarityThreshold}, ${visualDeduplicationSettings.timeWindowSeconds}s window; up to ${visualDeduplicationSettings.limit} results.`}}/>
                             <div className="sc-blockGrid">
                                 {blocks.map((b) => (
                                     <QueryBlock
@@ -621,7 +626,7 @@ export function SearchCard() {
                     <section className="panel sc-resultsPanel" aria-label="Results" aria-busy={loading}>
                             <div className="panel__head row-between">
                                 <div className="stack-xs">
-                                    <h2 className="panel__title">Results <span className="sc-resultCount" role="status">{filteredItems.length} results</span></h2>
+                                    <h2 className="panel__title">Results <span className="sc-resultCount" role="status">{filteredItems.length}{filteredItems.length !== items.length ? ` of ${items.length}` : ""} results</span></h2>
                                 </div>
 
                                 <div className="sc-resultsControls">
@@ -644,7 +649,7 @@ export function SearchCard() {
                                         aria-expanded={filterOpen}
                                         className="btn"
                                     >
-                                        Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom) ? "" : " •"}
+                                        Filter{(mediaFilter.image && mediaFilter.video && mediaFilter.custom && !mediaFilter.uniqueVideos) ? "" : " •"}
                                     </button>
 
                                     <MediaTypeFilter

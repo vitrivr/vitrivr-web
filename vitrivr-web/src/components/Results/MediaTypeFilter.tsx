@@ -143,7 +143,7 @@ export default function MediaTypeFilter({
                     disabled={grouped}
                     onChange={setKey("uniqueVideos")}
                 />
-                <span>{grouped ? "All segments shown in grouped view" : "Hide duplicate videos"}</span>
+                <span>{grouped ? "All segments shown in grouped view" : "One result per video"}</span>
             </label>
         </div>
     );

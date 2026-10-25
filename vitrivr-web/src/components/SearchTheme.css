@@ -282,14 +282,32 @@
 .sc-personClear { justify-self: end; background: transparent; border: 0; color: var(--brand-ink); padding: 4px; cursor: pointer; font-size: 12px; }
 .sc-personHint { color: var(--text-3); font-size: 12px; margin: 0; }
 
-.sc-scopeFilters { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-.sc-scopeFilters > summary { position: relative; padding: 10px 28px 10px 12px; cursor: pointer; color: var(--text-2); font-size: 12px; font-weight: 600; list-style: none; }
-.sc-scopeFilters > summary::-webkit-details-marker { display: none; }
-.sc-scopeFilters > summary::after { content: "⌄"; position: absolute; right: 12px; top: 12px; color: var(--text-3); }
-.sc-scopeFilters[open] > summary::after { transform: rotate(180deg); }
-.sc-scopeFilters > summary:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; border-radius: 8px; }
-.sc-scopeSummary { display: block; margin-top: 2px; color: var(--text-3); font-size: 11px; font-weight: 400; overflow-wrap: anywhere; }
-.sc-scopeFields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 0 10px 10px; }
+.sc-searchRefinements { min-width: 0; }
+.sc-refineToolbar { position: relative; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.sc-scopeMenu { min-width: 0; }
+.sc-scopeMenu > summary { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--text-2); font-size: 12px; cursor: pointer; list-style: none; }
+.sc-scopeMenu > summary::-webkit-details-marker { display: none; }
+.sc-scopeMenu > summary:hover, .sc-scopeMenu[open] > summary { border-color: var(--brand); color: var(--brand-ink); }
+.sc-scopeMenu > summary:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.sc-scopeChevron { color: var(--text-3); }
+.sc-scopeMenu[open] .sc-scopeChevron { transform: rotate(180deg); }
+.sc-scopeBadge { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 4px; background: var(--brand); color: white; font-size: 10px; }
+.sc-scopePanel { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; min-width: 220px; padding: 12px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 28px #00121c33; z-index: 10; }
+.sc-scopePanelHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; color: var(--text); font-size: 12px; }
+.sc-scopePanelHead button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--text-3); cursor: pointer; font-size: 18px; }
+.sc-scopePanelHead button:hover { color: var(--text); background: var(--surface-2); }
+.sc-scopeFields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .sc-scopeField { display: grid; gap: 4px; min-width: 0; color: var(--text-2); font-size: 11px; font-weight: 600; }
 .sc-scopeField--wide, .sc-scopeFields > button { grid-column: 1 / -1; }
-.search-shell .sc-scopeFilters select { min-width: 0; min-height: 34px; padding: 6px 8px !important; font-size: 12px; font-weight: 400; }
+.search-shell .sc-scopeMenu select { min-width: 0; min-height: 34px; padding: 6px 8px !important; font-size: 12px; font-weight: 400; }
+.sc-dedupControl { display: flex; align-items: center; gap: 8px; margin: 0; min-height: 36px; color: var(--text-3); font-size: 11px; cursor: pointer; }
+.sc-dedupControl:has(input:checked) { color: var(--brand-ink); }
+.search-shell .sc-dedupSwitch { appearance: none; position: relative; width: 29px; height: 17px; padding: 0; margin: 0; border: 1px solid var(--line-2); border-radius: 20px; background: var(--surface-2); cursor: pointer; flex-shrink: 0; }
+.sc-dedupSwitch::before { content: ""; position: absolute; width: 11px; height: 11px; top: 2px; left: 2px; border-radius: 50%; background: var(--text-3); transition: transform .15s ease; }
+.search-shell .sc-dedupSwitch:checked { background: var(--brand); border-color: var(--brand); }
+.sc-dedupSwitch:checked::before { transform: translateX(12px); background: white; }
+.sc-dedupSwitch:disabled { opacity: .5; cursor: wait; }
+.sc-scopeChips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.sc-scopeChips button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2); color: var(--brand-ink); font-size: 10px; cursor: pointer; }
+.sc-scopeChips button span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sc-scopeChips button:hover { border-color: var(--brand); }

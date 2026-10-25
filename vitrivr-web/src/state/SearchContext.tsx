@@ -1,6 +1,7 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
+import {visualDeduplicationSettings} from "../lib/visualDeduplication.ts";
 import {emptyQueryFilters, type QueryFilters} from "../lib/queryFilters.ts";
 import {makeBlockState} from "./makeBlockState";
 import type {MediaItem} from "../components/SearchCard";
@@ -15,6 +16,8 @@ export function buildHlsUrl(parentId: string): string {
 }
 
 type SearchState = {
+    visualDeduplicationEnabled: boolean;
+    setVisualDeduplicationEnabled: React.Dispatch<React.SetStateAction<boolean>>;
     queryFilters: QueryFilters;
     setQueryFilters: React.Dispatch<React.SetStateAction<QueryFilters>>;
     resultView: "ranked" | "video";
@@ -62,6 +65,7 @@ export function SearchProvider({children, initial}: {
         });
     };
 
+    const [visualDeduplicationEnabled, setVisualDeduplicationEnabled] = useState(visualDeduplicationSettings.enabled);
     const [queryFilters, setQueryFilters] = useState<QueryFilters>(emptyQueryFilters);
     const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
     const [items, setItems] = useState<SearchState["items"]>([]);
@@ -69,7 +73,7 @@ export function SearchProvider({children, initial}: {
         image: true,
         video: true,
         custom: true,
-        uniqueVideos: true,
+        uniqueVideos: false,
     });
     const [raw, setRaw] = useState("");
     const [scrollY, _setScrollY] = useState(0);
@@ -91,6 +95,8 @@ export function SearchProvider({children, initial}: {
     return (
         <SearchCtx.Provider
             value={{
+                visualDeduplicationEnabled,
+                setVisualDeduplicationEnabled,
                 queryFilters,
                 setQueryFilters,
                 resultView,
