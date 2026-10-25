@@ -1,6 +1,7 @@
-import settings from "../../config/frontendSettings.json" with {type: "json"};
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 
 export default function PersonSelector({value, onChange}: {value: string[]; onChange: (names: string[]) => void}) {
+    const {settings} = useFrontendSettings();
     const names = [...new Set([...settings.personNames, ...value].map(name => name.trim()).filter(Boolean))];
     return (
         <div className="sc-personSelector">

@@ -3,6 +3,7 @@ import {Routes, Route, Navigate} from "react-router-dom";
 import Layout from "./components/Layout";
 import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage/VideoPage.tsx";
+import {FrontendSettingsProvider} from "./state/FrontendSettingsContext.tsx";
 import {SearchProvider} from "./state/SearchContext.tsx";
 import "./styles/styles.css"
 
@@ -22,6 +23,7 @@ export default function App() {
         window.scrollTo(0, 0);
     };
     return (
+        <FrontendSettingsProvider>
         <SearchProvider key={searchSession} initial={{blocks: initialBlocks}}>
             <Layout onHome={resetSearch}>
                 <Routes>
@@ -31,5 +33,6 @@ export default function App() {
                 </Routes>
             </Layout>
         </SearchProvider>
+        </FrontendSettingsProvider>
     );
 }

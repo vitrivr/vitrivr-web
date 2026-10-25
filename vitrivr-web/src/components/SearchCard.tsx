@@ -44,8 +44,8 @@
  */
 
 "use client";
-import {applyVisualDeduplication, visualDeduplicationSettings} from "../lib/visualDeduplication.ts";
-import {applyQueryFilters, emptyQueryFilters} from "../lib/queryFilters.ts";
+import {applyVisualDeduplication} from "../lib/visualDeduplication.ts";
+import {applyQueryFilters, emptyQueryFilters, enabledResourceFilters} from "../lib/queryFilters.ts";
 import QueryScopeFilters from "./QueryBuilderComponents/QueryScopeFilters.tsx";
 import {buildPersonQuery, selectedPersonNames} from "../lib/personQuery.ts";
 import {useEffect, useRef, useState} from "react";
@@ -64,6 +64,7 @@ import QueryBlock from "./QueryBuilderComponents/QueryBlock";
 import {buildHlsUrl, useSearch} from "../state/SearchContext.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
+import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
 import {makeBlockState} from "../state/makeBlockState.ts";
 import {enabledQueryModalities, type Modality} from "../config/queryModalities.ts";
 
@@ -316,6 +317,9 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
 
 export function SearchCard() {
+    const {settings} = useFrontendSettings();
+    const visualDeduplicationSettings = settings.visualDeduplication;
+    const resourceFilters = enabledResourceFilters(settings.enabledResourceFilters);
     const {
         blocks, setBlocks,
         queryFilters, setQueryFilters,
@@ -337,7 +341,7 @@ export function SearchCard() {
     function updateBlocks(recipe: (prev: BlockState[]) => BlockState[]) {
         setBlocks(prev => {
             const next = recipe(prev);
-            return next.length === 0 ? [makeBlockState(schema)] : next;
+            return next.length === 0 ? [makeBlockState(schema, settings.enabledQueryTypes)] : next;
         });
     }
 
@@ -350,7 +354,7 @@ export function SearchCard() {
         setSchema,
     } = useSearch();
 
-    const modalityOptions = enabledQueryModalities(schema);
+    const modalityOptions = enabledQueryModalities(schema, settings.enabledQueryTypes);
 
     const counts = {
         image: items.filter(i => i.kind === "image").length,
@@ -380,7 +384,7 @@ export function SearchCard() {
     const navigationCount = resultView === "video" ? resultGroups.length : filteredItems.length;
     const pageSize = resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE;
     const addBlock = () =>
-        updateBlocks(prev => [...prev, makeBlockState(schema)]);
+        updateBlocks(prev => [...prev, makeBlockState(schema, settings.enabledQueryTypes)]);
     const removeBlock = (id: string) =>
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
@@ -396,7 +400,7 @@ export function SearchCard() {
         setRaw("");
         setVectorsById({}); // not sure if keep this
 
-        setBlocks([makeBlockState(schema)]);
+        setBlocks([makeBlockState(schema, settings.enabledQueryTypes)]);
         setQueryFilters(emptyQueryFilters());
         setVisualDeduplicationEnabled(visualDeduplicationSettings.enabled);
 
@@ -494,7 +498,7 @@ export function SearchCard() {
                 if (b.modality === "person") {
                     const body = buildPersonQuery(selectedPersonNames(b));
                     // @ts-expect-error Generated operator inputs omit named references.
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
                 } else if (b.modality === "emotions") {
                     const chosen = (b.emotion ?? "").trim();
                     if (!chosen) {
@@ -505,20 +509,20 @@ export function SearchCard() {
                     console.log("Building emotions query")
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
 
                 } else if (b.queryType === "image") {
                     const base64image = await fileToBase64(b.file);
                     const body = buildTextQuery(b.modality, base64image);
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
 
                 } else {
                     const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
                 }
 
             } else {
@@ -527,7 +531,7 @@ export function SearchCard() {
                 printVitrivrRequest(body);
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
-                resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
             }
 
             const pretty = truncateJson(resp);

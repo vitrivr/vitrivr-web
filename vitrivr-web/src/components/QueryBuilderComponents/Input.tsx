@@ -75,7 +75,7 @@ export default function Input({
     }
 
     return (
-        <div style={{minHeight: 120}}>
+        <div>
             <textarea
                 id={id}
                 name={name}
@@ -84,7 +84,7 @@ export default function Input({
                 onChange={(e) => onChange?.(e.target.value)}
                 disabled={disabled}
                 className={className}
-                rows={5}
+                rows={3}
                 style={{
                     width: "95%",
                     height: "100%",

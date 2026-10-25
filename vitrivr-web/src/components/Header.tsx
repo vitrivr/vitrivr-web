@@ -22,11 +22,13 @@ import {useAuth} from "../state/AuthContext";
 import {useId, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {useSearch} from "../state/SearchContext";
+import FrontendSettingsPanel from "./FrontendSettingsPanel.tsx";
 import SchemaSelector from "./SchemaSelector";
 import EvaluationPicker from "./EvaluationPicker";
 
 function Header({theme, onToggleTheme, onHome}: {theme?: "light" | "dark"; onToggleTheme?: () => void; onHome: () => void}) {
     const {status, user, logout, openLogin} = useAuth();
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [showEvalPicker, setShowEvalPicker] = useState(false);
 
     const {schema, setSchema} = useSearch();
@@ -60,7 +62,7 @@ function Header({theme, onToggleTheme, onHome}: {theme?: "light" | "dark"; onTog
                             </svg>
                         </button>}
                         <button type="button" className="header__btn header__settingsButton"
-                            onClick={() => settingsRef.current?.showModal()} aria-haspopup="dialog"
+                            onClick={() => { setSettingsOpen(true); settingsRef.current?.showModal(); }} aria-haspopup="dialog"
                             title="Settings" aria-label="Settings">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                                 <path d="M4 7h16M4 17h16"/>
@@ -101,16 +103,19 @@ function Header({theme, onToggleTheme, onHome}: {theme?: "light" | "dark"; onTog
                     </div>
                 </div>
             </header>
-            <dialog ref={settingsRef} className="header__settings" aria-labelledby={settingsTitle}
+            <dialog ref={settingsRef} className="header__settings" aria-labelledby={settingsTitle} onClose={() => setSettingsOpen(false)}
                 onClick={(event) => { if (event.target === event.currentTarget) settingsRef.current?.close(); }}>
                 <div className="header__settingsContent">
-                    <div className="row-between">
+                    <div className="row-between header__settingsHeading">
                         <h2 id={settingsTitle}>Settings</h2>
                         <button type="button" className="header__btn" onClick={() => settingsRef.current?.close()} aria-label="Close settings">×</button>
                     </div>
-                    <div className="stack-xs">
-                        <span className="label">Schema</span>
-                        <SchemaSelector value={schema} onChange={setSchema}/>
+                    <div className="header__settingsBody">
+                        <div className="stack-xs">
+                            <span className="label">Schema</span>
+                            <SchemaSelector value={schema} onChange={setSchema}/>
+                        </div>
+                        {settingsOpen && <FrontendSettingsPanel onClose={() => settingsRef.current?.close()}/>}
                     </div>
                 </div>
             </dialog>

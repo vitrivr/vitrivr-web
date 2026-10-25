@@ -94,7 +94,7 @@
     width: 100% !important; background: var(--input-bg) !important; color: var(--text); border: 1px solid var(--line) !important; border-radius: 8px !important; padding: 10px 12px !important;
 }
 .search-shell .sc-queryPanel .field > label { width: 100%; }
-.search-shell .sc-queryPanel textarea { min-height: 105px; resize: vertical; }
+.search-shell .sc-queryPanel textarea { min-height: 80px; resize: vertical; }
 .search-shell textarea::placeholder { color: var(--text-3); }
 .search-shell .dropdown { width: 100%; }
 .search-shell .dropdown__label, .search-shell .dropdown__option { color: var(--text); }

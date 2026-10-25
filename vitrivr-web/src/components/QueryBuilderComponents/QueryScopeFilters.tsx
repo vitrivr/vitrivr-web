@@ -1,5 +1,5 @@
 import {useEffect, useId, useRef} from "react";
-import settings from "../../config/frontendSettings.json" with {type: "json"};
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import {activeQueryFilters, enabledResourceFilters, emptyQueryFilters, type QueryFilters} from "../../lib/queryFilters.ts";
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
 };
 
 export default function QueryScopeFilters({value: storedValue, onChange, deduplication}: Props) {
+    const {settings} = useFrontendSettings();
     const id = useId();
     const menuRef = useRef<HTMLDetailsElement>(null);
     useEffect(() => {
@@ -30,7 +31,7 @@ export default function QueryScopeFilters({value: storedValue, onChange, dedupli
             document.removeEventListener("keydown", closeOnEscape);
         };
     }, []);
-    const enabled = enabledResourceFilters();
+    const enabled = enabledResourceFilters(settings.enabledResourceFilters);
     const value = activeQueryFilters(storedValue, enabled);
     if (enabled.length === 0 && !deduplication) return null;
     const hasFilters = Boolean(value.day || value.source || value.sourceType);

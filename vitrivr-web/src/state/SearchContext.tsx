@@ -1,7 +1,7 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
 import type {BlockState} from "../components/SearchCard";
-import {visualDeduplicationSettings} from "../lib/visualDeduplication.ts";
+import {useFrontendSettings} from "./FrontendSettingsContext.tsx";
 import {emptyQueryFilters, type QueryFilters} from "../lib/queryFilters.ts";
 import {makeBlockState} from "./makeBlockState";
 import type {MediaItem} from "../components/SearchCard";
@@ -51,8 +51,16 @@ export function SearchProvider({children, initial}: {
     initial: Pick<SearchState, "blocks">
 }) {
 
+    const {settings, saveSettings} = useFrontendSettings();
+    const visualDeduplicationEnabled = settings.visualDeduplication.enabled;
+    const setVisualDeduplicationEnabled: React.Dispatch<React.SetStateAction<boolean>> = value => {
+        const enabled = typeof value === "function" ? value(settings.visualDeduplication.enabled) : value;
+        if (enabled !== settings.visualDeduplication.enabled) {
+            saveSettings({...settings, visualDeduplication: {...settings.visualDeduplication, enabled}});
+        }
+    };
     const ensureAtLeastOne = (bs: BlockState[]) =>
-        bs.length === 0 ? [makeBlockState()] : bs;
+        bs.length === 0 ? [makeBlockState("", settings.enabledQueryTypes)] : bs;
 
     const [blocks, _setBlocks] = useState<BlockState[]>(
         ensureAtLeastOne(initial.blocks ?? [])
@@ -65,7 +73,6 @@ export function SearchProvider({children, initial}: {
         });
     };
 
-    const [visualDeduplicationEnabled, setVisualDeduplicationEnabled] = useState(visualDeduplicationSettings.enabled);
     const [queryFilters, setQueryFilters] = useState<QueryFilters>(emptyQueryFilters);
     const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
     const [items, setItems] = useState<SearchState["items"]>([]);

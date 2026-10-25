@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {applyVisualDeduplication} from "../../lib/visualDeduplication.ts";
-import {applyQueryFilters} from "../../lib/queryFilters.ts";
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
+import {applyQueryFilters, enabledResourceFilters} from "../../lib/queryFilters.ts";
 import {buildVectorQuery, thumbnailURL,} from "../../lib/vitrivr";
 import {buildHlsUrl, useSearch} from "../../state/SearchContext";
 import {retrieval} from "../../vitirvr/api/client";
@@ -46,6 +47,7 @@ function videoNameFromUrl(url: string): string {
  */
 export default function NearestNeighbor({id, queryVector, onResultsChange}: NearestNeighborsProps) {
     const navigate = useNavigate();
+    const {settings} = useFrontendSettings();
     const [open, setOpen] = useState(false);
     const [neighbors, setNeighbors] = useState<MediaItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -86,7 +88,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                 const body = buildVectorQuery(queryVector!, 1000);
 
                 // @ts-expect-error Generated operator input types omit named references.
-                const response = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters), visualDeduplicationEnabled));
+                const response = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, enabledResourceFilters(settings.enabledResourceFilters)), visualDeduplicationEnabled, settings.visualDeduplication));
                 if (cancelled) return;
 
                 const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}).filter(
@@ -132,6 +134,8 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
         schema,
         queryFilters,
         visualDeduplicationEnabled,
+        settings.enabledResourceFilters,
+        settings.visualDeduplication,
         setVectorsById,
         onResultsChange,
     ]);
