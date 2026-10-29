@@ -1,10 +1,15 @@
-import {buildPersonQuery, buildPersonSearch, selectedPersonNames} from "./personQuery.ts";
+import {isFederatedBlock, federatedQueryFromBlock} from "./prakFederated.ts";
+import {withPrakMetadata} from "./prakSearch.ts";
+import {blockModalities} from "./blockModalities.ts";
+import {blockCondition, booleanRetrieval, appendBooleanLookups} from "./booleanQuery.ts";
+import {combineConditions, personCondition, type FilterCondition} from "./booleanFilters.ts";
+import type {PersonFilterOptions} from "./personQuery.ts";
 import type {BlockState} from "../components/SearchCard.tsx";
 
-export const API_BASE = import.meta.env.VITE_VITRIVR_BASE_URL;
-export const THUMBNAIL_BASE = import.meta.env.VITE_THUMBNAIL_ORIGIN;
-export const SEGMENT_ORIGIN = import.meta.env.VITE_SEGMENT_ORIGIN;
-export const MEDIA_PATH_ORIGIN: string = import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "";
+export const API_BASE = import.meta.env?.VITE_VITRIVR_BASE_URL;
+export const THUMBNAIL_BASE = import.meta.env?.VITE_THUMBNAIL_ORIGIN;
+export const SEGMENT_ORIGIN = import.meta.env?.VITE_SEGMENT_ORIGIN;
+export const MEDIA_PATH_ORIGIN: string = import.meta.env?.VITE_MEDIA_PATH_ORIGIN ?? "";
 
 type TextInput = { type: "TEXT"; data: string };
 type FloatVectorInput = { type: "FLOATVECTOR"; data: number[] };
@@ -80,6 +85,8 @@ export function videoURL(filePath: string | undefined): string {
  * relationship metadata, especially for segment/video results.
  */
 export type VitrivrRetrievable = {
+    score?: number;
+    properties?: Record<string, string>;
     id?: string;
     type?: string;
     descriptors?: Record<string, unknown>;
@@ -183,7 +190,8 @@ export async function fetchSchemas(): Promise<string[]> {
  * Build a temporal query that consists of multiple QueryBlocks.
  * @param blocks ordered list of QueryBlocks from the UI
  */
-export function buildTemporalQuery(blocks: BlockState[]) {
+export function buildTemporalQuery(blocks: BlockState[], scope?: FilterCondition) {
+    if (blocks.some(isFederatedBlock)) throw new Error("PraK ranked fusion currently supports a single query block.");
     const LIMIT = "10";
     const summary: string[] = [];
 
@@ -191,19 +199,6 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     if (hasImageBlock) {
         throw new Error("Temporal query currently supports only text/emotion blocks (no image blocks yet).");
     }
-    const modalityToField = (m: BlockState["modality"]) => {
-        switch (m) {
-            case "clip":
-                return "clip";
-            case "asr":
-                return "asr";
-            case "ocr":
-                return "ocr";
-            default:
-                return m;
-        }
-    };
-
     const emotionTypeToField = (emotionType?: string) => {
         if (emotionType === "face") return "emotionsface";
         if (emotionType === "ocr") return "emotionsocr";
@@ -219,17 +214,15 @@ export function buildTemporalQuery(blocks: BlockState[]) {
     for (const b of blocks) {
         const inName = `in${opIdx}`;
 
-        if (b.modality === "person") {
-            const names = selectedPersonNames(b);
-            const search = buildPersonSearch(names, `person-${opIdx}`);
+        if (b.modalities) {
+            const search = flatBlockRetrieval(b, blockModalities(b).length === 1 && blockModalities(b)[0] === "person" ? "1000" : LIMIT, `block-${opIdx}`, scope);
             Object.assign(inputs, search.inputs);
             Object.assign(operations, search.operations);
             temporalInputs[inName] = search.output;
-            summary.push(`person: ${names.join(" AND ")}`);
+            summary.push(blockModalities(b).join(" + "));
             opIdx++;
             continue;
         }
-
         if (b.modality === "emotions") {
             const chosen = (b.emotion ?? "").trim();
             if (!chosen) {
@@ -258,17 +251,20 @@ export function buildTemporalQuery(blocks: BlockState[]) {
             summary.push(`emotions(${chosen})+clip("${txt}")`);
 
             const emotionField = emotionTypeToField(b.emotionTarget);
+            const filter = combineConditions("all", [blockCondition(b), scope]);
 
             operations[clipOp] = {
                 field: "clip",
                 inputs: {txt: txtKey},
                 parameters: {limit: LIMIT},
+                ...(filter ? {filter} : {}),
             };
 
             operations[emoOp] = {
                 field: emotionField,
                 inputs: {vec: vecKey},
                 parameters: {limit: LIMIT},
+                ...(filter ? {filter} : {}),
             };
 
             operations[rel1] = {
@@ -309,23 +305,11 @@ export function buildTemporalQuery(blocks: BlockState[]) {
             continue;
         }
 
-        const txt = (b.textQuery ?? "").trim();
-        if (!txt) {
-            throw new Error(`Temporal query: a ${b.modality.toUpperCase()} block is missing text.`);
-        }
-
-        const txtKey = `t${opIdx}`;
-        const opName = `op-${opIdx}`;
-        inputs[txtKey] = {type: "TEXT", data: txt};
-        summary.push(`${b.modality}: ${txt}`);
-
-        operations[opName] = {
-            field: modalityToField(b.modality),
-            inputs: {txt: txtKey},
-            parameters: {limit: LIMIT},
-        };
-
-        temporalInputs[inName] = opName;
+        const search = booleanRetrieval(b, b.modality === "person" ? "1000" : LIMIT, `block-${opIdx}`, scope);
+        Object.assign(inputs, search.inputs);
+        Object.assign(operations, search.operations);
+        temporalInputs[inName] = search.output;
+        summary.push(b.modality);
         opIdx++;
     }
 
@@ -384,8 +368,8 @@ export function buildTemporalQuery(blocks: BlockState[]) {
  * @param emotions emotion label such as happy, sad, etc.
  * @param emotionType where the emotions occurs such as face, asr or ocr.
  */
-export function buildTextQuery(field: string, prompt: string, emotions: string = "", emotionType: string = "") {
-    if (field === "person") return buildPersonQuery(prompt);
+export function buildTextQuery(field: string, prompt: string, emotions: string = "", emotionType: string = "", people: readonly string[] = [], personOptions: PersonFilterOptions = {}, additionalFilter?: FilterCondition) {
+
     const LIMIT = "1000";
 
     let emotionField = "emotionssound";
@@ -394,6 +378,7 @@ export function buildTextQuery(field: string, prompt: string, emotions: string =
 
     if (field === "emotions") {
         const emotionsVector = emotionsToVector(emotions);
+        const filter = combineConditions("all", [personCondition(people, personOptions), additionalFilter]);
 
         const inputs: Inputs = {
             "txt-1": {type: "TEXT", data: prompt},
@@ -405,12 +390,14 @@ export function buildTextQuery(field: string, prompt: string, emotions: string =
                 field: "clip",
                 inputs: {txt: "txt-1"},
                 parameters: {limit: LIMIT},
+                ...(filter ? {filter} : {}),
             },
 
             emotions: {
                 field: emotionField,
                 inputs: {vec: "emotion"},
                 parameters: {limit: LIMIT},
+                ...(filter ? {filter} : {}),
             },
 
             relations: {
@@ -462,20 +449,53 @@ export function buildTextQuery(field: string, prompt: string, emotions: string =
         } as const;
     }
 
-    const inputs: Inputs = {
-        txt: {type: "TEXT", data: prompt},
-    };
+    return appendBooleanLookups(booleanRetrieval({id: "", modality: field as BlockState["modality"], queryType: "text", file: null,
+        textQuery: prompt, personNames: field === "person" && !people.length ? [prompt] : [...people], identityField: personOptions.identityField,
+        personMode: personOptions.mode, personMinConfidence: personOptions.minConfidence, conditions: additionalFilter}));
+}
 
+/** Build the selected ranked modalities, applying hard requirements to each leaf. */
+function flatBlockRetrieval(block: BlockState, limit: string, prefix = "", scope?: FilterCondition) {
+    const modes = blockModalities(block);
+    if (!modes.length) throw new Error("Please select at least one modality.");
+    if (!modes.includes("emotions")) return booleanRetrieval(block, limit, prefix, scope);
+    if (!block.emotion) throw new Error("Please select an emotion.");
+    const key = (name: string) => prefix ? `${prefix}-${name}` : name;
+    const filter = combineConditions("all", [blockCondition(block), scope]);
+    const inputs: Inputs = {[key("emotion")]: {type: "FLOATVECTOR", data: emotionsToVector(block.emotion)}};
     const operations: Record<string, unknown> = {
-        clip: {
-            field,
-            inputs: {txt: "txt"},
-            parameters: {limit: LIMIT},
-        },
+        [key("emotions")]: {field: `emotions${block.emotionTarget ?? "face"}`, inputs: {vec: key("emotion")}, parameters: {limit}, ...(filter ? {filter} : {})},
     };
+    if (!modes.includes("clip")) return {inputs, operations, output: key("emotions")};
+    const clip = booleanRetrieval(block, limit, prefix, scope);
+    Object.assign(inputs, clip.inputs);
+    Object.assign(operations, clip.operations);
+    for (const [name, source] of [["scene", clip.output], ["emotion", key("emotions")]]) {
+        operations[key(`${name}-relations`)] = {factory: "RelationExpander", inputs: {in: source}, parameters: {outgoing: "partOf"}};
+        operations[key(`${name}-scores`)] = {factory: "ScoreAggregator", inputs: {in: key(`${name}-relations`)}};
+    }
+    operations[key("fusion")] = {factory: "WeightedScoreFusion", inputs: {in: key("scene-scores"), "in-2": key("emotion-scores")}, parameters: {weights: "0.7 , 100", p: "2", normalize: "true"}};
+    return {inputs, operations, output: key("fusion")};
+}
 
-    const output = addSegmentToFileLookups(operations, "clip");
-    return {inputs, operations, output} as const;
+export function buildQueryBlock(block: BlockState, scope?: FilterCondition) {
+    if (isFederatedBlock(block)) return withPrakMetadata(federatedQueryFromBlock(block));
+    if (block.modalities) {
+        const retrieval = flatBlockRetrieval(block, "1000", "", scope);
+        const query = appendBooleanLookups(retrieval);
+        // Fusion already aggregates scores at the parent level.
+        if (retrieval.output === "fusion") {
+            const {relations: _relations, aggregator: _aggregator, ...operations} = query.operations;
+            void _relations; void _aggregator;
+            return {...query, operations: {...operations, timelookup: {...query.operations.timelookup, inputs: {in: "fusion"}}}};
+        }
+        return query;
+    }
+    if (block.modality === "emotions") {
+        if (!block.emotion) throw new Error("Please select an emotion.");
+        return buildTextQuery("emotions", "", block.emotion, block.emotionTarget, [], {}, combineConditions("all", [blockCondition(block), scope]));
+    }
+    return appendBooleanLookups(booleanRetrieval(block, "1000", "", scope));
 }
 
 /**
@@ -534,46 +554,6 @@ export function emotionsToVector(emotion: string | undefined | null): number[] {
     const normalized = emotion.toLowerCase().trim();
 
     return orderingEmotions.map(e => (e === normalized ? 1 : 0));
-}
-
-
-type Ops = Record<string, unknown>;
-
-
-/**
- * Append the standard lookup chain.
- */
-function addSegmentToFileLookups(operations: Ops, inputOp: string) {
-    operations["relations"] = {
-        factory: "RelationExpander",
-        inputs: {in: inputOp},
-        parameters: {outgoing: "partOf"},
-    };
-
-    operations["aggregator"] = {
-        factory: "ScoreAggregator",
-        inputs: {in: "relations"},
-    };
-
-    operations["timelookup"] = {
-        factory: "FieldLookup",
-        inputs: {in: "aggregator"},
-        parameters: {field: "time", keys: "start, end"},
-    };
-
-    operations["desclookup"] = {
-        factory: "FieldLookup",
-        inputs: {in: "timelookup"},
-        parameters: {field: "clip", keys: "descriptord"},
-    };
-
-    operations["filelookup"] = {
-        factory: "ObjectFieldLookup",
-        inputs: {in: "desclookup"},
-        parameters: {field: "file", predicates: "partOf", keys: "path"},
-    };
-
-    return "filelookup" as const;
 }
 
 

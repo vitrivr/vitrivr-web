@@ -159,8 +159,8 @@
 .sc-settings h2 { margin: 0; font-size: 18px; }
 
 .sc-resultsControls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.sc-viewSelect { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 12px; }
-.sc-viewSelect select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--text); cursor: pointer; }
+.sc-viewSelect { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text-3); font-size: 12px; }
+.sc-viewSelect select { box-sizing: border-box; height: 40px; margin: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--text); cursor: pointer; }
 .sc-videoGroups { display: grid; gap: 24px; min-width: 0; }
 .sc-groupHint { margin: 0; color: var(--text-3); font-size: 12px; }
 .sc-videoGroup { min-width: 0; }
@@ -311,3 +311,33 @@
 .sc-scopeChips button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2); color: var(--brand-ink); font-size: 10px; cursor: pointer; }
 .sc-scopeChips button span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .sc-scopeChips button:hover { border-color: var(--brand); }
+
+.sc-peopleFilter { margin-top: 14px; }
+.sc-personOptions { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
+.sc-personOptions summary { cursor: pointer; padding: 3px 0; }
+.sc-personOptions > label { margin-top: 10px; }
+.sc-personOptions select { margin-top: 5px; }
+.sc-confidenceToggle { display: flex; align-items: center; gap: 8px; color: var(--text-2); }
+.sc-personOptions input[type="number"] { width: 100%; margin-top: 7px; padding: 8px 10px; background: var(--input-bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px; }
+
+.sc-flatField { display: grid; gap: 8px; margin-top: 16px; min-width: 0; color: var(--text-2); font-size: 12px; }
+.sc-flatField > select { width: 100%; min-width: 0; }
+
+.sc-feedbackActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sc-feedbackActions > span { font-size: 12px; color: var(--text-2); }
+.sc-relevanceToggle { position: absolute; bottom: 6px; left: 6px; z-index: 2; display: flex; align-items: center; gap: 5px; padding: 2px 5px; line-height: 1.2; border-radius: 6px; background: var(--input-bg); color: var(--text); border: 1px solid var(--line); font-size: 11px; cursor: pointer; }
+.sc-relevanceToggle.is-selected { background: var(--brand); color: white; border-color: var(--brand); }
+.sc-relevanceToggle input { accent-color: var(--brand); margin: 0; }
+.search-shell .sc-relevantResult { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+.sc-relevanceToggle:has(input:disabled) { cursor: default; opacity: .8; }
+.search-shell .sc-fusionCaption { white-space: normal; }
+.sc-fusionSources { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.sc-sourceBadge { display: inline-block; padding: 2px 5px; border-radius: 4px; background: var(--surface-2); color: var(--brand-ink); border: 1px solid var(--line); font-size: 10px; line-height: 1.2; }
+.sc-fusionScore { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; font-size: 10px; }
+.search-shell .sc-modalities .rg__option:has(input[value="prak"]) .rg__label::before { content: '◈'; }
+
+.sc-mappingError { display: block; margin-top: 5px; white-space: normal; overflow-wrap: anywhere; color: var(--berry-ink); font-size: 10px; line-height: 1.4; }
+
+.sc-personRoles { display: grid; gap: 8px; color: var(--text-2); font-size: 12px; }
+.sc-personRoles > label { display: flex; align-items: center; gap: 7px; }

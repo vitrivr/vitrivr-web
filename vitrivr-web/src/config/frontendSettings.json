@@ -1,4 +1,5 @@
 {
+  "bayesianRefinementEnabled": true,
   "enabledResourceFilters": [
     "day",
     "sourceType",
@@ -9,11 +10,13 @@
     "emotions",
     "ocr",
     "asr",
-    "person"
+    "person",
+    "prak"
   ],
   "personNames": [
+    "unknown",
     "Allie",
-    "Bjorn",
+    "Björn",
     "Cathal",
     "Florian",
     "Klaus",
@@ -32,7 +35,7 @@
   "sourcePersons": [
     "Allie",
     "Bao",
-    "Bjorn",
+    "Björn",
     "Cathal",
     "Florian",
     "Klaus",

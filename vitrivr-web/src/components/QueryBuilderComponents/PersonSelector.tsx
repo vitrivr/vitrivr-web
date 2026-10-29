@@ -1,12 +1,12 @@
 import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 
-export default function PersonSelector({value, onChange}: {value: string[]; onChange: (names: string[]) => void}) {
+export default function PersonSelector({value, onChange, mode = "all", optional = false, showHint = true}: {value: string[]; onChange: (names: string[]) => void; mode?: "all" | "any"; optional?: boolean; showHint?: boolean}) {
     const {settings} = useFrontendSettings();
     const names = [...new Set([...settings.personNames, ...value].map(name => name.trim()).filter(Boolean))];
     return (
         <div className="sc-personSelector">
             <details>
-                <summary>{value.length ? value.join(", ") : "Select people"}</summary>
+                <summary>{value.length ? value.join(", ") : optional ? "Any people" : "Select people"}</summary>
                 <fieldset>
                     <legend>Recognized people</legend>
                     {names.map(name => <label key={name}>
@@ -18,7 +18,7 @@ export default function PersonSelector({value, onChange}: {value: string[]; onCh
                 </fieldset>
             </details>
             {value.length > 0 && <button type="button" className="sc-personClear" onClick={() => onChange([])}>Clear selection</button>}
-            <p className="sc-personHint">Find segments containing all selected people.</p>
+            {showHint && value.length > 0 && <p className="sc-personHint">{mode === "any" ? "Match any selected person." : "Match all selected people together."}</p>}
         </div>
     );
 }

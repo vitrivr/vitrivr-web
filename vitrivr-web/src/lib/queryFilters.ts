@@ -1,3 +1,4 @@
+import {combineConditions, type FilterCondition} from "./booleanFilters.ts";
 import settings from "../config/frontendSettings.json" with {type: "json"};
 
 export type QueryFilters = {
@@ -25,21 +26,33 @@ export function emptyQueryFilters(): QueryFilters {
     return {day: "", source: "", sourceType: ""};
 }
 
-/** Constrain every retrieval leaf, before backend limits and temporal/person aggregation. */
+export function recordingScopeCondition(configuredFilters: QueryFilters, enabled: readonly ResourceFilter[] = enabledResourceFilters()): FilterCondition | undefined {
+    const scope = activeQueryFilters(configuredFilters, enabled);
+    const values = {...(scope.day ? {day: [scope.day]} : {}), ...(scope.source ? {source: [scope.source]} : {}), ...(scope.sourceType ? {source_type: [scope.sourceType]} : {})};
+    return Object.keys(values).length ? {type: "recording", values} : undefined;
+}
+
+/** Attach global recording constraints to every retrieval, without legacy filter.* parameters. */
 export function applyQueryFilters<T extends {operations: Record<string, unknown>}>(query: T, configuredFilters: QueryFilters, enabled: readonly ResourceFilter[] = enabledResourceFilters()): T {
-    const filters = activeQueryFilters(configuredFilters, enabled);
-    const parameters: Record<string, string> = {};
-    if (filters.day) parameters["filter.day"] = filters.day;
-    if (filters.source) parameters["filter.source"] = filters.source;
-    if (filters.sourceType) parameters["filter.source_type"] = filters.sourceType;
-    if (Object.keys(parameters).length === 0) return query;
+    const scope = activeQueryFilters(configuredFilters, enabled);
+    const globalValues = {...(scope.day ? {day: [scope.day]} : {}), ...(scope.source ? {source: [scope.source]} : {}), ...(scope.sourceType ? {source_type: [scope.sourceType]} : {})};
+    let changed = false;
     const operations = Object.fromEntries(Object.entries(query.operations).map(([name, operation]) => {
-        if (!operation || typeof operation !== "object" || !("field" in operation) || typeof operation.field !== "string") {
-            return [name, operation];
-        }
-        const previous = "parameters" in operation && operation.parameters && typeof operation.parameters === "object"
-            ? operation.parameters : {};
-        return [name, {...operation, parameters: {...previous, ...parameters}}];
+        if (!operation || typeof operation !== "object" || !(("field" in operation && typeof operation.field === "string") || ("factory" in operation && operation.factory === "FilteredRetrieval"))) return [name, operation];
+        const previous = "parameters" in operation && operation.parameters && typeof operation.parameters === "object" ? operation.parameters as Record<string, string> : {};
+        const keys = ["filter.day", "filter.source", "filter.source_type", "filter.persons", "filter.personMode", "filter.identityField", "filter.personMinConfidence", "filter.ocr", "filter.asr"];
+        if (!Object.keys(globalValues).length && !keys.some(key => key in previous)) return [name, operation];
+        changed = true;
+        const legacy: FilterCondition[] = [];
+        const values = Object.fromEntries(["day", "source", "source_type"].flatMap(key => previous[`filter.${key}`] ? [[key, previous[`filter.${key}`].split(",").map(value => value.trim()).filter(Boolean)]] : []));
+        if (Object.keys(values).length) legacy.push({type: "recording", values});
+        if (previous["filter.persons"]) legacy.push({type: "persons", names: previous["filter.persons"].split(","), field: previous["filter.identityField"] || "yoloadafacetwopass", mode: previous["filter.personMode"] === "any" ? "any" : "all", ...(previous["filter.personMinConfidence"] ? {minConfidence: Number(previous["filter.personMinConfidence"])} : {})});
+        for (const field of ["ocr", "asr"]) if (previous[`filter.${field}`]) legacy.push({type: "text", field, text: previous[`filter.${field}`]});
+        const filter = combineConditions("all", ["filter" in operation ? operation.filter as FilterCondition : undefined, ...legacy,
+            Object.keys(globalValues).length ? {type: "recording", values: globalValues} : undefined]);
+        if (!filter && !Object.keys(previous).some(key => key.startsWith("filter."))) return [name, operation];
+        const parameters = Object.fromEntries(Object.entries(previous).filter(([key]) => !["filter.day", "filter.source", "filter.source_type", "filter.persons", "filter.personMode", "filter.identityField", "filter.personMinConfidence", "filter.ocr", "filter.asr"].includes(key)));
+        return [name, {...operation, parameters, ...(filter ? {filter} : {})}];
     }));
-    return {...query, operations};
+    return changed ? {...query, operations} : query;
 }

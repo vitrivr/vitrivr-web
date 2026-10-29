@@ -6,6 +6,7 @@ export function makeBlockState(schema = "", configured?: readonly string[]): Blo
     return {
         id: uuid(),
         modality: enabledQueryModalities(schema, configured)[0]?.value ?? "clip",
+        modalities: enabledQueryModalities(schema, configured).slice(0, 1).map(option => option.value),
         emotion: undefined,
         emotionTarget: "face",
         queryType: "text",

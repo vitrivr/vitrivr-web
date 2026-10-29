@@ -1,5 +1,8 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
+import {SearchRequestGate} from "../lib/prakSearch.ts";
+import type {LocalFeedbackSession} from "../lib/prakLocalFeedback.ts";
+import type {FederatedSession} from "../lib/prakFederated.ts";
 import type {BlockState} from "../components/SearchCard";
 import {useFrontendSettings} from "./FrontendSettingsContext.tsx";
 import {emptyQueryFilters, type QueryFilters} from "../lib/queryFilters.ts";
@@ -16,6 +19,11 @@ export function buildHlsUrl(parentId: string): string {
 }
 
 type SearchState = {
+    localFeedbackSession: LocalFeedbackSession | null;
+    setLocalFeedbackSession: React.Dispatch<React.SetStateAction<LocalFeedbackSession | null>>;
+    prakSession: FederatedSession | null;
+    setPrakSession: React.Dispatch<React.SetStateAction<FederatedSession | null>>;
+    searchRequests: SearchRequestGate;
     visualDeduplicationEnabled: boolean;
     setVisualDeduplicationEnabled: React.Dispatch<React.SetStateAction<boolean>>;
     queryFilters: QueryFilters;
@@ -73,6 +81,9 @@ export function SearchProvider({children, initial}: {
         });
     };
 
+    const [localFeedbackSession, setLocalFeedbackSession] = useState<LocalFeedbackSession | null>(null);
+    const [prakSession, setPrakSession] = useState<FederatedSession | null>(null);
+    const [searchRequests] = useState(() => new SearchRequestGate());
     const [queryFilters, setQueryFilters] = useState<QueryFilters>(emptyQueryFilters);
     const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
     const [items, setItems] = useState<SearchState["items"]>([]);
@@ -102,6 +113,8 @@ export function SearchProvider({children, initial}: {
     return (
         <SearchCtx.Provider
             value={{
+                localFeedbackSession, setLocalFeedbackSession,
+                prakSession, setPrakSession, searchRequests,
                 visualDeduplicationEnabled,
                 setVisualDeduplicationEnabled,
                 queryFilters,

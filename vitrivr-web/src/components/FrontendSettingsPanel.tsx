@@ -57,7 +57,7 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
     const save = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        const draft: FrontendSettings = {...base, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
+        const draft: FrontendSettings = {...base, bayesianRefinementEnabled: data.has("bayesianRefinementEnabled"), enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
             visualDeduplication: {...base.visualDeduplication, enabled: data.has("dedupEnabled"), field: String(data.get("dedupField") ?? "")}};
         for (const {key} of listOptions) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
         for (const {key} of numericOptions) draft.visualDeduplication[key] = Number(data.get(key));
@@ -71,8 +71,9 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
                 if (!sources.includes(active.source)) active.source = "";
                 return active;
             });
-            setBlocks(previous => previous.map(block => block.modality === "person"
-                ? {...block, personNames: selectedPersonNames(block).filter(name => next.personNames.includes(name)), textQuery: ""} : block));
+            setBlocks(previous => previous.map(block => ({...block,
+                personNames: selectedPersonNames(block).filter(name => next.personNames.includes(name)),
+                textQuery: !block.modalities && block.modality === "person" ? "" : block.textQuery})));
             setError("");
             if (persisted) onClose();
             else setNotice("Settings applied for this session. Browser storage is unavailable, so they cannot be saved for your next visit.");
@@ -94,6 +95,10 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
             <Choices label="Resource filters" options={resourceOptions} value={resourceFilters} onChange={setResourceFilters}/>
         </div>
         <p className="fs-note">Use the arrows to change display order. The first enabled query type is the default for new blocks.</p>
+        <section className="fs-section" aria-label="Relevance feedback">
+            <label className="fs-check"><input type="checkbox" name="bayesianRefinementEnabled" defaultChecked={base.bayesianRefinementEnabled}/>Enable Bayesian refinement</label>
+            <p className="fs-note">Mark results as relevant and refine their ranking with PraK Bayes. Applies to new searches. Changing this setting clears the current feedback session.</p>
+        </section>
         <details className="fs-section">
             <summary>People, days and cameras</summary>
             <p className="fs-note">One value per line, or separate values with commas. Keep spelling and case consistent with the backend.</p>

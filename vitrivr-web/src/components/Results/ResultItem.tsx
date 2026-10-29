@@ -1,3 +1,4 @@
+import type {SourceEvidence} from "../../lib/prakFederated.ts";
 import React, {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {thumbnailURL} from "../../lib/vitrivr";
@@ -8,6 +9,10 @@ import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generate
 type BaseProps = {
     id: string,
     searchRank?: number,
+    evidence?: SourceEvidence[],
+    mappingError?: string,
+    resultScore?: number,
+    relevance?: {selected: boolean; onToggle: () => void; disabled: boolean; reason?: string; unavailableLabel?: string},
     caption?: React.ReactNode,
     className?: string,
     captionClassName?: string,
@@ -238,22 +243,42 @@ export default function ResultItem(props: ResultItemProps) {
                 </div>
             )}
 
-            <figure className={className} style={{position: "relative"}}>
+            <figure className={`${className}${props.relevance?.selected ? " sc-relevantResult" : ""}`} style={{position: "relative"}}>
+                <div className="ri-preview" style={{position: "relative"}}>
                 <Link
                     to={`/video/${encodeURIComponent(id)}`}
                     state={linkState}
                     onClick={() => props.onBeforeOpen?.()}
                     style={{textDecoration: "none", color: "inherit", display: "block"}}
                 >
-                    <div className="ri-preview" style={{position: "relative"}}>
                         {media}
-                        {props.searchRank != null && <span className="sc-rank" aria-label={`Original result rank ${props.searchRank}`}>#{props.searchRank}</span>}
+                        {props.searchRank != null && <span className="sc-rank" aria-label={`Original result position ${props.searchRank}`}>#{props.searchRank}</span>}
                         {props.kind === "video" && props.showDuration && Number.isFinite(props.start) && (
                             <span className="sc-duration" aria-label="Segment start time">{Math.floor(Math.max(0, props.start) / 60).toString().padStart(2, "0")}:{Math.floor(Math.max(0, props.start) % 60).toString().padStart(2, "0")}</span>
                         )}
-                    </div>
-                    <figcaption title={typeof displayCaption === "string" ? displayCaption : undefined} className={captionClassName}>
+                </Link>
+                {props.relevance && (hovered || focused || props.relevance.selected) && <label title={props.relevance.reason} className={`sc-relevanceToggle${props.relevance.selected ? " is-selected" : ""}`}>
+                    <input type="checkbox" checked={props.relevance.selected} disabled={props.relevance.disabled}
+                        onChange={props.relevance.onToggle} aria-label={`Mark result ${props.searchRank ?? id} as relevant`}/>
+                    {props.relevance.reason ? props.relevance.unavailableLabel ?? "Unavailable" : "Relevant"}
+                </label>}
+                </div>
+                <Link
+                    to={`/video/${encodeURIComponent(id)}`}
+                    state={linkState}
+                    onClick={() => props.onBeforeOpen?.()}
+                    style={{textDecoration: "none", color: "inherit", display: "block"}}
+                >
+                    <figcaption title={typeof displayCaption === "string" ? displayCaption : undefined} className={`${captionClassName}${props.evidence?.length ? " sc-fusionCaption" : ""}`}>
                         {displayCaption}
+                        {!!props.evidence?.length && <span className="sc-fusionSources" aria-label="Contributing sources">
+                            {props.evidence.map(item => <span className="sc-sourceBadge" key={item.source}
+                                title={`${(item.source === "visual" || item.source === "prak") ? "PraK" : (/^person\d*$/.test(item.source) ? "Person" : item.source.toUpperCase())}: rank ${item.rank ?? "unknown"}; original score ${item.score ?? "unscored"}; weight ${item.weight ?? 1}; contribution ${item.contribution ?? "unknown"}`}>
+                                {(item.source === "visual" || item.source === "prak") ? "PraK" : (/^person\d*$/.test(item.source) ? "Person" : item.source.toUpperCase())}
+                            </span>)}
+                            {props.resultScore !== undefined && Number.isFinite(props.resultScore) && <span className="sc-fusionScore" title="Engine result score">{props.resultScore.toFixed(4)}</span>}
+                        </span>}
+                        {props.mappingError && <span className="sc-mappingError" aria-label="Feedback mapping error">{props.mappingError}</span>}
                     </figcaption>
                 </Link>
 

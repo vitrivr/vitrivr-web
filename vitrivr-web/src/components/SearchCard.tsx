@@ -44,17 +44,21 @@
  */
 
 "use client";
+import {appendLocalFeedbackPool, localDiscoveryFromBlock, executeLocalFeedbackSearch, feedbackErrorMessage, projectLocalFeedbackMedia, feedbackQueryKey, type LocalQuery} from "../lib/prakLocalFeedback.ts";
+import {executeFederatedSearch, federatedQueryFromBlock, isFederatedBlock} from "../lib/prakFederated.ts";
+import {blockModalities} from "../lib/blockModalities.ts";
 import {applyVisualDeduplication} from "../lib/visualDeduplication.ts";
-import {applyQueryFilters, emptyQueryFilters, enabledResourceFilters} from "../lib/queryFilters.ts";
+import {emptyQueryFilters, enabledResourceFilters, recordingScopeCondition} from "../lib/queryFilters.ts";
 import QueryScopeFilters from "./QueryBuilderComponents/QueryScopeFilters.tsx";
-import {buildPersonQuery, selectedPersonNames} from "../lib/personQuery.ts";
+import type {IdentityField} from "../lib/personQuery.ts";
 import {useEffect, useRef, useState} from "react";
 import {type DropdownItem} from "./QueryBuilderComponents/Dropdown.tsx";
 import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultsGrid from "./Results/ResultsGrid.tsx";
 import {groupResultsByVideo} from "./Results/groupResults.ts";
-import {buildTextQuery, buildTemporalQuery, buildSegmentMediaUrls, type VitrivrRetrievable} from "../lib/vitrivr.ts";
+import {buildQueryBlock, buildTemporalQuery, buildSegmentMediaUrls, type VitrivrRetrievable} from "../lib/vitrivr.ts";
+import type {FilterCondition} from "../lib/booleanFilters.ts";
 import {fileToBase64} from "../lib/helpers.ts";
 import {retrieval} from "../vitirvr/api/client";
 import "./Results/Results.css"
@@ -86,6 +90,8 @@ type MediaKind = "image" | "video" | "custom";
 
 export type MediaItem = {
     searchRank?: number;
+    score?: number;
+    properties?: Record<string, string>;
     id: string;
     kind: MediaKind;
     rawType?: string;
@@ -105,6 +111,7 @@ type RetrievablesResponse = {
         id?: string;
         type?: string;
         score?: number;
+        properties?: Record<string, string>;
         relationship?: {
             partOf?: {
                 id?: string;
@@ -121,7 +128,23 @@ export type EmotionTarget = "face" | "sound" | "ocr";
 export type BlockState = {
     id: string;
     modality: Modality;
+    modalities?: Modality[];
+    ocrText?: string;
+    prakText?: string;
+    asrText?: string;
+    ocrMatch?: "fulltext" | "contains" | "exact";
+    asrMatch?: "fulltext" | "contains" | "exact";
     personNames?: string[];
+    personRanking?: boolean;
+    mustContainPerson?: boolean;
+    conditions?: FilterCondition;
+    conditionMode?: "all" | "any";
+    textMatch?: "fulltext" | "contains" | "exact";
+    negatePrimary?: boolean;
+    retrievableType?: string;
+    personMode?: "all" | "any";
+    identityField?: IdentityField;
+    personMinConfidence?: number;
     emotion?: string;
     emotionTarget?: "face" | "sound" | "ocr";
     queryType: "text" | "image";
@@ -285,6 +308,8 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
             return {
                 id,
+                score: r.score,
+                properties: r.properties,
                 parentId,
                 kind,
                 rawType: r.type,
@@ -300,6 +325,8 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
         return {
             id,
+            score: r.score,
+            properties: r.properties,
             kind,
             rawType: r.type,
             url: "",
@@ -321,6 +348,9 @@ export function SearchCard() {
     const visualDeduplicationSettings = settings.visualDeduplication;
     const resourceFilters = enabledResourceFilters(settings.enabledResourceFilters);
     const {
+        prakSession, setPrakSession, searchRequests,
+        localFeedbackSession, setLocalFeedbackSession,
+        schema, setSchema,
         blocks, setBlocks,
         queryFilters, setQueryFilters,
         visualDeduplicationEnabled, setVisualDeduplicationEnabled,
@@ -330,6 +360,7 @@ export function SearchCard() {
         raw, setRaw,
         setScrollY, scrollY, setVectorsById,
     } = useSearch();
+    const isLocalFeedback = schema.toLowerCase() === "castle";
     const [visibleCount, setVisibleCount] = useState(resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
 
     useEffect(() => {
@@ -349,12 +380,35 @@ export function SearchCard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filterOpen, setFilterOpen] = useState(false);
-    const {
-        schema,
-        setSchema,
-    } = useSearch();
+    const isPrak = !isLocalFeedback && blocks.length === 1 && isFederatedBlock(blocks[0]);
+    useEffect(() => () => searchRequests.invalidate(), [searchRequests]);
+    useEffect(() => {
+        searchRequests.invalidate();
+        setLoading(false);
+        setPrakSession(previous => previous?.schema === schema ? previous : null);
+        setLocalFeedbackSession(previous => previous?.schema === schema ? previous : null);
+    }, [schema, searchRequests, setPrakSession, setLocalFeedbackSession]);
+    const modalityOptions = enabledQueryModalities(schema, settings.enabledQueryTypes)
+        .filter(option => blocks.length === 1 || option.value !== "prak");
 
-    const modalityOptions = enabledQueryModalities(schema, settings.enabledQueryTypes);
+    const queryKey = feedbackQueryKey({schema, blocks, queryFilters, enabledQueryTypes: settings.enabledQueryTypes,
+        enabledResourceFilters: settings.enabledResourceFilters, personNames: settings.personNames,
+        visualDeduplication: settings.visualDeduplication, bayesianRefinementEnabled: settings.bayesianRefinementEnabled});
+    const latestQueryKey = useRef(queryKey);
+    latestQueryKey.current = queryKey;
+    const priorQueryKey = useRef(queryKey);
+    const submittedQueryKey = useRef(queryKey);
+    const beginSearch = () => { submittedQueryKey.current = queryKey; return searchRequests.begin(); };
+    const isCurrentSearch = (generation: number) => searchRequests.isCurrent(generation) && submittedQueryKey.current === latestQueryKey.current;
+    useEffect(() => {
+        if (priorQueryKey.current !== queryKey ||
+            (localFeedbackSession?.queryKey !== undefined && localFeedbackSession.queryKey !== queryKey) ||
+            (prakSession?.queryKey !== undefined && prakSession.queryKey !== queryKey)) {
+            searchRequests.invalidate(); setLocalFeedbackSession(null); setPrakSession(null);
+            setLoading(false); setError(null);
+        }
+        priorQueryKey.current = queryKey;
+    }, [queryKey, localFeedbackSession, prakSession, searchRequests, setLocalFeedbackSession, setPrakSession]);
 
     const counts = {
         image: items.filter(i => i.kind === "image").length,
@@ -391,6 +445,9 @@ export function SearchCard() {
         updateBlocks(prev => prev.map(b => (b.id === id ? {...b, ...patch} : b)));
 
     const resetAll = () => {
+        searchRequests.invalidate();
+        setPrakSession(null);
+        setLocalFeedbackSession(null);
         setVisibleCount(pageSize);
         setLoading(false);
         setError(null);
@@ -431,57 +488,115 @@ export function SearchCard() {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [loading, filterOpen]);
 
+    const runPrak = async (refine: boolean) => {
+        const previous = prakSession;
+        if (refine && (!settings.bayesianRefinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.selectedIds.length || !previous.prakCandidates || !previous.fusionState)) return;
+        const generation = beginSearch();
+        // A fresh text search never reuses another search's feedback state.
+        if (!refine) setPrakSession(null);
+        setLoading(true);
+        setError(null);
+        setFlash({show: false, message: ""});
+        try {
+            const request = refine ? previous!.request : federatedQueryFromBlock(blocks[0]);
+            const result = await executeFederatedSearch({request, previous: refine ? previous! : undefined,
+                isCurrent: () => isCurrentSearch(generation),
+                execute: async request => {
+                    printVitrivrRequest(request);
+                    // @ts-expect-error Generated operator inputs omit named references.
+                    return retrieval.postExecuteQuery(schema, request);
+                },
+            });
+            if (!result || !isCurrentSearch(generation)) return;
+            const media = mediaFrom(result.response);
+            if (result.response.retrievables.length && media.length !== result.response.retrievables.length) {
+                throw new Error("PraK results are missing local playback metadata. Previous results were kept.");
+            }
+            setItems(media);
+            setRaw(truncateJson(result.response));
+            setVisibleCount(pageSize);
+            setPrakSession({schema, queryKey, request, prakCandidates: result.prakCandidates, fusionState: result.fusionState,
+                eligibleIds: result.eligibleIds, selectedIds: [], ranking: result.ranking});
+            if (!media.length) setFlash({show: true, message: "No results found for this query."});
+        } catch (err) {
+            if (isCurrentSearch(generation)) {
+                // Restore the prior search as a unit when a new search fails too.
+                if (!refine) setPrakSession(previous?.schema === schema ? previous : null);
+                setError(err instanceof Error ? err.message : String(err));
+            }
+        } finally {
+            if (isCurrentSearch(generation)) setLoading(false);
+        }
+    };
+    const runLocalFeedback = async (refine: boolean) => {
+        const previous = localFeedbackSession;
+        const previousPrak = prakSession;
+        if (refine && (!settings.bayesianRefinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.localState || !previous.selectedIds.length)) return;
+        const generation = beginSearch();
+        if (!refine) { setLocalFeedbackSession(null); setPrakSession(null); }
+        setLoading(true); setError(null); setFlash({show: false, message: ""});
+        try {
+            // Refinement builds ONLY the feedback factory. No native retrieval is parsed again.
+            const request = refine ? undefined : appendLocalFeedbackPool(applyVisualDeduplication(
+                blocks.length === 1 ? localDiscoveryFromBlock(blocks[0], recordingScopeCondition(queryFilters, resourceFilters))
+                    : buildTemporalQuery(blocks, recordingScopeCondition(queryFilters, resourceFilters)) as LocalQuery,
+                visualDeduplicationEnabled, settings.visualDeduplication), settings.bayesianRefinementEnabled);
+            const result = await executeLocalFeedbackSearch({request, previous: refine ? previous! : undefined, requestHasDisplayMetadata: blocks.length > 1, refinementEnabled: settings.bayesianRefinementEnabled,
+                isCurrent: () => isCurrentSearch(generation),
+                execute: async query => {
+                    printVitrivrRequest(query);
+                    // @ts-expect-error Generated operator inputs omit named references.
+                    return retrieval.postExecuteQuery(schema, query);
+                },
+            });
+            if (!result || !isCurrentSearch(generation)) return;
+            const media = refine ? projectLocalFeedbackMedia(result.response, items) : mediaFrom(result.response);
+            if (media.length !== result.response.retrievables.length) throw new Error("Local results are missing playback metadata. Previous results were kept.");
+            setItems(media); setRaw(truncateJson(result.response)); setVisibleCount(pageSize);
+            setLocalFeedbackSession(settings.bayesianRefinementEnabled ? {schema, queryKey, localState: result.localState, eligibleIds: result.eligibleIds,
+                resultIds: result.resultIds, selectedIds: [], ranking: result.ranking} : null);
+            setPrakSession(null);
+            if (!media.length) setFlash({show: true, message: "No results found for this query."});
+        } catch (error) {
+            if (isCurrentSearch(generation)) {
+                if (!refine) { setLocalFeedbackSession(previous?.schema === schema ? previous : null); setPrakSession(previousPrak?.schema === schema ? previousPrak : null); }
+                setError(feedbackErrorMessage(error));
+            }
+        } finally { if (isCurrentSearch(generation)) setLoading(false); }
+    };
+    const localFeedbackResults = settings.bayesianRefinementEnabled && localFeedbackSession?.schema === schema && localFeedbackSession.queryKey === queryKey;
+    const activeFeedbackSession = !settings.bayesianRefinementEnabled ? null : localFeedbackResults ? localFeedbackSession : prakSession?.schema === schema && prakSession.queryKey === queryKey ? prakSession : null;
+    const feedbackReady = localFeedbackResults ? !!localFeedbackSession.localState : !!prakSession?.prakCandidates && !!prakSession?.fusionState;
+    const toggleRelevant = (id: string) => {
+        if (loading || !settings.bayesianRefinementEnabled) return;
+        if (localFeedbackResults) setLocalFeedbackSession(previous => {
+            if (!previous?.eligibleIds.includes(id)) return previous;
+            return {...previous, selectedIds: previous.selectedIds.includes(id) ? previous.selectedIds.filter(value => value !== id) : [...previous.selectedIds, id]};
+        });
+        else setPrakSession(previous => {
+            if (!previous?.eligibleIds.includes(id)) return previous;
+            return {...previous, selectedIds: previous.selectedIds.includes(id) ? previous.selectedIds.filter(value => value !== id) : [...previous.selectedIds, id]};
+        });
+    };
+    const feedback = activeFeedbackSession ? {
+        mode: localFeedbackResults ? "local" as const : "federated" as const,
+        eligibleIds: activeFeedbackSession.eligibleIds, selectedIds: activeFeedbackSession.selectedIds,
+        onToggle: toggleRelevant, disabled: loading || !feedbackReady,
+    } : undefined;
     const onSearch = async () => {
-        if (blocks.some(block => !modalityOptions.some(option => option.value === block.modality))) {
+        if (blocks.some(block => !blockModalities(block).length || blockModalities(block).some(mode => !modalityOptions.some(option => option.value === mode)))) {
             setFlash({show: true, message: "Select a query type enabled in the frontend settings and supported by this schema."});
             return;
         }
+        if (isLocalFeedback) return runLocalFeedback(false);
+        if (isPrak) return runPrak(false);
         setVisibleCount(pageSize);
-        for (const b of blocks) {
-            if (b.modality === "person") {
-                if (selectedPersonNames(b).length === 0) {
-                    setFlash({show: true, message: "Please select at least one person in each Person block."});
-                    return;
-                }
-                continue;
-            }
-            const isTextQuery = b.queryType === "text";
-            const isEmotion = b.modality === "emotions";
-            const needsText = isTextQuery || isEmotion;
-
-            if (needsText) {
-                const txt = (b.textQuery ?? "").trim();
-                if (txt.length === 0) {
-                    setFlash({
-                        show: true,
-                        message: "Please fill in all text queries before searching."
-                    });
-                    return;
-                }
-            }
-
-            if (!needsText && !b.file) {
-                setFlash({
-                    show: true,
-                    message: "Please attach images for image query blocks."
-                });
-                return;
-            }
-        }
-
-        setLoading(true);
-        setError(null);
-        setItems([]);
-        setRaw("");
-        setFlash({show: false, message: ""});
-
-
         const upperSchema = (schema ?? "").toUpperCase();
         const restrict = upperSchema === "LHE" || upperSchema === "MVK";
 
         if (restrict) {
             for (const b of blocks) {
-                if (b.modality === "emotions" || b.modality === "asr") {
+                if (blockModalities(b).includes("emotions") || blockModalities(b).includes("asr")) {
                     setFlash({show: true, message: `Schema ${upperSchema} does not support Emotions or ASR queries.`});
                     return;
                 }
@@ -489,51 +604,29 @@ export function SearchCard() {
         }
 
 
+        const generation = beginSearch();
+        setPrakSession(null);
+        setLocalFeedbackSession(null);
         try {
-            let resp;
+            setLoading(true);
+            setError(null);
+            let body;
+            const scope = recordingScopeCondition(queryFilters, resourceFilters);
+            if (blocks.length === 1) {
+                const block = blocks[0];
+                if (block.queryType === "image" && !block.file) throw new Error("Please attach an image.");
+                body = buildQueryBlock(block.queryType === "image" ? {...block, textQuery: await fileToBase64(block.file)} : block, scope);
+            } else body = buildTemporalQuery(blocks, scope);
+            if (!isCurrentSearch(generation)) return;
+            const request = applyVisualDeduplication(body, visualDeduplicationEnabled, settings.visualDeduplication);
+            setItems([]);
+            setRaw("");
+            setFlash({show: false, message: ""});
+            printVitrivrRequest(request);
+            // @ts-expect-error Generated operator inputs omit named references.
+            const resp = await retrieval.postExecuteQuery(schema, request);
 
-            if (blocks.length == 1) {
-                const b = blocks[0];
-
-                if (b.modality === "person") {
-                    const body = buildPersonQuery(selectedPersonNames(b));
-                    // @ts-expect-error Generated operator inputs omit named references.
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
-                } else if (b.modality === "emotions") {
-                    const chosen = (b.emotion ?? "").trim();
-                    if (!chosen) {
-                        setFlash({show: true, message: "Please select an emotion."});
-                        return;
-                    }
-                    const body = buildTextQuery("emotions", "", chosen, b.emotionTarget);
-                    console.log("Building emotions query")
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
-
-                } else if (b.queryType === "image") {
-                    const base64image = await fileToBase64(b.file);
-                    const body = buildTextQuery(b.modality, base64image);
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
-
-                } else {
-                    const body = buildTextQuery(b.modality.trim(), b.textQuery.trim());
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-expect-error
-                    resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
-                }
-
-            } else {
-                const body = buildTemporalQuery(blocks);
-                console.log("creating temporal query");
-                printVitrivrRequest(body);
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-expect-error
-                resp = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, resourceFilters), visualDeduplicationEnabled, settings.visualDeduplication));
-            }
-
+            if (!isCurrentSearch(generation)) return;
             const pretty = truncateJson(resp);
             setRaw(pretty);
 
@@ -571,10 +664,11 @@ export function SearchCard() {
             console.log(media.at(-1)?.id) // this is the wrong id, we need the parent id
             setLoading(false);
         } catch (err) {
+            if (!isCurrentSearch(generation)) return;
             console.log(String(err))
             setError(err instanceof Error ? err.message : String(err));
         } finally {
-            setLoading(false);
+            if (isCurrentSearch(generation)) setLoading(false);
         }
     };
     const beforeNavigate = () => setScrollY(window.scrollY);
@@ -589,9 +683,11 @@ export function SearchCard() {
                             <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>
                         </div>
                         <div className="panel__body stack">
+                            {!isPrak && <>
                             <QueryScopeFilters value={queryFilters} onChange={setQueryFilters}
                                 deduplication={{enabled: visualDeduplicationEnabled, onChange: setVisualDeduplicationEnabled, disabled: loading,
                                     description: `Similarity ≥ ${visualDeduplicationSettings.similarityThreshold}, ${visualDeduplicationSettings.timeWindowSeconds}s window; up to ${visualDeduplicationSettings.limit} results.`}}/>
+                            </>}
                             <div className="sc-blockGrid">
                                 {blocks.map((b) => (
                                     <QueryBlock
@@ -603,6 +699,7 @@ export function SearchCard() {
                                         queryTypeItems={queryTypeItems}
                                         emotionItems={emotionItems}
                                         schema={schema}
+                                        localFeedback={isLocalFeedback && blocks.length === 1}
                                     />
                                 ))}
                             </div>
@@ -616,8 +713,8 @@ export function SearchCard() {
                             </Flash>
 
                             <div className="stack sc-queryActions">
-                                <button className="btn sc-addBlock" type="button" disabled={modalityOptions.length === 0} onClick={addBlock}>+ Add query block</button>
-                                <button className="btn btn-primary" disabled={loading || modalityOptions.length === 0} onClick={onSearch}>
+                                {!isPrak && !blocks.some(isFederatedBlock) && <button className="btn sc-addBlock" type="button" disabled={modalityOptions.length === 0} onClick={addBlock}>+ Add temporal block</button>}
+                                <button className="btn btn-primary" disabled={loading || (!isPrak && modalityOptions.length === 0)} onClick={onSearch}>
                                     <span>{loading ? "Searching…" : "Search"}</span>
                                     <span className="sc-shortcut">Ctrl / ⌘ ↵</span>
                                 </button>
@@ -634,6 +731,15 @@ export function SearchCard() {
                                 </div>
 
                                 <div className="sc-resultsControls">
+                                    {activeFeedbackSession && <div className="sc-feedbackActions">
+                                        <span role="status">{activeFeedbackSession.selectedIds.length} relevant{activeFeedbackSession.ranking === "bayes" ? " · Bayesian ranking" : ""}</span>
+                                        <button className="btn btn-primary" type="button" disabled={loading || !activeFeedbackSession.selectedIds.length || !feedbackReady}
+                                            onClick={() => void (localFeedbackResults ? runLocalFeedback(true) : runPrak(true))}>{loading ? "Searching…" : "Refine results"}</button>
+                                        {!!activeFeedbackSession.selectedIds.length && <button className="btn" type="button" disabled={loading} onClick={() => {
+                                            if (localFeedbackResults) setLocalFeedbackSession(previous => previous ? {...previous, selectedIds: []} : previous);
+                                            else setPrakSession(previous => previous ? {...previous, selectedIds: []} : previous);
+                                        }}>Clear selection</button>}
+                                    </div>}
                                     <label className="sc-viewSelect">
                                         View
                                         <select value={resultView} onChange={(event) => {
@@ -641,7 +747,7 @@ export function SearchCard() {
                                             setResultView(view);
                                             setVisibleCount(view === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
                                         }}>
-                                            <option value="ranked">Ranked grid</option>
+                                            <option value="ranked">Original order</option>
                                             <option value="video">By video</option>
                                         </select>
                                     </label>
@@ -669,6 +775,8 @@ export function SearchCard() {
                             </div>
 
                             <div className="panel__body stack">
+                                {localFeedbackResults && <p className="sc-personHint">Mark relevant results from any source, then refine with Bayes. The first refinement maps the complete result pool to PraK frames. Unmapped results remain at the end with an explanation.</p>}
+                                {!localFeedbackResults && activeFeedbackSession && <p className="sc-personHint">Only results with PraK evidence can be marked relevant. Local-only OCR/ASR results cannot influence PraK feedback yet. Refinement updates the visual ranking and keeps the local text rankings frozen.</p>}
                                 {error && <div className="alert alert--error">{error}</div>}
 
                                 {filteredItems.length === 0 && (
@@ -686,11 +794,11 @@ export function SearchCard() {
                                                     <h3 title={group.label}>{group.label}</h3>
                                                     <span>{group.items.length} match{group.items.length === 1 ? "" : "es"}</span>
                                                 </div>
-                                                <ResultsGrid items={group.items} beforeNavigate={beforeNavigate}/>
+                                                <ResultsGrid items={group.items} beforeNavigate={beforeNavigate} feedback={feedback}/>
                                             </section>
                                         ))}
                                     </div>
-                                ) : <ResultsGrid items={filteredItems.slice(0, visibleCount)} beforeNavigate={beforeNavigate}/>}
+                                ) : <ResultsGrid items={filteredItems.slice(0, visibleCount)} beforeNavigate={beforeNavigate} feedback={feedback}/>}
 
                                 {navigationCount > visibleCount && (
                                     <div className="row" style={{justifyContent: "center"}}>
