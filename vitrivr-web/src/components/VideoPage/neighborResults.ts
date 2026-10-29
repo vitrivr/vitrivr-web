@@ -1,3 +1,5 @@
+import type {FrontendView} from "../../config/frontendSettings.ts";
+import {mediaNameFromPath} from "../../lib/vitrivr.ts";
 import type {MediaItem} from "../SearchCard.tsx";
 
 type RetrievablesResponse = {
@@ -59,7 +61,7 @@ function nsToSeconds(value: number): number {
  * Maps each result to a mediaItem.
  * @param response of vitrivr
  */
-export function mapNeighborResults(response: RetrievablesResponse, urls: {video: (id: string) => string; thumbnail: (id: string) => string}): MediaItem[] {
+export function mapNeighborResults(response: RetrievablesResponse, urls: {video: (id: string) => string; thumbnail: (id: string) => string}, view: FrontendView = "CASTLE"): MediaItem[] {
     const retrievables = response.retrievables ?? [];
     const output: MediaItem[] = [];
     for (const retrievable of retrievables) {
@@ -78,7 +80,7 @@ export function mapNeighborResults(response: RetrievablesResponse, urls: {video:
         if (!parentId || !filePath) {
             continue;
         }
-        const mediaItemName = filePath.replace(/\\/g, "/").split("/").filter(Boolean).slice(-4).join("/");
+        const mediaItemName = mediaNameFromPath(filePath, view);
         const hlsUrl = urls.video(parentId);
 
         output.push({

@@ -9,7 +9,7 @@ import {videoExists, generateVideoThumbnail, type HourlyVideo, parseVideoURL, uu
  * All the people contained in the CASTLE dataset 2024
  * TODO: think of a prettier and less hard coded solution.
  */
-const PEOPLE = ["Allie", "Bao", "Bjorn", "Cathal", "Florian", "Klaus", "Luca", "Onanong", "Stevan", "Tien", "Werner"];
+const PEOPLE = ["Allie", "Bao", "Björn", "Cathal", "Florian", "Klaus", "Luca", "Onanong", "Stevan", "Tien", "Werner"];
 const ROOMS = ["Reading", "Living1", "Living2", "Kitchen", "Meeting"];
 
 /**

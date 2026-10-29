@@ -1,3 +1,4 @@
+import type {FrontendView} from "../config/frontendSettings.ts";
 import {combineConditions, type FilterCondition} from "./booleanFilters.ts";
 import settings from "../config/frontendSettings.json" with {type: "json"};
 
@@ -9,7 +10,8 @@ export type QueryFilters = {
 
 export type ResourceFilter = keyof QueryFilters;
 
-export function enabledResourceFilters(configured: readonly string[] = settings.enabledResourceFilters): ResourceFilter[] {
+export function enabledResourceFilters(configured: readonly string[] = settings.enabledResourceFilters, frontendView: FrontendView = settings.frontendView as FrontendView): ResourceFilter[] {
+    if (frontendView === "VBS") return [];
     return [...new Set(configured)].filter((key): key is ResourceFilter => key === "day" || key === "sourceType" || key === "source");
 }
 

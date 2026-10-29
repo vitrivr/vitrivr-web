@@ -1,5 +1,5 @@
-import {useState, type FormEvent} from "react";
-import {defaultFrontendSettings, normalizeFrontendSettings, type FrontendSettings} from "../config/frontendSettings.ts";
+import {useState, type FormEvent, type ReactNode} from "react";
+import {defaultFrontendSettings, normalizeFrontendSettings, type FrontendSettings, type FrontendView} from "../config/frontendSettings.ts";
 import {queryTypeOptions} from "../config/queryModalities.ts";
 import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
 import {useSearch} from "../state/SearchContext.tsx";
@@ -22,7 +22,7 @@ const numericOptions = [
     {key: "limit", label: "Deduplicated result limit", min: 1, step: "1"},
 ] as const;
 
-function Choices({label, options, value, onChange}: {label: string; options: readonly Choice[]; value: string[]; onChange: (value: string[]) => void}) {
+function Choices({label, options, value, onChange, disabledValues = []}: {label: string; options: readonly Choice[]; value: string[]; onChange: (value: string[]) => void; disabledValues?: string[]}) {
     const ordered = [...value.map(selected => options.find(option => option.value === selected)).filter((option): option is Choice => Boolean(option)),
         ...options.filter(option => !value.includes(option.value))];
     const move = (index: number, offset: number) => {
@@ -34,9 +34,10 @@ function Choices({label, options, value, onChange}: {label: string; options: rea
         <legend>{label}</legend>
         {ordered.map(option => {
             const index = value.indexOf(option.value);
-            return <div className="fs-choice" key={option.value}>
-                <label><input type="checkbox" checked={index >= 0} onChange={event => onChange(event.target.checked ? [...value, option.value] : value.filter(item => item !== option.value))}/>{option.label}</label>
-                {index >= 0 && <div className="fs-order">
+            const disabled = disabledValues.includes(option.value);
+            return <div className={`fs-choice${disabled ? " is-disabled" : ""}`} key={option.value}>
+                <label><input type="checkbox" checked={!disabled && index >= 0} disabled={disabled} onChange={event => onChange(event.target.checked ? [...value, option.value] : value.filter(item => item !== option.value))}/>{option.label}</label>
+                {!disabled && index >= 0 && <div className="fs-order">
                     <button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Move ${option.label} earlier`}>↑</button>
                     <button type="button" disabled={index === value.length - 1} onClick={() => move(index, 1)} aria-label={`Move ${option.label} later`}>↓</button>
                 </div>}
@@ -45,10 +46,12 @@ function Choices({label, options, value, onChange}: {label: string; options: rea
     </fieldset>;
 }
 
-export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) {
+export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClose: () => void; schemaSelector?: ReactNode}) {
     const {settings, saveSettings} = useFrontendSettings();
     const {setQueryFilters, setBlocks} = useSearch();
     const [base, setBase] = useState(settings);
+    const [frontendView, setFrontendView] = useState<FrontendView>(settings.frontendView);
+    const [bayesianRefinement, setBayesianRefinement] = useState(settings.bayesianRefinementEnabled);
     const [revision, setRevision] = useState(0);
     const [queryTypes, setQueryTypes] = useState(settings.enabledQueryTypes);
     const [resourceFilters, setResourceFilters] = useState(settings.enabledResourceFilters);
@@ -57,15 +60,15 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
     const save = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        const draft: FrontendSettings = {...base, bayesianRefinementEnabled: data.has("bayesianRefinementEnabled"), enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
+        const draft: FrontendSettings = {...base, frontendView, bayesianRefinementEnabled: bayesianRefinement, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
             visualDeduplication: {...base.visualDeduplication, enabled: data.has("dedupEnabled"), field: String(data.get("dedupField") ?? "")}};
-        for (const {key} of listOptions) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
+        for (const {key} of listOptions) if (data.has(key)) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
         for (const {key} of numericOptions) draft.visualDeduplication[key] = Number(data.get(key));
         try {
             const next = normalizeFrontendSettings(draft);
             const persisted = saveSettings(next);
             setQueryFilters(previous => {
-                const active = activeQueryFilters(previous, enabledResourceFilters(next.enabledResourceFilters));
+                const active = activeQueryFilters(previous, enabledResourceFilters(next.enabledResourceFilters, next.frontendView));
                 if (!next.recordingDays.includes(active.day)) active.day = "";
                 const sources = active.sourceType === "person" ? next.sourcePersons : active.sourceType === "room" ? next.sourceLocations : [...next.sourcePersons, ...next.sourceLocations];
                 if (!sources.includes(active.source)) active.source = "";
@@ -81,7 +84,9 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
     };
     const restore = () => {
         const defaults = defaultFrontendSettings();
+        setFrontendView(defaults.frontendView);
         setBase(defaults);
+        setBayesianRefinement(defaults.bayesianRefinementEnabled);
         setQueryTypes(defaults.enabledQueryTypes);
         setResourceFilters(defaults.enabledResourceFilters);
         setRevision(value => value + 1);
@@ -89,21 +94,32 @@ export default function FrontendSettingsPanel({onClose}: {onClose: () => void}) 
         setNotice("Project defaults loaded. Save changes to apply them.");
     };
     return <form key={revision} className="fs-form" onSubmit={save}>
-        <p className="fs-note">Preferences are saved in this browser. The project JSON provides the defaults.</p>
+        <fieldset className="fs-viewSelector">
+            <legend>Frontend view</legend>
+            <div className="fs-viewOptions">
+                {(["CASTLE", "VBS"] as const).map(view => <label key={view} className={`fs-viewOption${frontendView === view ? " is-selected" : ""}`}>
+                    <input type="radio" name="frontendView" value={view} checked={frontendView === view} onChange={() => setFrontendView(view)}/>
+                    <span className="fs-viewName">{view}</span>
+                    <span className="fs-viewDescription">{view === "CASTLE" ? "Synchronized viewpoints and consecutive recordings" : "Individual videos and nearest neighbors"}</span>
+                </label>)}
+            </div>
+        </fieldset>
+        {schemaSelector}
+        {/*<p className="fs-note">{frontendView === "VBS" ? "PraK retrieval and Bayesian refinement are disabled in VBS. " : ""}Preferences are saved in this browser. The backend schema is selected separately above.</p>*/}
         <div className="fs-grid">
-            <Choices label="Query types" options={queryTypeOptions} value={queryTypes} onChange={setQueryTypes}/>
-            <Choices label="Resource filters" options={resourceOptions} value={resourceFilters} onChange={setResourceFilters}/>
+            <Choices label="Query types" options={queryTypeOptions} value={queryTypes} onChange={setQueryTypes} disabledValues={frontendView === "VBS" ? ["prak"] : []}/>
+            {frontendView === "CASTLE" && <Choices label="Resource filters" options={resourceOptions} value={resourceFilters} onChange={setResourceFilters}/>}
         </div>
         <p className="fs-note">Use the arrows to change display order. The first enabled query type is the default for new blocks.</p>
         <section className="fs-section" aria-label="Relevance feedback">
-            <label className="fs-check"><input type="checkbox" name="bayesianRefinementEnabled" defaultChecked={base.bayesianRefinementEnabled}/>Enable Bayesian refinement</label>
+            <label className="fs-check"><input type="checkbox" name="bayesianRefinementEnabled" checked={frontendView === "CASTLE" && bayesianRefinement} disabled={frontendView === "VBS"} onChange={event => setBayesianRefinement(event.target.checked)}/>Enable Bayesian refinement</label>
             <p className="fs-note">Mark results as relevant and refine their ranking with PraK Bayes. Applies to new searches. Changing this setting clears the current feedback session.</p>
         </section>
         <details className="fs-section">
-            <summary>People, days and cameras</summary>
+            <summary>{frontendView === "CASTLE" ? "People, days and cameras" : "Recognized people"}</summary>
             <p className="fs-note">One value per line, or separate values with commas. Keep spelling and case consistent with the backend.</p>
             <div className="fs-grid">
-                {listOptions.map(({key, label}) => <label className="fs-field" key={key}>{label}
+                {listOptions.filter(option => frontendView === "CASTLE" || option.key === "personNames").map(({key, label}) => <label className="fs-field" key={key}>{label}
                     <textarea name={key} rows={4} defaultValue={base[key].join("\n")}/>
                 </label>)}
             </div>

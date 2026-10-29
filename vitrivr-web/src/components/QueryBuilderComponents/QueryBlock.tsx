@@ -24,7 +24,10 @@ export default function QueryBlock({block, onChange, onRemove, modalityOptions, 
     const modes = blockModalities(block).filter(mode => allowed.some(option => option.value === mode));
     useEffect(() => {
         if (!block.modalities) onChange(flattenBlock(block));
-        else if (modes.length !== block.modalities.length) onChange({modalities: modes, modality: modes.includes("clip") ? "clip" : modes.includes("emotions") ? "emotions" : modes[0] ?? "clip"});
+        else if (modes.length !== block.modalities.length) {
+            const next = modes.length ? modes : allowed.slice(0, 1).map(option => option.value);
+            onChange({modalities: next, modality: next.includes("clip") ? "clip" : next.includes("emotions") ? "emotions" : next[0] ?? "clip"});
+        }
     });
     const isFederated = !localFeedback && modes.includes("prak");
     const toggle = (mode: BlockState["modality"]) => {

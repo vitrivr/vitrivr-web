@@ -57,7 +57,8 @@ import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultsGrid from "./Results/ResultsGrid.tsx";
 import {groupResultsByVideo} from "./Results/groupResults.ts";
-import {buildQueryBlock, buildTemporalQuery, buildSegmentMediaUrls, type VitrivrRetrievable} from "../lib/vitrivr.ts";
+import {buildQueryBlock, buildTemporalQuery, buildSegmentMediaUrls, mediaNameFromPath, type VitrivrRetrievable} from "../lib/vitrivr.ts";
+import {isBayesianRefinementEnabled, type FrontendView} from "../config/frontendSettings.ts";
 import type {FilterCondition} from "../lib/booleanFilters.ts";
 import {fileToBase64} from "../lib/helpers.ts";
 import {retrieval} from "../vitirvr/api/client";
@@ -264,18 +265,7 @@ function mapTypeToKind(t?: string): MediaKind {
     }
 }
 
-function mediaNameFromPath(path: unknown): string | undefined {
-    if (typeof path !== "string" || !path.trim()) {
-        return undefined;
-    }
-    const splitArray = path.split("/")
-    const len = splitArray.length
-    const filepath = splitArray[len-4] + "/" + splitArray[len-3] + "/" + splitArray[len-2] + "/" + splitArray[len-1];
-    return filepath.toString();
-}
-
-
-function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
+function mediaFrom(resp: RetrievablesResponse, view: FrontendView = "CASTLE"): MediaItem[] {
     const list = (resp.retrievables ?? []) as VitrivrRetrievable[];
     const out = list.map((r, idx) => {
         const id = r.id?.trim();
@@ -302,7 +292,7 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
             }
 
             const filePath = parent?.descriptors?.["file.path"];
-            const mediaItemName = mediaNameFromPath(filePath);
+            const mediaItemName = mediaNameFromPath(filePath, view);
             const url = buildHlsUrl(parentId);
             const {thumbUrl} = buildSegmentMediaUrls(r);
 
@@ -345,8 +335,9 @@ function mediaFrom(resp: RetrievablesResponse): MediaItem[] {
 
 export function SearchCard() {
     const {settings} = useFrontendSettings();
+    const refinementEnabled = isBayesianRefinementEnabled(settings);
     const visualDeduplicationSettings = settings.visualDeduplication;
-    const resourceFilters = enabledResourceFilters(settings.enabledResourceFilters);
+    const resourceFilters = enabledResourceFilters(settings.enabledResourceFilters, settings.frontendView);
     const {
         prakSession, setPrakSession, searchRequests,
         localFeedbackSession, setLocalFeedbackSession,
@@ -372,7 +363,7 @@ export function SearchCard() {
     function updateBlocks(recipe: (prev: BlockState[]) => BlockState[]) {
         setBlocks(prev => {
             const next = recipe(prev);
-            return next.length === 0 ? [makeBlockState(schema, settings.enabledQueryTypes)] : next;
+            return next.length === 0 ? [makeBlockState(schema, settings.enabledQueryTypes, settings.frontendView)] : next;
         });
     }
 
@@ -388,12 +379,12 @@ export function SearchCard() {
         setPrakSession(previous => previous?.schema === schema ? previous : null);
         setLocalFeedbackSession(previous => previous?.schema === schema ? previous : null);
     }, [schema, searchRequests, setPrakSession, setLocalFeedbackSession]);
-    const modalityOptions = enabledQueryModalities(schema, settings.enabledQueryTypes)
+    const modalityOptions = enabledQueryModalities(schema, settings.enabledQueryTypes, settings.frontendView)
         .filter(option => blocks.length === 1 || option.value !== "prak");
 
-    const queryKey = feedbackQueryKey({schema, blocks, queryFilters, enabledQueryTypes: settings.enabledQueryTypes,
+    const queryKey = feedbackQueryKey({schema, frontendView: settings.frontendView, blocks, queryFilters, enabledQueryTypes: settings.enabledQueryTypes,
         enabledResourceFilters: settings.enabledResourceFilters, personNames: settings.personNames,
-        visualDeduplication: settings.visualDeduplication, bayesianRefinementEnabled: settings.bayesianRefinementEnabled});
+        visualDeduplication: settings.visualDeduplication, bayesianRefinementEnabled: refinementEnabled});
     const latestQueryKey = useRef(queryKey);
     latestQueryKey.current = queryKey;
     const priorQueryKey = useRef(queryKey);
@@ -438,7 +429,7 @@ export function SearchCard() {
     const navigationCount = resultView === "video" ? resultGroups.length : filteredItems.length;
     const pageSize = resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE;
     const addBlock = () =>
-        updateBlocks(prev => [...prev, makeBlockState(schema, settings.enabledQueryTypes)]);
+        updateBlocks(prev => [...prev, makeBlockState(schema, settings.enabledQueryTypes, settings.frontendView)]);
     const removeBlock = (id: string) =>
         updateBlocks(prev => prev.filter(b => b.id !== id));
     const patchBlock = (id: string, patch: Partial<BlockState>) =>
@@ -457,7 +448,7 @@ export function SearchCard() {
         setRaw("");
         setVectorsById({}); // not sure if keep this
 
-        setBlocks([makeBlockState(schema, settings.enabledQueryTypes)]);
+        setBlocks([makeBlockState(schema, settings.enabledQueryTypes, settings.frontendView)]);
         setQueryFilters(emptyQueryFilters());
         setVisualDeduplicationEnabled(visualDeduplicationSettings.enabled);
 
@@ -490,7 +481,7 @@ export function SearchCard() {
 
     const runPrak = async (refine: boolean) => {
         const previous = prakSession;
-        if (refine && (!settings.bayesianRefinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.selectedIds.length || !previous.prakCandidates || !previous.fusionState)) return;
+        if (refine && (!refinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.selectedIds.length || !previous.prakCandidates || !previous.fusionState)) return;
         const generation = beginSearch();
         // A fresh text search never reuses another search's feedback state.
         if (!refine) setPrakSession(null);
@@ -508,7 +499,7 @@ export function SearchCard() {
                 },
             });
             if (!result || !isCurrentSearch(generation)) return;
-            const media = mediaFrom(result.response);
+            const media = mediaFrom(result.response, settings.frontendView);
             if (result.response.retrievables.length && media.length !== result.response.retrievables.length) {
                 throw new Error("PraK results are missing local playback metadata. Previous results were kept.");
             }
@@ -531,7 +522,7 @@ export function SearchCard() {
     const runLocalFeedback = async (refine: boolean) => {
         const previous = localFeedbackSession;
         const previousPrak = prakSession;
-        if (refine && (!settings.bayesianRefinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.localState || !previous.selectedIds.length)) return;
+        if (refine && (!refinementEnabled || !previous || previous.queryKey !== queryKey || previous.schema !== schema || !previous.localState || !previous.selectedIds.length)) return;
         const generation = beginSearch();
         if (!refine) { setLocalFeedbackSession(null); setPrakSession(null); }
         setLoading(true); setError(null); setFlash({show: false, message: ""});
@@ -540,8 +531,8 @@ export function SearchCard() {
             const request = refine ? undefined : appendLocalFeedbackPool(applyVisualDeduplication(
                 blocks.length === 1 ? localDiscoveryFromBlock(blocks[0], recordingScopeCondition(queryFilters, resourceFilters))
                     : buildTemporalQuery(blocks, recordingScopeCondition(queryFilters, resourceFilters)) as LocalQuery,
-                visualDeduplicationEnabled, settings.visualDeduplication), settings.bayesianRefinementEnabled);
-            const result = await executeLocalFeedbackSearch({request, previous: refine ? previous! : undefined, requestHasDisplayMetadata: blocks.length > 1, refinementEnabled: settings.bayesianRefinementEnabled,
+                visualDeduplicationEnabled, settings.visualDeduplication), refinementEnabled);
+            const result = await executeLocalFeedbackSearch({request, previous: refine ? previous! : undefined, requestHasDisplayMetadata: blocks.length > 1, refinementEnabled: refinementEnabled,
                 isCurrent: () => isCurrentSearch(generation),
                 execute: async query => {
                     printVitrivrRequest(query);
@@ -550,10 +541,10 @@ export function SearchCard() {
                 },
             });
             if (!result || !isCurrentSearch(generation)) return;
-            const media = refine ? projectLocalFeedbackMedia(result.response, items) : mediaFrom(result.response);
+            const media = refine ? projectLocalFeedbackMedia(result.response, items) : mediaFrom(result.response, settings.frontendView);
             if (media.length !== result.response.retrievables.length) throw new Error("Local results are missing playback metadata. Previous results were kept.");
             setItems(media); setRaw(truncateJson(result.response)); setVisibleCount(pageSize);
-            setLocalFeedbackSession(settings.bayesianRefinementEnabled ? {schema, queryKey, localState: result.localState, eligibleIds: result.eligibleIds,
+            setLocalFeedbackSession(refinementEnabled ? {schema, queryKey, localState: result.localState, eligibleIds: result.eligibleIds,
                 resultIds: result.resultIds, selectedIds: [], ranking: result.ranking} : null);
             setPrakSession(null);
             if (!media.length) setFlash({show: true, message: "No results found for this query."});
@@ -564,11 +555,11 @@ export function SearchCard() {
             }
         } finally { if (isCurrentSearch(generation)) setLoading(false); }
     };
-    const localFeedbackResults = settings.bayesianRefinementEnabled && localFeedbackSession?.schema === schema && localFeedbackSession.queryKey === queryKey;
-    const activeFeedbackSession = !settings.bayesianRefinementEnabled ? null : localFeedbackResults ? localFeedbackSession : prakSession?.schema === schema && prakSession.queryKey === queryKey ? prakSession : null;
+    const localFeedbackResults = refinementEnabled && localFeedbackSession?.schema === schema && localFeedbackSession.queryKey === queryKey;
+    const activeFeedbackSession = !refinementEnabled ? null : localFeedbackResults ? localFeedbackSession : prakSession?.schema === schema && prakSession.queryKey === queryKey ? prakSession : null;
     const feedbackReady = localFeedbackResults ? !!localFeedbackSession.localState : !!prakSession?.prakCandidates && !!prakSession?.fusionState;
     const toggleRelevant = (id: string) => {
-        if (loading || !settings.bayesianRefinementEnabled) return;
+        if (loading || !refinementEnabled) return;
         if (localFeedbackResults) setLocalFeedbackSession(previous => {
             if (!previous?.eligibleIds.includes(id)) return previous;
             return {...previous, selectedIds: previous.selectedIds.includes(id) ? previous.selectedIds.filter(value => value !== id) : [...previous.selectedIds, id]};
@@ -632,7 +623,7 @@ export function SearchCard() {
 
             debugLog("query response (truncated)", pretty);
 
-            const media = mediaFrom(resp as RetrievablesResponse);
+            const media = mediaFrom(resp as RetrievablesResponse, settings.frontendView);
             const rawCount =
                 (resp as RetrievablesResponse)?.retrievables?.length ?? 0;
 

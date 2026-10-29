@@ -68,7 +68,7 @@ export function SearchProvider({children, initial}: {
         }
     };
     const ensureAtLeastOne = (bs: BlockState[]) =>
-        bs.length === 0 ? [makeBlockState("", settings.enabledQueryTypes)] : bs;
+        bs.length === 0 ? [makeBlockState("", settings.enabledQueryTypes, settings.frontendView)] : bs;
 
     const [blocks, _setBlocks] = useState<BlockState[]>(
         ensureAtLeastOne(initial.blocks ?? [])

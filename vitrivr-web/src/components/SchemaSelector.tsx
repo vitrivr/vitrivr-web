@@ -30,15 +30,16 @@
 
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useState, type ReactNode} from "react";
 import {fetchSchemas} from "../lib/vitrivr.ts";
 
 type SchemaSelectorProps = {
     value: string;
     onChange: (schema: string) => void;
+    renderControl?: (control: ReactNode) => ReactNode;
 };
 
-export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
+export default function SchemaSelector({value, onChange, renderControl}: SchemaSelectorProps) {
     const [schemas, setSchemas] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -95,11 +96,12 @@ export default function SchemaSelector({value, onChange}: SchemaSelectorProps) {
         }
     };
 
-    if (loading) return <span className="schema-status" role="status">Loading schemas…</span>;
-    if (error) return <span className="schema-status schema-status--error" role="alert">Error loading schemas: {error}</span>;
-    if (!schemas.length) return <span className="schema-status" role="status">No schemas available</span>;
+    const present = (control: ReactNode) => renderControl ? renderControl(control) : control;
+    if (loading) return present(<span className="schema-status" role="status">Loading schemas…</span>);
+    if (error) return present(<span className="schema-status schema-status--error" role="alert">Error loading schemas: {error}</span>);
+    if (!schemas.length) return present(<span className="schema-status" role="status">No schemas available</span>);
 
-    return (
+    return present(
         <label style={{fontSize: 13, display: "flex", alignItems: "center", gap: 6}}>
             <select
                 aria-label="Schema"

@@ -1,3 +1,4 @@
+import type {FrontendView} from "../config/frontendSettings.ts";
 import {isFederatedBlock, federatedQueryFromBlock} from "./prakFederated.ts";
 import {withPrakMetadata} from "./prakSearch.ts";
 import {blockModalities} from "./blockModalities.ts";
@@ -72,11 +73,22 @@ export function segmentURL(filePath: string): string {
  */
 export function videoURL(filePath: string | undefined): string {
     if (filePath === undefined) return "";
+    if (/^https?:\/\//i.test(filePath)) return filePath;
     const url = new URL(`${MEDIA_PATH_ORIGIN}/${(filePath)}`, SEGMENT_ORIGIN).toString();
     console.log(url.toString());
     return url.toString();
 }
 
+
+/** Keep CASTLE's recording suffix; VBS filenames need no day/source hierarchy. */
+export function mediaNameFromPath(path: unknown, view: FrontendView = "CASTLE", mediaPathPrefix = import.meta.env?.VITE_MEDIA_PATH_PREFIX ?? ""): string | undefined {
+    if (typeof path !== "string" || !path.trim()) return undefined;
+    const normalized = path.trim().replace(/\\/g, "/");
+    if (view === "CASTLE") return normalized.split("/").filter(Boolean).slice(-4).join("/");
+    if (/^https?:\/\//i.test(normalized)) return normalized;
+    const prefix = mediaPathPrefix.replace(/\\/g, "/").replace(/\/+$/, "");
+    return (prefix && normalized.startsWith(`${prefix}/`) ? normalized.slice(prefix.length + 1) : normalized).replace(/^\/+/, "");
+}
 
 /**
  * Minimal frontend representation of a retrievable object returned by vitrivr.

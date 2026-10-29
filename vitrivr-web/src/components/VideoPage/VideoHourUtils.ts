@@ -77,3 +77,23 @@ export function getVideoAtOffset(src: string, offset: number): string | null {
 export function getPlaybackSource(originalSrc: string, hourlySrc: string, offset: number): string | null {
     return offset === 0 ? originalSrc : getVideoAtOffset(hourlySrc, offset);
 }
+
+/** VBS files are unrelated: even numeric filenames must never be shifted by hour. */
+export function getVideoViewPlayback(view: "CASTLE" | "VBS", originalSrc: string, originalFile: string, offset: number) {
+    const activeOffset = view === "CASTLE" ? offset : 0;
+    return {
+        offset: activeOffset,
+        file: view === "CASTLE"
+            ? getVideoAtOffset(originalFile, activeOffset) ?? (activeOffset === 0 ? originalFile : "")
+            : originalFile,
+        src: view === "CASTLE"
+            ? getPlaybackSource(originalSrc, originalFile, activeOffset) ?? originalSrc
+            : originalSrc || originalFile,
+    };
+}
+
+/** Filename-only collections and signed media URLs do not imply a recording hierarchy. */
+export function getVideoFilename(path: string): string {
+    const filename = path.replace(/\\/g, "/").split(/[?#]/, 1)[0].split("/").filter(Boolean).at(-1) ?? "";
+    try { return decodeURIComponent(filename); } catch { return filename; }
+}

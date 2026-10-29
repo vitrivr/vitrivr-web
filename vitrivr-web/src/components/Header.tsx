@@ -111,11 +111,13 @@ function Header({theme, onToggleTheme, onHome}: {theme?: "light" | "dark"; onTog
                         <button type="button" className="header__btn" onClick={() => settingsRef.current?.close()} aria-label="Close settings">×</button>
                     </div>
                     <div className="header__settingsBody">
-                        <div className="stack-xs">
-                            <span className="label">Schema</span>
-                            <SchemaSelector value={schema} onChange={setSchema}/>
-                        </div>
-                        {settingsOpen && <FrontendSettingsPanel onClose={() => settingsRef.current?.close()}/>}
+                        <SchemaSelector value={schema} onChange={setSchema} renderControl={control => {
+                            const schemaSelector = <div className="stack-xs">
+                                <span className="label">Schema</span>
+                                {control}
+                            </div>;
+                            return settingsOpen ? <FrontendSettingsPanel schemaSelector={schemaSelector} onClose={() => settingsRef.current?.close()}/> : schemaSelector;
+                        }}/>
                     </div>
                 </div>
             </dialog>

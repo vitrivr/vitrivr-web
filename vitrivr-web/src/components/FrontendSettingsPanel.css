@@ -16,10 +16,24 @@
 .fs-section > summary { cursor: pointer; color: var(--text); font-size: 14px; font-weight: 600; }
 .fs-section > :not(summary) { margin-top: 14px; }
 .fs-field { display: grid; align-content: start; gap: 7px; min-width: 0; color: var(--text-2); font-size: 12px; }
-.fs-field :is(input, textarea) { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--text); font-size: 13px; }
+.fs-field :is(input, textarea, select) { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--text); font-size: 13px; }
 .fs-field textarea { resize: vertical; min-height: 90px; }
 .fs-error { margin: 0; padding: 10px; border-radius: 7px; color: var(--berry-ink); background: var(--berry-bg); font-size: 13px; }
 .fs-footer { position: sticky; bottom: -20px; display: flex; justify-content: space-between; gap: 10px; padding: 14px 22px; margin: 0 -22px -20px; border-top: 1px solid var(--line); background: var(--surface); z-index: 1; }
 .fs-footer > div { display: flex; gap: 8px; }
 .fs-footer .btn { font-size: 12px; }
 @media (max-width: 560px) { .fs-grid { grid-template-columns: minmax(0, 1fr); } .fs-footer { flex-wrap: wrap; } .header__settingsBody { padding: 16px; } .fs-footer { bottom: -16px; margin: 0 -16px -16px; padding: 12px 16px; } }
+
+.fs-viewSelector { margin: 0; padding: 0; border: 0; min-width: 0; }
+.fs-viewSelector > legend { float: none; width: auto; margin: 0 0 12px; color: var(--text); font-size: 18px; font-weight: 650; }
+.fs-viewOptions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fs-viewOption { position: relative; display: grid; align-content: center; gap: 7px; min-height: 112px; padding: 18px 42px 18px 18px; border: 2px solid var(--line); border-radius: 12px; background: var(--input-bg); cursor: pointer; }
+.fs-viewOption:hover { border-color: var(--brand); }
+.fs-viewOption.is-selected { border-color: var(--brand); background: var(--surface-2); }
+.fs-viewOption:focus-within { outline: 2px solid var(--brand-ink); outline-offset: 3px; }
+.fs-viewOption > input { position: absolute; top: 20px; right: 18px; width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+.fs-viewName { color: var(--text); font-size: 21px; font-weight: 700; }
+.fs-viewDescription { color: var(--text-3); font-size: 12px; line-height: 1.5; }
+.fs-choice.is-disabled, .fs-check:has(input:disabled) { opacity: .5; }
+.fs-choice.is-disabled label, .fs-check:has(input:disabled) { cursor: default; }
+@media (max-width: 480px) { .fs-viewOptions { grid-template-columns: minmax(0, 1fr); } .fs-viewOption { min-height: 90px; } }

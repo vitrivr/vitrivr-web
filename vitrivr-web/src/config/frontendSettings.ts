@@ -1,7 +1,10 @@
 import jsonDefaults from "./frontendSettings.json" with {type: "json"};
 import type {VisualDeduplicationSettings} from "../lib/visualDeduplication.ts";
 
+export type FrontendView = "CASTLE" | "VBS";
+
 export type FrontendSettings = {
+    frontendView: FrontendView;
     bayesianRefinementEnabled: boolean;
     enabledQueryTypes: string[];
     enabledResourceFilters: string[];
@@ -22,11 +25,12 @@ function record(value: unknown): Record<string, unknown> {
 /** Validate saved/UI overrides while using the JSON file for missing defaults. */
 export function normalizeFrontendSettings(value: unknown): FrontendSettings {
     const input = {...jsonDefaults, ...record(value)};
-    const list = (key: keyof Omit<FrontendSettings, "visualDeduplication" | "bayesianRefinementEnabled">): string[] => {
+    const list = (key: keyof Omit<FrontendSettings, "visualDeduplication" | "bayesianRefinementEnabled" | "frontendView">): string[] => {
         const values = input[key];
         if (!Array.isArray(values) || !values.every(item => typeof item === "string")) throw new Error(`${key} must contain text values.`);
         return [...new Set(values.map(item => item.trim()).filter(Boolean))];
     };
+    if (input.frontendView !== "CASTLE" && input.frontendView !== "VBS") throw new Error("Frontend view must be CASTLE or VBS.");
     if (typeof input.bayesianRefinementEnabled !== "boolean") throw new Error("Bayesian refinement must be enabled or disabled.");
     const enabledQueryTypes = list("enabledQueryTypes").filter(type => type !== "filter");
     if (enabledQueryTypes.some(type => !["clip", "emotions", "ocr", "asr", "person", "prak"].includes(type))) throw new Error("Unknown query type.");
@@ -38,6 +42,7 @@ export function normalizeFrontendSettings(value: unknown): FrontendSettings {
     if (!Number.isFinite(visual.timeWindowSeconds) || visual.timeWindowSeconds < 0) throw new Error("Time window must be zero or greater.");
     if (!Number.isInteger(visual.candidateLimit) || visual.candidateLimit < 1 || !Number.isInteger(visual.limit) || visual.limit < 1) throw new Error("Candidate and result limits must be positive whole numbers.");
     return {
+        frontendView: input.frontendView,
         bayesianRefinementEnabled: input.bayesianRefinementEnabled,
         enabledQueryTypes, enabledResourceFilters,
         personNames: list("personNames"), recordingDays: list("recordingDays"),
@@ -53,4 +58,9 @@ export function defaultFrontendSettings(): FrontendSettings {
 export function readFrontendSettings(serialized: string | null): FrontendSettings {
     try { return serialized ? normalizeFrontendSettings(JSON.parse(serialized)) : defaultFrontendSettings(); }
     catch { return defaultFrontendSettings(); }
+}
+
+/** VBS has no PraK feedback capability, regardless of the saved CASTLE preference. */
+export function isBayesianRefinementEnabled(settings: Pick<FrontendSettings, "frontendView" | "bayesianRefinementEnabled">): boolean {
+    return settings.frontendView === "CASTLE" && settings.bayesianRefinementEnabled;
 }

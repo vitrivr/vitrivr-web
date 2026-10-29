@@ -1,6 +1,7 @@
 "use client";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {thumbnailURL, videoURL} from "../../lib/vitrivr.ts";
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import {useSearch} from "../../state/SearchContext.tsx";
 import {useEffect, useRef, useState} from "react";
 import {useAuth} from "../../state/AuthContext.tsx";
@@ -8,7 +9,7 @@ import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
-import {getHourFromFilename, getVideoAtOffset, getPlaybackSource, parseVideoURL} from "./VideoHourUtils.ts";
+import {getHourFromFilename, getVideoAtOffset, getVideoViewPlayback, getVideoFilename, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
 import {generateVideoThumbnail} from "./ThumbnailUtils.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
@@ -22,6 +23,8 @@ import "./VideoPage.css";
  * @constructor
  */
 export default function VideoPage() {
+    const {settings} = useFrontendSettings();
+    const isCastleView = settings.frontendView === "CASTLE";
     const location = useLocation();
     const navigate = useNavigate();
     const {id} = useParams<{ id: string }>();
@@ -72,18 +75,21 @@ export default function VideoPage() {
     const [textAnswer, setTextAnswer] = useState("");
     const poster = id ? thumbnailURL(id) ?? "" : "";
     const [hourOffset, setHourOffset] = useState(0);
-    const hourlySrc = mp4Location || (/\.mp4(?:$|[?#])/i.test(src) ? src : "");
-    const activeMp4Src = getVideoAtOffset(hourlySrc, hourOffset) ?? (hourOffset === 0 ? hourlySrc : "");
-    const activeVideoSrc = getPlaybackSource(src, hourlySrc, hourOffset) ?? src;
+    const directFile = /\.mp4(?:$|[?#])/i.test(src) ? src : "";
+    const hourlySrc = !isCastleView && directFile ? directFile : mp4Location || directFile;
+    const playback = getVideoViewPlayback(settings.frontendView, src, hourlySrc, hourOffset);
+    const activeMp4Src = playback.file;
+    const activeVideoSrc = playback.src;
+    const activeOffset = playback.offset;
     console.log("Item media name is: "+item?.mediaItemName)
 
     useEffect(() => {
         setHourOffset(0);
-    }, [src]);
+    }, [src, settings.frontendView]);
 
-    const activeInfo = parseVideoURL(activeMp4Src);
+    const activeInfo = isCastleView ? parseVideoURL(activeMp4Src) : null;
     const originalTitle = mediaItemName ?? item?.name ?? id;
-    const activeTitle = hourOffset !== 0 && activeInfo
+    const activeTitle = activeOffset !== 0 && activeInfo
         ? originalTitle?.replace(/[^/]+$/, activeInfo.filename) ?? activeInfo.filename
         : originalTitle;
     const activeHour = activeInfo ? getHourFromFilename(activeInfo.filename) : null;
@@ -132,7 +138,7 @@ export default function VideoPage() {
     }, [id]);
 
     useEffect(() => {
-        setPlaybackTimestamp(hourOffset === 0 ? start : 0);
+        setPlaybackTimestamp(activeOffset === 0 ? start : 0);
         setNnVector(null);
         setNnError(null);
         setSearching(false);
@@ -141,7 +147,7 @@ export default function VideoPage() {
             nnRequest.current?.abort();
             nnRequest.current = null;
         };
-    }, [activeVideoSrc, hourOffset, start]);
+    }, [activeVideoSrc, activeOffset, start, settings.frontendView]);
 
     /**
      * Is called whenever a nearest neighbor search is prompted.
@@ -231,8 +237,7 @@ export default function VideoPage() {
             const video = videoRef.current;
             const tSec = video?.currentTime ?? start;
             const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
-            const splitLen = src.split("/").length;
-            const videoName = activeInfo?.filename.replace(/\.[^.]+$/, "") ?? src.split("/")[splitLen - 1].split(".")[0];
+            const videoName = (activeInfo?.filename ?? getVideoFilename(mediaItemName || activeMp4Src || src)).replace(/\.[^.]+$/, "");
             setSubmitting(true);
             try {
                 const res = await submitVideo({
@@ -272,18 +277,18 @@ export default function VideoPage() {
             </header>
 
             <div className="vp-content">
-                <section className="vp-playback" aria-label="Video playback and hour navigation">
-                    <div className="vp-hour vp-hour--previous">
+                <section className={`vp-playback${isCastleView ? "" : " vp-playback--vbs"}`} aria-label={isCastleView ? "Video playback and recording navigation" : "Video playback"}>
+                    {isCastleView && <div className="vp-hour vp-hour--previous">
                         <HourGallery src={hourlySrc} direction="previous" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour}/>
-                    </div>
+                    </div>}
                     <div className="vp-mainPlayer">
                         <div className="vp-playerHeading">
                             <span className="vp-eyebrow">Now playing</span>
-                            <span className="sc-count">{timeOfRecording ? `${timeOfRecording}:00` : "Current"}</span>
+                            {isCastleView && <span className="sc-count">{timeOfRecording ? `${timeOfRecording}:00` : "Current"}</span>}
                         </div>
                         <HlsVideoPlayer key={activeVideoSrc} ref={videoRef} src={activeVideoSrc}
-                            poster={hourOffset === 0 ? poster : undefined}
-                            startTime={hourOffset === 0 ? start : 0}
+                            poster={activeOffset === 0 ? poster : undefined}
+                            startTime={activeOffset === 0 ? start : 0}
                             onTimeUpdate={setPlaybackTimestamp} preload="metadata"/>
                         {nnError && <div className="vp-message vp-message--error" role="alert">{nnError}</div>}
                         <div className="vp-playerActions">
@@ -301,11 +306,11 @@ export default function VideoPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="vp-hour vp-hour--next">
+                    {isCastleView && <div className="vp-hour vp-hour--next">
                         <HourGallery src={hourlySrc} direction="next" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour}/>
-                    </div>
+                    </div>}
                 </section>
-                <POVs src={activeMp4Src || activeVideoSrc} timestamp={playbackTimestamp}/>
+                {isCastleView && <POVs src={activeMp4Src || activeVideoSrc} timestamp={playbackTimestamp}/>}
                 <NearestNeighbor id={id} queryVector={nnVector} onResultsChange={setHasNeighbors}/>
             </div>
         </div>

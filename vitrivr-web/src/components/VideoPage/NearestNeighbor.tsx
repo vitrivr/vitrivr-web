@@ -88,10 +88,10 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                 const body = buildVectorQuery(queryVector!, 1000);
 
                 // @ts-expect-error Generated operator input types omit named references.
-                const response = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, enabledResourceFilters(settings.enabledResourceFilters)), visualDeduplicationEnabled, settings.visualDeduplication));
+                const response = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, enabledResourceFilters(settings.enabledResourceFilters, settings.frontendView)), visualDeduplicationEnabled, settings.visualDeduplication));
                 if (cancelled) return;
 
-                const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}).filter(
+                const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}, settings.frontendView).filter(
                     (neighbor) => neighbor.id !== id
                 );
                 setVectorsById((previous) => {
@@ -135,6 +135,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
         queryFilters,
         visualDeduplicationEnabled,
         settings.enabledResourceFilters,
+        settings.frontendView,
         settings.visualDeduplication,
         setVectorsById,
         onResultsChange,

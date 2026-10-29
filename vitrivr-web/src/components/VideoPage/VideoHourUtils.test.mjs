@@ -27,3 +27,26 @@ test('does not rewrite HLS playlists when an hourly source is missing', () => {
     assert.equal(getPlaybackSource(stream, '', 1), null);
     assert.equal(getPlaybackSource(stream, stream, -1), null);
 });
+
+test('VBS keeps unrelated numeric files and signed URLs unchanged even after CASTLE hour navigation', async () => {
+    const {getVideoViewPlayback}=await import('./VideoHourUtils.ts');
+    for(const file of ['https://media.example/012.mp4','https://media.example/collection/movie.mp4?token=example#clip']) {
+        assert.deepEqual(getVideoViewPlayback('VBS',file,file,2),{offset:0,file,src:file});
+    }
+    assert.deepEqual(getVideoViewPlayback('VBS',stream,hourly,-1),{offset:0,file:hourly,src:stream});
+    assert.deepEqual(getVideoViewPlayback('VBS','',hourly,3),{offset:0,file:hourly,src:hourly});
+});
+
+test('CASTLE retains hourly playback and returning to the original result stream', async () => {
+    const {getVideoViewPlayback}=await import('./VideoHourUtils.ts');
+    assert.deepEqual(getVideoViewPlayback('CASTLE',stream,hourly,-1),{offset:-1,file:hourly.replace('12.mp4','11.mp4'),src:hourly.replace('12.mp4','11.mp4')});
+    assert.deepEqual(getVideoViewPlayback('CASTLE',stream,hourly,0),{offset:0,file:hourly,src:stream});
+});
+
+test('submission filenames work without a recording hierarchy and strip signed URL parameters', async () => {
+    const {getVideoFilename}=await import('./VideoHourUtils.ts');
+    assert.equal(getVideoFilename('film.mp4'),'film.mp4');
+    assert.equal(getVideoFilename('https://media.example/videos/My%20Video.mp4?token=example#t=12'),'My Video.mp4');
+    assert.equal(getVideoFilename('C:\\videos\\clip.mp4'),'clip.mp4');
+    assert.equal(getVideoFilename('https://media.example/%invalid.mp4'),'%invalid.mp4');
+});

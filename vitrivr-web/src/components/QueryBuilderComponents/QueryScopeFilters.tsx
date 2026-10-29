@@ -31,7 +31,7 @@ export default function QueryScopeFilters({value: storedValue, onChange, dedupli
             document.removeEventListener("keydown", closeOnEscape);
         };
     }, []);
-    const enabled = enabledResourceFilters(settings.enabledResourceFilters);
+    const enabled = enabledResourceFilters(settings.enabledResourceFilters, settings.frontendView);
     const value = activeQueryFilters(storedValue, enabled);
     if (enabled.length === 0 && !deduplication) return null;
     const hasFilters = Boolean(value.day || value.source || value.sourceType);
