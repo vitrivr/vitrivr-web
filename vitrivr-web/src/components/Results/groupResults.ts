@@ -1,10 +1,11 @@
 import type {MediaItem} from "../SearchCard.tsx";
 import {resultName} from "./resultName.ts";
+import type {FrontendView} from "../../config/frontendSettings.ts";
 
 export type ResultGroup = {key: string; label: string; items: MediaItem[]};
 
 /** Group ranked matches by source identity, retaining first-match group order and sorting video segments by start time. */
-export function groupResultsByVideo(items: MediaItem[]): ResultGroup[] {
+export function groupResultsByVideo(items: MediaItem[], view: FrontendView = "VBS"): ResultGroup[] {
     const groups = new Map<string, ResultGroup>();
     for (const item of items) {
         const filename = item.mediaItemName || item.name;
@@ -12,7 +13,7 @@ export function groupResultsByVideo(items: MediaItem[]): ResultGroup[] {
         const key = `${item.kind}:${identity}`;
         let group = groups.get(key);
         if (!group) {
-            group = {key, label: resultName(filename || item.parentId || item.id), items: []};
+            group = {key, label: resultName(filename || item.parentId || item.id, view), items: []};
             groups.set(key, group);
         }
         group.items.push(item);

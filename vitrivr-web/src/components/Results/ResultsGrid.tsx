@@ -1,10 +1,12 @@
 import {fusionEvidence} from "../../lib/prakFederated.ts";
 import ResultItem from "./ResultItem.tsx";
 import {resultName} from "./resultName.ts";
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import type {MediaItem} from "../SearchCard.tsx";
 
 type FeedbackControls = {mode: "local" | "federated"; eligibleIds: string[]; selectedIds: string[]; onToggle: (id: string) => void; disabled: boolean};
 export default function ResultsGrid({items, beforeNavigate, feedback}: {items: MediaItem[]; beforeNavigate: () => void; feedback?: FeedbackControls}) {
+    const {settings} = useFrontendSettings();
     return (
         <div className="results-grid sc-resultsGrid">
             {items.map(({id, kind, url, videoUrl, name, mediaItemName, thumbUrl, rawType, start, end, searchRank, score, properties}) => {
@@ -21,7 +23,7 @@ export default function ResultsGrid({items, beforeNavigate, feedback}: {items: M
                     return <ResultItem mappingError={properties?.["prak.mappingError"]} evidence={evidence} resultScore={score} relevance={relevance} key={id} id={id} searchRank={searchRank} kind="video" showDuration start={start} end={end}
                         mediaItemName={mediaItemName ?? name} preload="none" controls={false}
                         mediaClassName="ri-media" getPosterSrc={() => thumbUrl ?? ""}
-                        getVideoSrc={() => url} getFallbackVideoSrc={() => videoUrl} caption={resultName(mediaItemName ?? name)} onBeforeOpen={beforeNavigate}/>;
+                        getVideoSrc={() => url} getFallbackVideoSrc={() => videoUrl} caption={resultName(mediaItemName ?? name, settings.frontendView)} onBeforeOpen={beforeNavigate}/>;
                 }
                 return <ResultItem mappingError={properties?.["prak.mappingError"]} evidence={evidence} resultScore={score} relevance={relevance} key={id} id={id} searchRank={searchRank} kind="custom" onBeforeOpen={beforeNavigate}
                     renderMedia={() => <div className="sb__unknown"><div className="sb__caption">Type: {rawType ?? "unknown"}</div></div>}/>;

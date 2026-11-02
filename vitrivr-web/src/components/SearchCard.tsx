@@ -432,7 +432,7 @@ export function SearchCard() {
     if (mediaFilter.uniqueVideos && resultView === "ranked") {
         filteredItems = dedupeVideos(filteredItems);
     }
-    const resultGroups = resultView === "video" ? groupResultsByVideo(filteredItems) : [];
+    const resultGroups = resultView === "video" ? groupResultsByVideo(filteredItems, settings.frontendView) : [];
     const navigationCount = resultView === "video" ? resultGroups.length : filteredItems.length;
     const pageSize = resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE;
     const addBlock = () =>
