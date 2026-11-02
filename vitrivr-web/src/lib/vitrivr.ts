@@ -1,3 +1,4 @@
+import {directVideoUrl, mediaConfiguration, resolveVideoSources, thumbnailMediaUrl} from "./mediaSources.ts";
 import type {FrontendView} from "../config/frontendSettings.ts";
 import {isFederatedBlock, federatedQueryFromBlock} from "./prakFederated.ts";
 import {withPrakMetadata} from "./prakSearch.ts";
@@ -10,7 +11,7 @@ import type {BlockState} from "../components/SearchCard.tsx";
 export const API_BASE = import.meta.env?.VITE_VITRIVR_BASE_URL;
 export const THUMBNAIL_BASE = import.meta.env?.VITE_THUMBNAIL_ORIGIN;
 export const SEGMENT_ORIGIN = import.meta.env?.VITE_SEGMENT_ORIGIN;
-export const MEDIA_PATH_ORIGIN: string = import.meta.env?.VITE_MEDIA_PATH_ORIGIN ?? "";
+export const MEDIA_PATH_ORIGIN: string = mediaConfiguration().videoBase;
 
 type TextInput = { type: "TEXT"; data: string };
 type FloatVectorInput = { type: "FLOATVECTOR"; data: number[] };
@@ -29,11 +30,8 @@ type RawSchema = string | { name?: string; [key: string]: unknown };
  * @param id - Segment or media identifier used to locate the thumbnail
  * @returns The absolute thumbnail URL, or an empty string if it cannot be built
  */
-export function thumbnailURL(id: string): string {
-    if (!THUMBNAIL_BASE) return "";
-    const clean = (id ?? "").trim();
-    if (!clean) return "";
-    return `${THUMBNAIL_BASE}/${encodeURIComponent(clean)}.jpg`;
+export function thumbnailURL(id: string, view: FrontendView = "CASTLE"): string {
+    return thumbnailMediaUrl(id, view);
 }
 
 
@@ -71,12 +69,8 @@ export function segmentURL(filePath: string): string {
  * @param filePath - Original file path descriptor from the backend
  * @returns A playable video URL, or an empty string if it cannot be built
  */
-export function videoURL(filePath: string | undefined): string {
-    if (filePath === undefined) return "";
-    if (/^https?:\/\//i.test(filePath)) return filePath;
-    const url = new URL(`${MEDIA_PATH_ORIGIN}/${(filePath)}`, SEGMENT_ORIGIN).toString();
-    console.log(url.toString());
-    return url.toString();
+export function videoURL(filePath: string | undefined, view: FrontendView = "CASTLE"): string {
+    return directVideoUrl(filePath, view);
 }
 
 
@@ -104,7 +98,7 @@ export type VitrivrRetrievable = {
     descriptors?: Record<string, unknown>;
     relationship?: {
         partOf?: {
-            id: any;
+            id?: string;
             descriptors?: Record<string, unknown>;
         };
     };
@@ -134,6 +128,7 @@ export function pickFilePath(r: VitrivrRetrievable): string | undefined {
 export type BuiltMediaUrls = {
     url: string;
     thumbUrl: string;
+    videoUrl: string;
     filePath?: string;
     filename?: string;
 };
@@ -145,14 +140,15 @@ export type BuiltMediaUrls = {
  * @param r - Segment-like retrievable object
  * @returns An object containing video and thumbnail URLs plus path metadata
  */
-export function buildSegmentMediaUrls(r: VitrivrRetrievable): BuiltMediaUrls {
+export function buildSegmentMediaUrls(r: VitrivrRetrievable, view: FrontendView = "CASTLE", config = mediaConfiguration()): BuiltMediaUrls {
     const id = (r.id ?? "").trim();
     const filePath = pickFilePath(r);
-    const url = filePath ? segmentURL(filePath) : "";
-    const thumbUrl = id ? thumbnailURL(id) : "";
+    const parentId = r.relationship?.partOf?.id;
+    const {url, videoUrl} = resolveVideoSources(typeof parentId === "string" ? parentId : "", filePath, view, config);
+    const thumbUrl = id ? thumbnailMediaUrl(id, view, config) : "";
     const filename = filePath ? basenameFromPath(filePath) : undefined;
 
-    return {url, thumbUrl, filePath: filePath ?? undefined, filename};
+    return {url, videoUrl, thumbUrl, filePath: filePath ?? undefined, filename};
 }
 
 
@@ -204,7 +200,7 @@ export async function fetchSchemas(): Promise<string[]> {
  */
 export function buildTemporalQuery(blocks: BlockState[], scope?: FilterCondition) {
     if (blocks.some(isFederatedBlock)) throw new Error("PraK ranked fusion currently supports a single query block.");
-    const LIMIT = "10";
+    const LIMIT = "1000";
     const summary: string[] = [];
 
     const hasImageBlock = blocks.some((b) => b.queryType === "image");
@@ -227,7 +223,7 @@ export function buildTemporalQuery(blocks: BlockState[], scope?: FilterCondition
         const inName = `in${opIdx}`;
 
         if (b.modalities) {
-            const search = flatBlockRetrieval(b, blockModalities(b).length === 1 && blockModalities(b)[0] === "person" ? "1000" : LIMIT, `block-${opIdx}`, scope);
+            const search = flatBlockRetrieval(b, LIMIT, `block-${opIdx}`, scope);
             Object.assign(inputs, search.inputs);
             Object.assign(operations, search.operations);
             temporalInputs[inName] = search.output;
@@ -317,7 +313,7 @@ export function buildTemporalQuery(blocks: BlockState[], scope?: FilterCondition
             continue;
         }
 
-        const search = booleanRetrieval(b, b.modality === "person" ? "1000" : LIMIT, `block-${opIdx}`, scope);
+        const search = booleanRetrieval(b, LIMIT, `block-${opIdx}`, scope);
         Object.assign(inputs, search.inputs);
         Object.assign(operations, search.operations);
         temporalInputs[inName] = search.output;

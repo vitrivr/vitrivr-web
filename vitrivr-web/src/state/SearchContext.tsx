@@ -1,5 +1,6 @@
 "use client";
 import React, {createContext, useContext, useState} from "react";
+import {hlsMediaUrl} from "../lib/mediaSources.ts";
 import {SearchRequestGate} from "../lib/prakSearch.ts";
 import type {LocalFeedbackSession} from "../lib/prakLocalFeedback.ts";
 import type {FederatedSession} from "../lib/prakFederated.ts";
@@ -8,17 +9,16 @@ import {useFrontendSettings} from "./FrontendSettingsContext.tsx";
 import {emptyQueryFilters, type QueryFilters} from "../lib/queryFilters.ts";
 import {makeBlockState} from "./makeBlockState";
 import type {MediaItem} from "../components/SearchCard";
+import {defaultVlmReranking, type VlmRerankingSettings} from "../lib/vlm.ts";
 
 type MediaFilter = { image: boolean; video: boolean; custom: boolean; uniqueVideos: boolean };
 
-const HLS_BASE_URL = (import.meta.env.VITE_MEDIA_SEGMENT ?? "").replace(/\/+$/, "");
-
-// TODO Fixme
-export function buildHlsUrl(parentId: string): string {
-    return `${HLS_BASE_URL}/${encodeURIComponent(parentId)}/master.m3u8`;
-}
+/** An absent HLS configuration must not invent a relative playlist URL. */
+export function buildHlsUrl(parentId: string): string { return hlsMediaUrl(parentId); }
 
 type SearchState = {
+    vlmReranking: VlmRerankingSettings;
+    setVlmReranking: React.Dispatch<React.SetStateAction<VlmRerankingSettings>>;
     localFeedbackSession: LocalFeedbackSession | null;
     setLocalFeedbackSession: React.Dispatch<React.SetStateAction<LocalFeedbackSession | null>>;
     prakSession: FederatedSession | null;
@@ -86,6 +86,7 @@ export function SearchProvider({children, initial}: {
     const [searchRequests] = useState(() => new SearchRequestGate());
     const [queryFilters, setQueryFilters] = useState<QueryFilters>(emptyQueryFilters);
     const [resultView, setResultView] = useState<"ranked" | "video">("ranked");
+    const [vlmReranking, setVlmReranking] = useState(defaultVlmReranking);
     const [items, setItems] = useState<SearchState["items"]>([]);
     const [mediaFilter, setMediaFilter] = useState<MediaFilter>({
         image: true,
@@ -113,6 +114,7 @@ export function SearchProvider({children, initial}: {
     return (
         <SearchCtx.Provider
             value={{
+                vlmReranking, setVlmReranking,
                 localFeedbackSession, setLocalFeedbackSession,
                 prakSession, setPrakSession, searchRequests,
                 visualDeduplicationEnabled,

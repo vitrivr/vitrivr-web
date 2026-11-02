@@ -1,4 +1,5 @@
 import type {MediaItem} from "../SearchCard.tsx";
+import {resultName} from "./resultName.ts";
 
 export type ResultGroup = {key: string; label: string; items: MediaItem[]};
 
@@ -11,7 +12,7 @@ export function groupResultsByVideo(items: MediaItem[]): ResultGroup[] {
         const key = `${item.kind}:${identity}`;
         let group = groups.get(key);
         if (!group) {
-            group = {key, label: filename || item.parentId || item.id, items: []};
+            group = {key, label: resultName(filename || item.parentId || item.id), items: []};
             groups.set(key, group);
         }
         group.items.push(item);

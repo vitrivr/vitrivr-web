@@ -3,7 +3,7 @@ import {useNavigate} from "react-router-dom";
 import {applyVisualDeduplication} from "../../lib/visualDeduplication.ts";
 import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import {applyQueryFilters, enabledResourceFilters} from "../../lib/queryFilters.ts";
-import {buildVectorQuery, thumbnailURL,} from "../../lib/vitrivr";
+import {buildVectorQuery, thumbnailURL, videoURL} from "../../lib/vitrivr";
 import {buildHlsUrl, useSearch} from "../../state/SearchContext";
 import {retrieval} from "../../vitirvr/api/client";
 import ResultItem from "../Results/ResultItem";
@@ -91,7 +91,7 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                 const response = await retrieval.postExecuteQuery(schema, applyVisualDeduplication(applyQueryFilters(body, queryFilters, enabledResourceFilters(settings.enabledResourceFilters, settings.frontendView)), visualDeduplicationEnabled, settings.visualDeduplication));
                 if (cancelled) return;
 
-                const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: thumbnailURL}, settings.frontendView).filter(
+                const mapped = mapNeighborResults(response, {video: buildHlsUrl, thumbnail: id => thumbnailURL(id, settings.frontendView), file: path => videoURL(path, settings.frontendView)}, settings.frontendView).filter(
                     (neighbor) => neighbor.id !== id
                 );
                 setVectorsById((previous) => {
@@ -221,9 +221,8 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                         getPosterSrc={() =>
                             neighbor.thumbUrl ?? ""
                         }
-                        getVideoSrc={() =>
-                            neighbor.url
-                        }
+                        getVideoSrc={() => neighbor.url}
+                        getFallbackVideoSrc={() => neighbor.videoUrl}
                         caption={neighbor.name}
                         onBeforeOpen={() =>
                             openNeighbor(

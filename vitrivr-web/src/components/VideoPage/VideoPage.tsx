@@ -44,6 +44,7 @@ export default function VideoPage() {
     const routeState = location.state as
         | {
         src?: string;
+        fallbackSrc?: string;
         poster?: string;
         start?: number;
         end?: number;
@@ -60,7 +61,7 @@ export default function VideoPage() {
     const start =
         typeof item?.start === "number" ? item.start : typeof routeState?.start === "number" ? routeState.start : 0;
 
-    const mp4Location = mediaItemName ? videoURL(mediaItemName): "";
+    const mp4Location = item?.videoUrl || routeState?.fallbackSrc || videoURL(item?.sourcePath || mediaItemName, settings.frontendView);
 
 
     console.log("[VideoPage]", {
@@ -73,7 +74,7 @@ export default function VideoPage() {
 
     const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
     const [textAnswer, setTextAnswer] = useState("");
-    const poster = id ? thumbnailURL(id) ?? "" : "";
+    const poster = item?.thumbUrl || routeState?.poster || (id ? thumbnailURL(id, settings.frontendView) : "");
     const [hourOffset, setHourOffset] = useState(0);
     const directFile = /\.mp4(?:$|[?#])/i.test(src) ? src : "";
     const hourlySrc = !isCastleView && directFile ? directFile : mp4Location || directFile;
@@ -286,7 +287,7 @@ export default function VideoPage() {
                             <span className="vp-eyebrow">Now playing</span>
                             {isCastleView && <span className="sc-count">{timeOfRecording ? `${timeOfRecording}:00` : "Current"}</span>}
                         </div>
-                        <HlsVideoPlayer key={activeVideoSrc} ref={videoRef} src={activeVideoSrc}
+                        <HlsVideoPlayer key={activeVideoSrc} ref={videoRef} src={activeVideoSrc} fallbackSrc={activeMp4Src}
                             poster={activeOffset === 0 ? poster : undefined}
                             startTime={activeOffset === 0 ? start : 0}
                             onTimeUpdate={setPlaybackTimestamp} preload="metadata"/>

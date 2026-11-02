@@ -1,3 +1,4 @@
+import {mediaConfiguration} from "../../lib/mediaSources.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
 import {mediaCaptureUrl} from "../../lib/mediaProxy.ts";
 import {uuid} from "../../utils/uuid.ts";
@@ -175,7 +176,7 @@ export async function generateVideoThumbnail(url: string, seekTime: number, sign
     const key = `${url}@${seekTime}`;
     const cached = thumbnailCache.get(key);
     if (cached) return cached;
-    const captureUrl = mediaCaptureUrl(url, import.meta.env.VITE_MEDIA_PATH_ORIGIN ?? "",
+    const captureUrl = mediaCaptureUrl(url, mediaConfiguration().videoBase,
         import.meta.env.VITE_MEDIA_CAPTURE_PROXY ?? (import.meta.env.DEV ? "/frame-media" : ""));
     const thumbnail = await captureVideoThumbnail(captureUrl, seekTime, signal);
     if (thumbnail && !signal?.aborted) {

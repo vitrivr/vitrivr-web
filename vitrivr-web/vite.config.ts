@@ -10,9 +10,10 @@ export default defineConfig(({mode}) => {
       rewrite: (path: string) => path.replace(/^\/descriptor-api/, ''),
     },
   } : {}
-  if (env.VITE_MEDIA_PATH_ORIGIN) {
+  const mediaOrigin = env.VITE_MEDIA_PATH_ORIGIN || env.VITE_MEDIA_ORIGIN;
+  if (mediaOrigin) {
     proxy['/frame-media'] = {
-      target: env.VITE_MEDIA_PATH_ORIGIN.match(/^https?:\/\/[^/]+/)?.[0] ?? env.VITE_MEDIA_PATH_ORIGIN,
+      target: mediaOrigin.match(/^https?:\/\/[^/]+/)?.[0] ?? mediaOrigin,
       changeOrigin: true,
       rewrite: (path: string) => path.replace(/^\/frame-media/, ''),
     }

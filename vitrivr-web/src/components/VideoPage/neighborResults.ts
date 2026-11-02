@@ -1,5 +1,5 @@
 import type {FrontendView} from "../../config/frontendSettings.ts";
-import {mediaNameFromPath} from "../../lib/vitrivr.ts";
+import {mediaNameFromPath, pickFilePath, videoURL} from "../../lib/vitrivr.ts";
 import type {MediaItem} from "../SearchCard.tsx";
 
 type RetrievablesResponse = {
@@ -61,7 +61,7 @@ function nsToSeconds(value: number): number {
  * Maps each result to a mediaItem.
  * @param response of vitrivr
  */
-export function mapNeighborResults(response: RetrievablesResponse, urls: {video: (id: string) => string; thumbnail: (id: string) => string}, view: FrontendView = "CASTLE"): MediaItem[] {
+export function mapNeighborResults(response: RetrievablesResponse, urls: {video: (id: string) => string; thumbnail: (id: string) => string; file?: (path: string) => string}, view: FrontendView = "CASTLE"): MediaItem[] {
     const retrievables = response.retrievables ?? [];
     const output: MediaItem[] = [];
     for (const retrievable of retrievables) {
@@ -75,21 +75,22 @@ export function mapNeighborResults(response: RetrievablesResponse, urls: {video:
         const start = nsToSeconds(pickNumber(retrievable, "time.start") ?? 0);
         const end = nsToSeconds(pickNumber(retrievable, "time.end") ?? 0);
         const parentId = retrievable.relationship?.partOf?.id?.trim();
-        const filePath = retrievable.relationship?.partOf?.descriptors?.["file.path"] as | string | undefined;
-
-        if (!parentId || !filePath) {
-            continue;
-        }
+        const filePath = pickFilePath(retrievable);
         const mediaItemName = mediaNameFromPath(filePath, view);
-        const hlsUrl = urls.video(parentId);
+        const hlsUrl = parentId ? urls.video(parentId) : "";
+        const videoUrl = filePath ? (urls.file?.(filePath) ?? videoURL(filePath, view)) : "";
+        const url = hlsUrl || videoUrl;
+        if (!url) continue;
 
         output.push({
             id,
             parentId,
             kind: "video",
-            mediaItemName: mediaItemName ?? filePath,
-            url: hlsUrl,
-            name: mediaItemName ?? filePath,
+            mediaItemName,
+            url,
+            videoUrl,
+            sourcePath: filePath,
+            name: mediaItemName ?? parentId ?? id,
             thumbUrl: urls.thumbnail(id),
             start,
             end,

@@ -8,6 +8,7 @@
   ],
   "enabledQueryTypes": [
     "clip",
+    "vlm",
     "emotions",
     "ocr",
     "asr",
@@ -53,6 +54,10 @@
     "Meeting",
     "Reading"
   ],
+  "vlmReranking": {
+    "model": "qwen3-vl-4b",
+    "candidateLimit": 50
+  },
   "visualDeduplication": {
     "enabled": false,
     "field": "clip",

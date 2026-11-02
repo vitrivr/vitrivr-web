@@ -47,6 +47,8 @@
 import {appendLocalFeedbackPool, localDiscoveryFromBlock, executeLocalFeedbackSearch, feedbackErrorMessage, projectLocalFeedbackMedia, feedbackQueryKey, type LocalQuery} from "../lib/prakLocalFeedback.ts";
 import {executeFederatedSearch, federatedQueryFromBlock, isFederatedBlock} from "../lib/prakFederated.ts";
 import {blockModalities} from "../lib/blockModalities.ts";
+import VlmReranking, {VlmRerankingToggle} from "./QueryBuilderComponents/VlmReranking.tsx";
+import {defaultVlmReranking} from "../lib/vlm.ts";
 import {applyVisualDeduplication} from "../lib/visualDeduplication.ts";
 import {emptyQueryFilters, enabledResourceFilters, recordingScopeCondition} from "../lib/queryFilters.ts";
 import QueryScopeFilters from "./QueryBuilderComponents/QueryScopeFilters.tsx";
@@ -57,7 +59,7 @@ import "./QueryBuilderComponents/Dropdown.css";
 import {type RadioOption} from "./QueryBuilderComponents/RadioGroup.tsx";
 import ResultsGrid from "./Results/ResultsGrid.tsx";
 import {groupResultsByVideo} from "./Results/groupResults.ts";
-import {buildQueryBlock, buildTemporalQuery, buildSegmentMediaUrls, mediaNameFromPath, type VitrivrRetrievable} from "../lib/vitrivr.ts";
+import {buildQueryBlock, buildTemporalQuery, buildSegmentMediaUrls, mediaNameFromPath, pickFilePath, type VitrivrRetrievable} from "../lib/vitrivr.ts";
 import {isBayesianRefinementEnabled, type FrontendView} from "../config/frontendSettings.ts";
 import type {FilterCondition} from "../lib/booleanFilters.ts";
 import {fileToBase64} from "../lib/helpers.ts";
@@ -66,7 +68,7 @@ import "./Results/Results.css"
 import Flash from "./QueryBuilderComponents/Flash.tsx";
 import MediaTypeFilter from "./Results/MediaTypeFilter";
 import QueryBlock from "./QueryBuilderComponents/QueryBlock";
-import {buildHlsUrl, useSearch} from "../state/SearchContext.tsx";
+import {useSearch} from "../state/SearchContext.tsx";
 import "./SearchCard.css"
 import "../styles/styles.css"
 import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
@@ -100,6 +102,8 @@ export type MediaItem = {
     mediaItemName?: string;
     name: string;
     url: string;
+    videoUrl?: string;
+    sourcePath?: string;
     thumbUrl?: string;
     start: number;
     end: number;
@@ -132,6 +136,7 @@ export type BlockState = {
     modalities?: Modality[];
     ocrText?: string;
     prakText?: string;
+    vlmText?: string;
     asrText?: string;
     ocrMatch?: "fulltext" | "contains" | "exact";
     asrMatch?: "fulltext" | "contains" | "exact";
@@ -281,8 +286,10 @@ function mediaFrom(resp: RetrievablesResponse, view: FrontendView = "CASTLE"): M
             const parent = r.relationship?.partOf;
             const parentId = parent?.id?.trim();
 
-            if (!parentId) {
-                debugLog("drop: video segment without parent SOURCE:VIDEO id", {
+            const filePath = pickFilePath(r);
+            const {url, videoUrl, thumbUrl} = buildSegmentMediaUrls(r, view);
+            if (!url) {
+                debugLog("drop: video segment without a playable stream or file URL", {
                     idx,
                     id,
                     type: r.type,
@@ -291,10 +298,7 @@ function mediaFrom(resp: RetrievablesResponse, view: FrontendView = "CASTLE"): M
                 return null;
             }
 
-            const filePath = parent?.descriptors?.["file.path"];
             const mediaItemName = mediaNameFromPath(filePath, view);
-            const url = buildHlsUrl(parentId);
-            const {thumbUrl} = buildSegmentMediaUrls(r);
 
             return {
                 id,
@@ -304,6 +308,8 @@ function mediaFrom(resp: RetrievablesResponse, view: FrontendView = "CASTLE"): M
                 kind,
                 rawType: r.type,
                 url,
+                videoUrl,
+                sourcePath: filePath,
                 thumbUrl,
                 start,
                 end,
@@ -345,6 +351,7 @@ export function SearchCard() {
         blocks, setBlocks,
         queryFilters, setQueryFilters,
         visualDeduplicationEnabled, setVisualDeduplicationEnabled,
+        vlmReranking, setVlmReranking,
         resultView, setResultView,
         items, setItems,
         mediaFilter, setMediaFilter,
@@ -450,6 +457,7 @@ export function SearchCard() {
 
         setBlocks([makeBlockState(schema, settings.enabledQueryTypes, settings.frontendView)]);
         setQueryFilters(emptyQueryFilters());
+        setVlmReranking(defaultVlmReranking());
         setVisualDeduplicationEnabled(visualDeduplicationSettings.enabled);
 
         setScrollY(0);
@@ -575,6 +583,10 @@ export function SearchCard() {
         onToggle: toggleRelevant, disabled: loading || !feedbackReady,
     } : undefined;
     const onSearch = async () => {
+        if (blocks.some(block => blockModalities(block).includes("vlm"))) {
+            setFlash({show: true, message: "VLM description search is unavailable on this backend. Deselect VLM to search with the other modalities; your VLM text will be kept."});
+            return;
+        }
         if (blocks.some(block => !blockModalities(block).length || blockModalities(block).some(mode => !modalityOptions.some(option => option.value === mode)))) {
             setFlash({show: true, message: "Select a query type enabled in the frontend settings and supported by this schema."});
             return;
@@ -722,6 +734,7 @@ export function SearchCard() {
                                 </div>
 
                                 <div className="sc-resultsControls">
+                                    <VlmRerankingToggle value={vlmReranking} onChange={setVlmReranking}/>
                                     {activeFeedbackSession && <div className="sc-feedbackActions">
                                         <span role="status">{activeFeedbackSession.selectedIds.length} relevant{activeFeedbackSession.ranking === "bayes" ? " · Bayesian ranking" : ""}</span>
                                         <button className="btn btn-primary" type="button" disabled={loading || !activeFeedbackSession.selectedIds.length || !feedbackReady}
@@ -763,6 +776,7 @@ export function SearchCard() {
                                     />
                                 </div>
                                 </div>
+                                <VlmReranking value={vlmReranking} onChange={setVlmReranking} candidateCount={items.length}/>
                             </div>
 
                             <div className="panel__body stack">

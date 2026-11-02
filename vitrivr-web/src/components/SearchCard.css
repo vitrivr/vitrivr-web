@@ -45,3 +45,99 @@
 .sc-queryPanel .panel__body {
     overflow: visible;
 }
+
+.sc-vlmReranking {
+    display: grid;
+    flex: 1 0 100%;
+    gap: 8px;
+    min-width: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.sc-vlmReranking[hidden] { display: none; }
+
+.sc-resultsControls .sc-vlmHeaderToggle {
+    box-sizing: border-box;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.sc-resultsControls .sc-vlmHeaderToggle,
+.sc-resultsControls .sc-viewSelect select,
+.sc-resultsControls .btn {
+    font-size: 13px;
+}
+
+.sc-resultsControls .sc-vlmHeaderToggle:hover {
+    border-color: var(--line-2);
+    background: var(--surface-2);
+}
+
+.sc-resultsControls .sc-viewSelect {
+    box-sizing: border-box;
+    height: 40px;
+    padding: 0 0 0 12px;
+    gap: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--input-bg);
+    font-size: 13px;
+}
+
+.sc-resultsControls .sc-viewSelect select {
+    height: 38px;
+    padding-left: 4px;
+    border: 0;
+    background: transparent;
+}
+
+.sc-resultsControls .sc-viewSelect:focus-within {
+    outline: 2px solid var(--brand-ink);
+    outline-offset: 2px;
+}
+
+.sc-vlmHeading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-2);
+    font-size: 12px;
+}
+
+.sc-vlmPromptRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+}
+
+.search-shell .sc-vlmReranking textarea {
+    width: 100% !important;
+    min-height: 64px;
+    max-height: 160px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text);
+    resize: vertical;
+}
+
+.sc-vlmActions {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 8px;
+}
+
+@media (max-width: 600px) {
+    .sc-vlmPromptRow { grid-template-columns: minmax(0, 1fr); }
+    .sc-vlmActions { flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+}

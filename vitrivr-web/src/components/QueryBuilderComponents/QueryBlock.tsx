@@ -60,6 +60,12 @@ export default function QueryBlock({block, onChange, onRemove, modalityOptions, 
             <Input type="text" id={`prak-${block.id}`} value={block.prakText ?? (!modes.includes("clip") ? block.textQuery : "")}
                 onChange={prakText => onChange({prakText})} placeholder="Describe what PraK should retrieve…"/>
         </div>}
+        {modes.includes("vlm") && <div className="sc-flatField">
+            <label className="label" htmlFor={`vlm-${block.id}`}>VLM description search</label>
+            <Input type="text" id={`vlm-${block.id}`} value={block.vlmText ?? ""} onChange={vlmText => onChange({vlmText})}
+                placeholder="Search descriptions of objects, actions and relationships…"/>
+            <p className="sc-personHint">Search frame descriptions generated during indexing.</p>
+        </div>}
         {(["ocr", "asr"] as const).filter(field => modes.includes(field)).map(field => <div className="sc-flatField" key={field}>
             <label className="label" htmlFor={`${field}-${block.id}`}>{field === "ocr" ? "Visible text (OCR)" : "Spoken text (ASR)"}</label>
             <Input type="text" id={`${field}-${block.id}`} value={block[`${field}Text`] ?? ""} onChange={value => onChange({[`${field}Text`]: value})} placeholder={field === "ocr" ? "Text to find in the image…" : "Words to find in speech…"}/>
@@ -87,9 +93,9 @@ export default function QueryBlock({block, onChange, onRemove, modalityOptions, 
             <Dropdown label="Emotion" items={emotionItems} value={block.emotion} onChange={emotion => onChange({emotion})} placeholder="Select an emotion"/>
             <RadioGroup label="Emotion target" options={[{value:"face", label:"Face"}, {value:"sound", label:"Sound"}, {value:"ocr", label:"OCR"}]} value={block.emotionTarget ?? "face"} onChange={emotionTarget => onChange({emotionTarget})}/>
         </div>}
-        {!localFeedback && modes.includes("clip") && <p className="sc-personHint">CLIP ranks results matching your selected requirements.</p>}
+        {/*{!localFeedback && modes.includes("clip") && <p className="sc-personHint">CLIP ranks results matching your selected requirements.</p>}*/}
         {isFederated && <p className="sc-personHint">PraK, OCR and ASR search independently and contribute to a fused ranking. Leave an input blank to skip that source. PraK fusion currently uses one block.</p>}
-        {!localFeedback && !isFederated && !modes.includes("clip") && !modes.includes("emotions") && modes.length > 0 && <p className="sc-personHint">Matches are returned in ID order.</p>}
+        {!localFeedback && !isFederated && !modes.includes("clip") && !modes.includes("vlm") && !modes.includes("emotions") && modes.length > 0 && <p className="sc-personHint">Matches are returned in ID order.</p>}
         {modes.includes("person") && modes.includes("asr") && <p className="sc-personHint">People and speech match the same segment; this does not identify the speaker.</p>}
     </div>;
 }

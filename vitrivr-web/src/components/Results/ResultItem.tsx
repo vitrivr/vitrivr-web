@@ -1,7 +1,9 @@
 import type {SourceEvidence} from "../../lib/prakFederated.ts";
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Link} from "react-router-dom";
-import {thumbnailURL} from "../../lib/vitrivr";
+import HlsVideoPlayer from "../VideoPage/HLSVideoPlayer.tsx";
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
+import {thumbnailURL, videoURL} from "../../lib/vitrivr";
 import {submitText, submitVideo} from "../../dres/generated/api/dresSubmit.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
 import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
@@ -32,6 +34,7 @@ type VideoProps = {
     end: number;
     getVideoSrc: (id: string) => string;
     getPosterSrc?: (id: string) => string;
+    getFallbackVideoSrc?: (id: string) => string | undefined;
     mediaItemName: string;
     controls?: boolean;
     autoPlay?: boolean;
@@ -44,7 +47,7 @@ type CustomProps = { kind: "custom"; renderMedia: (id: string) => React.ReactNod
 type ResultItemProps = BaseProps & (ImageProps | VideoProps | CustomProps);
 
 export default function ResultItem(props: ResultItemProps) {
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const {settings} = useFrontendSettings();
     const {
         id,
         caption = id,
@@ -76,34 +79,17 @@ export default function ResultItem(props: ResultItemProps) {
         } = props;
 
         const src = getVideoSrc(id);
-        const poster = (getPosterSrc ?? thumbnailURL)(id);
+        const poster = getPosterSrc?.(id) || thumbnailURL(id, settings.frontendView);
+        const fallbackSrc = props.getFallbackVideoSrc?.(id) || videoURL(props.mediaItemName, settings.frontendView);
         displayCaption = caption;
-
-        const handleLoadedMetadata = () => {
-            if (videoRef.current && start != null) {
-                videoRef.current.currentTime = start;
-            }
-        };
-
-        media = (
-            <video
-                ref={videoRef}
-                className={mediaClassName}
-                src={src}
-                poster={poster}
-                controls={controls}
-                autoPlay={autoPlay}
-                loop={loop}
-                muted={muted}
-                preload={preload}
-                onLoadedMetadata={handleLoadedMetadata}
-            />
-        );
+        media = <HlsVideoPlayer className={mediaClassName} src={src} fallbackSrc={fallbackSrc} poster={poster}
+            controls={controls} autoPlay={autoPlay} loop={loop} muted={muted} preload={preload} startTime={start}
+            style={{objectFit: "cover"}}/>;
     } else if (props.kind === "custom") {
         media = props.renderMedia(id);
     } else {
         const {getImageSrc, alt = `Image for ${id}`, mediaClassName = "sb__image"} = props;
-        const src = (getImageSrc ?? thumbnailURL)(id);
+        const src = getImageSrc?.(id) || thumbnailURL(id, settings.frontendView);
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
@@ -206,10 +192,12 @@ export default function ResultItem(props: ResultItemProps) {
     const linkState =
         props.kind === "video"
             ? {
-                src: (props as any).getVideoSrc?.(id),
-                poster: thumbnailURL(id),
-                start: (props as any).start,
-                end: (props as any).end,
+                src: props.getVideoSrc(id),
+                fallbackSrc: props.getFallbackVideoSrc?.(id) || videoURL(props.mediaItemName, settings.frontendView),
+                poster: props.getPosterSrc?.(id) || thumbnailURL(id, settings.frontendView),
+                mediaItemName: props.mediaItemName,
+                start: props.start,
+                end: props.end,
             }
             : undefined;
 

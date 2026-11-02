@@ -3,6 +3,7 @@ import settings from "./frontendSettings.json" with {type: "json"};
 
 export const queryTypeOptions = [
     {value: "clip", label: "CLIP"},
+    {value: "vlm", label: "VLM"},
     {value: "emotions", label: "Emotions"},
     {value: "ocr", label: "OCR"},
     {value: "asr", label: "ASR"},

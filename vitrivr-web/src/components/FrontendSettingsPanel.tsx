@@ -5,6 +5,7 @@ import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
 import {useSearch} from "../state/SearchContext.tsx";
 import {activeQueryFilters, enabledResourceFilters} from "../lib/queryFilters.ts";
 import {selectedPersonNames} from "../lib/personQuery.ts";
+import {vlmModelOptions, type VlmRerankingPreferences} from "../lib/vlm.ts";
 import "./FrontendSettingsPanel.css";
 
 type Choice = {value: string; label: string};
@@ -61,6 +62,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const draft: FrontendSettings = {...base, frontendView, bayesianRefinementEnabled: bayesianRefinement, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
+            vlmReranking: {model: String(data.get("vlmModel")) as VlmRerankingPreferences["model"], candidateLimit: Number(data.get("vlmCandidateLimit"))},
             visualDeduplication: {...base.visualDeduplication, enabled: data.has("dedupEnabled"), field: String(data.get("dedupField") ?? "")}};
         for (const {key} of listOptions) if (data.has(key)) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
         for (const {key} of numericOptions) draft.visualDeduplication[key] = Number(data.get(key));
@@ -122,6 +124,19 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
                 {listOptions.filter(option => frontendView === "CASTLE" || option.key === "personNames").map(({key, label}) => <label className="fs-field" key={key}>{label}
                     <textarea name={key} rows={4} defaultValue={base[key].join("\n")}/>
                 </label>)}
+            </div>
+        </details>
+        <details className="fs-section" open>
+            <summary>VLM reranking</summary>
+            <div className="fs-grid">
+                <label className="fs-field">Reranking model
+                    <select name="vlmModel" defaultValue={base.vlmReranking.model}>
+                        {vlmModelOptions.map(model => <option key={model.value} value={model.value}>{model.label}</option>)}
+                    </select>
+                </label>
+                <label className="fs-field">Candidate limit
+                    <input type="number" name="vlmCandidateLimit" required min="1" max="1000" step="1" defaultValue={base.vlmReranking.candidateLimit}/>
+                </label>
             </div>
         </details>
         <details className="fs-section" open>
