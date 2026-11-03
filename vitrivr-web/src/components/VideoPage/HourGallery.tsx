@@ -1,4 +1,6 @@
 import {useMemo} from "react";
+import HlsVideoPlayer from "./HLSVideoPlayer.tsx";
+import {findCastleRecording, type CastleRecording} from "./castleRecordings.ts";
 import {getHourFromFilename, getVideoAtOffset, parseVideoURL,} from "./VideoHourUtils.ts";
 
 type HourGalleryProps = {
@@ -7,6 +9,7 @@ type HourGalleryProps = {
     offset: number; // timestamp
     onPrevious: () => void;
     onNext: () => void;
+    recordings: CastleRecording[];
 };
 
 /**
@@ -14,7 +17,7 @@ type HourGalleryProps = {
  * the videos of the previous hour and the succeeding hour. Next to the videos there are buttons for
  * skipping the entire three video windows to the left (previous) or the right (succeeding).
  */
-export default function HourGallery({src, direction, offset, onPrevious, onNext,}: HourGalleryProps) {
+export default function HourGallery({src, direction, offset, onPrevious, onNext, recordings}: HourGalleryProps) {
     const info = useMemo(() => parseVideoURL(src), [src]);
     if (!info) {
         return (
@@ -32,7 +35,9 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
     }
     const videoOffset = direction === "previous" ? offset - 1 : offset + 1;
     const displayedHour = originalHour + videoOffset;
-    const videoUrl = getVideoAtOffset(src, videoOffset);
+    const candidateUrl = getVideoAtOffset(src, videoOffset);
+    const recording = candidateUrl ? findCastleRecording(recordings, candidateUrl) : undefined;
+    const videoUrl = recordings.length > 0 && !recording ? null : candidateUrl;
     const handleClick = direction === "previous" ? onPrevious : onNext;
 
     if (!videoUrl) {
@@ -68,6 +73,7 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                     <button
                         type="button"
                         onClick={handleClick}
+                        disabled
                         aria-label={
                             direction === "previous"
                                 ? "Move all videos one hour earlier"
@@ -140,9 +146,10 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
                     minWidth: 0,
                 }}
             >
-                <video
-                    key={videoUrl}
-                    src={videoUrl}
+                <HlsVideoPlayer
+                    key={recording?.stream || videoUrl}
+                    src={recording?.stream || recording?.file || videoUrl}
+                    fallbackSrc={recording?.file || videoUrl}
                     controls
                     preload="metadata"
                     style={{

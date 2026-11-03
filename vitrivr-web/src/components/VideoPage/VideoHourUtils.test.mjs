@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {getPlaybackSource, getVideoAtOffset} from './VideoHourUtils.ts';
+import {getPlaybackSource, getVideoAtOffset, parseVideoURL} from './VideoHourUtils.ts';
+
+test('CASTLE parsing finds the actual day and source before the video folder', () => {
+    assert.deepEqual(parseVideoURL('https://media.example/videos/day2/Bj%C3%B6rn/video/08.mp4?token=example'), {
+        origin:'https://media.example', day:'day2', source:'Björn', filename:'08.mp4',
+    });
+    assert.equal(parseVideoURL('https://media.example/segments/id/master.m3u8'), null);
+});
+
+test('hour navigation preserves padded filenames and signed URLs at offset zero', () => {
+    const file = 'https://media.example/videos/day2/Kitchen/video/08.mp4?token=example';
+    assert.equal(getVideoAtOffset(file, 0), file);
+    assert.equal(getVideoAtOffset(file, 1), file.replace('08.mp4','09.mp4'));
+    assert.equal(getVideoAtOffset(file, -1), file.replace('08.mp4','07.mp4'));
+});
 
 const stream = 'https://media.example/segments/id/master.m3u8';
 const hourly = 'https://media.example/day1/Cathal/video/12.mp4';

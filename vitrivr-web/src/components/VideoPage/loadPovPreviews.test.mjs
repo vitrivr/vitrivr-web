@@ -5,6 +5,18 @@ import {loadPovPreviews} from './loadPovPreviews.ts';
 const videos = Array.from({length: 6}, (_, i) => ({id: `${i}`, name: `${i}`, kind: 'person', url: `video-${i}`, seekTime: 12}));
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return {promise, resolve}; };
 
+test('catalogue recordings need no availability probes and all remain visible after failed previews', async () => {
+    const updates = [];
+    const thumbnail = deferred();
+    const done = loadPovPreviews(videos, new AbortController().signal, video => updates.push(video), {
+        thumbnail: async () => { await thumbnail.promise; throw new Error('Unavailable HLS preview'); },
+    }, 3);
+    assert.deepEqual(updates.map(video => video.id), videos.map(video => video.id));
+    thumbnail.resolve();
+    await done;
+    assert.equal(updates.length, videos.length);
+});
+
 test('publishes a usable card before its thumbnail or the rest of the batch finishes', async () => {
     const thumbnail = deferred();
     const visible = deferred();

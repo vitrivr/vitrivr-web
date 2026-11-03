@@ -3,220 +3,87 @@ import {loadPovPreviews} from "./loadPovPreviews.ts";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import ResultItem from "../Results/ResultItem.tsx";
 import {useSearch} from "../../state/SearchContext.tsx";
-import {videoExists, generateVideoThumbnail, type HourlyVideo, parseVideoURL, uuidFromUuidV4} from "./ThumbnailUtils.ts";
-
-/**
- * All the people contained in the CASTLE dataset 2024
- * TODO: think of a prettier and less hard coded solution.
- */
-const PEOPLE = ["Allie", "Bao", "Björn", "Cathal", "Florian", "Klaus", "Luca", "Onanong", "Stevan", "Tien", "Werner"];
-const ROOMS = ["Reading", "Living1", "Living2", "Kitchen", "Meeting"];
-
-/**
- * This type slightly differs from a ResultItem, but essentially serves the same purpose. The only difference is that
- * with the hourly videos are not vitrivr results, but "bare" videos. Thus, the thumbnails and the clip vectors need
- * to be generated.
- */
+import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
+import {generateVideoThumbnail} from "./ThumbnailUtils.ts";
+import {getHourFromFilename, parseVideoURL} from "./VideoHourUtils.ts";
+import {mediaNameFromPath} from "../../lib/vitrivr.ts";
+import type {CastleRecording} from "./castleRecordings.ts";
+import {otherPovRecordings, type PovRecording} from "./povRecordings.ts";
 
 type OtherPovsProps = {
     src: string;
     timestamp: number;
+    recordings: CastleRecording[];
+    catalogueLoading: boolean;
+    catalogueError: string | null;
 };
 
+// Keep every recording clickable while its preview loads or if capture fails.
+const pendingPoster = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="270"><rect width="480" height="270" fill="#102f40"/><text x="240" y="140" text-anchor="middle" fill="#dce8ec" font-family="sans-serif" font-size="16">Open POV</text></svg>')}`;
 
-/**
- * POV component that contains the videos of all participants of that corresponding time and day.
- * @constructor
- */
 export default function POVs(props: OtherPovsProps) {
     return <PovGallery key={props.src} {...props}/>;
 }
 
-function PovGallery({src, timestamp}: OtherPovsProps) {
+function PovGallery({src, timestamp, recordings, catalogueLoading, catalogueError}: OtherPovsProps) {
     const [open, setOpen] = useState(false);
-    const [videos, setVideos] = useState<HourlyVideo[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [loaded, setLoaded] = useState(false);
+    const [previews, setPreviews] = useState<Record<string, string>>({});
+    const [previewLoading, setPreviewLoading] = useState(false);
     const {setItems} = useSearch();
+    const {settings} = useFrontendSettings();
     const info = useMemo(() => parseVideoURL(src), [src]);
+    const videos = useMemo(() => otherPovRecordings(recordings, src, settings.sourceLocations), [recordings, src, settings.sourceLocations]);
     const timestampRef = useRef(timestamp);
     timestampRef.current = timestamp;
     const previewTime = useRef<number | null>(null);
 
-    function savePovBeforeOpen(video: HourlyVideo) {
-        setItems((previous) => {
-            if (
-                previous.some(
-                    (item) => item.id === video.id
-                )
-            ) {
-                return previous;
-            }
-
-            return [
-                ...previous,
-                {
-                    id: video.id,
-                    kind: "video",
-                    url: video.url,
-                    name: video.name,
-                    start: timestamp,
-                    end: 0,
-                    clipVector: video.CLIPVector,
-                },
-            ];
-        });
-
-    }
-
     useEffect(() => {
-        if (!open || loaded || !info) return;
+        if (!open || !videos.length) return;
         const controller = new AbortController();
-        // Hold one frame time for this gallery; playback updates must not restart requests.
         const seekTime = previewTime.current ?? timestampRef.current;
         previewTime.current = seekTime;
-        const candidates: HourlyVideo[] = [
-            ...PEOPLE.filter(person => person !== info.person).map(name => ({name, kind: "person" as const})),
-            ...ROOMS.filter(room => room !== info.person).map(name => ({name, kind: "room" as const})),
-        ].map(({name, kind}) => ({
-            id: uuidFromUuidV4(), name, kind, seekTime,
-            url: `${info.origin}/videos/${encodeURIComponent(info.day)}/${encodeURIComponent(name)}/video/${encodeURIComponent(info.filename)}`,
-        }));
-        const order = new Map(candidates.map((video, index) => [video.url, index]));
-        setLoading(true);
-        void loadPovPreviews(candidates, controller.signal, (video) => {
-            setVideos(previous => {
-                const existing = previous.find(candidate => candidate.url === video.url);
-                const updated = existing ? {...existing, ...video, id: existing.id} : video;
-                return [...previous.filter(candidate => candidate.url !== video.url), updated]
-                    .sort((a, b) => order.get(a.url)! - order.get(b.url)!);
-            });
-        }, {exists: videoExists, thumbnail: generateVideoThumbnail}).finally(() => {
-            if (!controller.signal.aborted) {
-                setLoaded(true);
-                setLoading(false);
-            }
-        });
+        const byFile = new Map(videos.map(video => [video.file, video]));
+        setPreviewLoading(true);
+        // Catalogue entries are already known to exist. No HEAD/metadata probes.
+        void loadPovPreviews(videos.map(video => ({id: video.id, name: video.source,
+            kind: video.kind, url: video.file, seekTime})), controller.signal, video => {
+            if (video.thumbnail) setPreviews(previous => ({...previous, [video.id]: video.thumbnail!}));
+        }, {thumbnail: (file, time, signal) => generateVideoThumbnail(file, time, signal, byFile.get(file)?.stream)}, 3)
+            .finally(() => { if (!controller.signal.aborted) setPreviewLoading(false); });
         return () => controller.abort();
-    }, [open, loaded, info]);
+    }, [open, videos]);
 
-    if (!info) {
-        return null;
+    function savePovBeforeOpen(video: PovRecording) {
+        const mediaItemName = mediaNameFromPath(video.file, "CASTLE");
+        setItems(previous => {
+            const item = {id: video.id, parentId: video.id, kind: "video" as const,
+                url: video.stream || video.file, videoUrl: video.file, sourcePath: video.file,
+                mediaItemName, name: mediaItemName ?? video.source, thumbUrl: previews[video.id], start: timestamp, end: 0};
+            return [...previous.filter(existing => existing.id !== video.id), item];
+        });
     }
 
-    const peopleVideos = videos.filter(
-        (video) => video.kind === "person"
-    );
-
-    const roomVideos = videos.filter(
-        (video) => video.kind === "room"
-    );
-
-    return (
-        <DisclosureSection
-            open={open}
-            onToggle={() => setOpen((value) => !value)}
-            title={`Other POVs · ${info.day} at ${info.filename.replace(/\.[^.]+$/, "")}:00`}
-            count={open && loaded ? videos.length : undefined}
-            loading={open && loading}
-        >
-            {!loading && loaded && videos.length === 0 && (
-                <div
-                    style={{
-                        opacity: 0.6,
-                        fontSize: 13,
-                    }}
-                >
-                    No other POVs available.
-                </div>
-            )}
-            {videos.length > 0 && (
-                <div className="vp-povGroups"
-                >
-                    {peopleVideos.length > 0 && (
-                        <div>
-                            <h4
-                                style={{
-                                    margin: "0 0 8px",
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                }}
-                            >
-                                People
-                            </h4>
-
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns:
-                                        "repeat(auto-fill, minmax(min(180px, 100%), 1fr))",
-                                    gap: 10,
-
-                                }}
-                            >
-                                {peopleVideos.map((video) => (
-                                    <ResultItem
-                                        key={video.id}
-                                        id={video.id}
-                                        kind="video"
-                                        start={timestamp}
-                                        end={0}
-                                        preload="none"
-                                        controls={false}
-                                        mediaClassName="ri-media"
-                                        mediaItemName={""}
-                                        getPosterSrc={() => video.thumbnail ?? ""}
-                                        getVideoSrc={() => video.url}
-                                        onBeforeOpen={() => savePovBeforeOpen(video)}
-                                        caption={video.name}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {roomVideos.length > 0 && (
-                        <div>
-                            <h4
-                                style={{
-                                    margin: "0 0 8px",
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                }}
-                            >
-                                Rooms
-                            </h4>
-
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns:
-                                        "repeat(auto-fill, minmax(min(180px, 100%), 1fr))",
-                                    gap: 10,
-                                }}
-                            >
-                                {roomVideos.map((video) => (
-                                    <ResultItem
-                                        key={video.id}
-                                        id={video.id}
-                                        kind="video"
-                                        start={timestamp}
-                                        end={0}
-                                        preload="none"
-                                        controls={false}
-                                        mediaClassName="ri-media"
-                                        mediaItemName={""}
-                                        getPosterSrc={() => video.thumbnail ?? ""}
-                                        getVideoSrc={() => video.url}
-                                        onBeforeOpen={() => savePovBeforeOpen(video)}
-                                        caption={video.name}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-        </DisclosureSection>
-    );
+    if (!info) return null;
+    const hour = getHourFromFilename(info.filename);
+    return <DisclosureSection open={open} onToggle={() => setOpen(value => !value)}
+        title={`Other POVs · ${info.day} at ${String(hour ?? "").padStart(2, "0")}:00`}
+        count={catalogueLoading || catalogueError ? undefined : videos.length} loading={open && catalogueLoading}>
+        {catalogueError && <div className="vp-message vp-message--error" role="alert">{catalogueError}</div>}
+        {!catalogueLoading && !catalogueError && !videos.length && <div className="vp-message">No other recordings are indexed for this hour.</div>}
+        {previewLoading && <p className="sc-personHint" role="status">Loading previews… You can open any POV now.</p>}
+        {videos.length > 0 && <div className="vp-povGroups">
+            {(["person", "room"] as const).map(kind => {
+                const group = videos.filter(video => video.kind === kind);
+                return group.length > 0 && <div key={kind}>
+                    <h4 className="vp-povHeading">{kind === "person" ? "People" : "Rooms"}</h4>
+                    <div className="vp-povGrid">
+                        {group.map(video => <ResultItem key={video.id} id={video.id} kind="video" posterOnly start={timestamp} end={0}
+                            preload="none" controls={false} mediaClassName="ri-media" mediaItemName={mediaNameFromPath(video.file, "CASTLE") ?? ""}
+                            getPosterSrc={() => previews[video.id] || pendingPoster} getVideoSrc={() => video.stream || video.file}
+                            getFallbackVideoSrc={() => video.file} onBeforeOpen={() => savePovBeforeOpen(video)} caption={video.source}/>) }
+                    </div>
+                </div>;
+            })}
+        </div>}
+    </DisclosureSection>;
 }

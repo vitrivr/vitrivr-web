@@ -29,6 +29,7 @@ type ImageProps = {
 };
 type VideoProps = {
     kind: "video";
+    posterOnly?: boolean;
     showDuration?: boolean;
     start: number;
     end: number;
@@ -82,7 +83,7 @@ export default function ResultItem(props: ResultItemProps) {
         const poster = getPosterSrc?.(id) || thumbnailURL(id, settings.frontendView);
         const fallbackSrc = props.getFallbackVideoSrc?.(id) || videoURL(props.mediaItemName, settings.frontendView);
         displayCaption = caption;
-        media = <HlsVideoPlayer className={mediaClassName} src={src} fallbackSrc={fallbackSrc} poster={poster}
+        media = props.posterOnly ? <img className={mediaClassName} src={poster} alt={typeof caption === "string" ? caption : "Video preview"} decoding="async"/> : <HlsVideoPlayer className={mediaClassName} src={src} fallbackSrc={fallbackSrc} poster={poster}
             controls={controls} autoPlay={autoPlay} loop={loop} muted={muted} preload={preload} startTime={start}
             style={{objectFit: "cover"}}/>;
     } else if (props.kind === "custom") {

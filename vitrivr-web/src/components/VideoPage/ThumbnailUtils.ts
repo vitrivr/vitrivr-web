@@ -2,6 +2,8 @@ import {mediaConfiguration} from "../../lib/mediaSources.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
 import {mediaCaptureUrl} from "../../lib/mediaProxy.ts";
 import {uuid} from "../../utils/uuid.ts";
+import Hls from "hls.js";
+import {isHlsSource} from "../../lib/videoPlayback.ts";
 
 type PovKind = "person" | "room";
 
@@ -171,12 +173,14 @@ export const uuidFromUuidV4 = () => {
  */
 const thumbnailCache = new Map<string, string>();
 
-export async function generateVideoThumbnail(url: string, seekTime: number, signal?: AbortSignal): Promise<string | undefined> {
+export async function generateVideoThumbnail(url: string, seekTime: number, signal?: AbortSignal, streamUrl?: string): Promise<string | undefined> {
     if (signal?.aborted) return undefined;
     const key = `${url}@${seekTime}`;
     const cached = thumbnailCache.get(key);
     if (cached) return cached;
-    const captureUrl = mediaCaptureUrl(url, mediaConfiguration().videoBase,
+    const config = mediaConfiguration();
+    const useStream = streamUrl && (Hls.isSupported() || document.createElement("video").canPlayType("application/vnd.apple.mpegurl"));
+    const captureUrl = mediaCaptureUrl(useStream ? streamUrl : url, useStream ? config.hlsBase : config.videoBase,
         import.meta.env.VITE_MEDIA_CAPTURE_PROXY ?? (import.meta.env.DEV ? "/frame-media" : ""));
     const thumbnail = await captureVideoThumbnail(captureUrl, seekTime, signal);
     if (thumbnail && !signal?.aborted) {
@@ -191,6 +195,8 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
         const video = document.createElement("video");
         const canvas = document.createElement("canvas");
         let finished = false;
+        let hls: Hls | undefined;
+        let captureTime = Math.max(0, seekTime);
 
         const timeout = window.setTimeout(() => {
             console.warn("Thumbnail generation timed out:", url);
@@ -208,6 +214,7 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
             video.onloadeddata = null;
             video.onseeked = null;
             video.onerror = null;
+            hls?.destroy();
             video.removeAttribute("src");
             video.load();
         }
@@ -220,6 +227,7 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
         }
 
         function captureFrame() {
+            if (finished || video.seeking || video.readyState < 2 || Math.abs(video.currentTime - captureTime) > 0.5) return;
             try {
                 if (!video.videoWidth || !video.videoHeight) {
                     console.warn("Video has no dimensions:", url, video.videoWidth, video.videoHeight);
@@ -274,6 +282,7 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
                 video.duration > 0
             ) {
                 const targetTime = Math.min(seekTime, Math.max(0, video.duration - 0.1));
+                captureTime = targetTime;
                 console.log("Seeking thumbnail to:", targetTime);
                 if (targetTime <= 0.01) {
                     video.onloadeddata = captureFrame;
@@ -289,13 +298,24 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
             }
         };
 
+        video.onloadeddata = captureFrame;
+
         video.onseeked = () => {
             console.log("Thumbnail seek completed:", url, video.currentTime);
             captureFrame();
         };
 
-        video.src = url;
-        video.load();
+        if (isHlsSource(url) && Hls.isSupported()) {
+            // Read only a small, low-resolution buffer around the requested frame.
+            hls = new Hls({startPosition: Math.max(0, seekTime), startLevel: 0,
+                maxBufferLength: 4, maxMaxBufferLength: 8, maxBufferSize: 2_000_000, backBufferLength: 0});
+            hls.on(Hls.Events.ERROR, (_event, data) => { if (data.fatal) finish(undefined); });
+            hls.loadSource(url);
+            hls.attachMedia(video);
+        } else {
+            video.src = url;
+            video.load();
+        }
     });
 }
 

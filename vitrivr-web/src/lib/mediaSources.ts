@@ -63,6 +63,11 @@ export function directVideoUrl(path: string | undefined, view: FrontendView = "C
             relative = index >= 0 ? relative.slice(index + marker.length) : relative.split("/").at(-1) ?? "";
         }
     }
+    if (view === "CASTLE") {
+        // CASTLE storage mounts can change; the public recording hierarchy does not.
+        const recording = relative.match(/(?:^|\/)(day\d+\/[^/]+\/video\/[^/]+)$/i);
+        if (recording) relative = recording[1];
+    }
     const parts = relative.split("/").filter(Boolean);
     if (!parts.length || parts.some(part => decodeSegment(part) === "..")) return "";
     const encoded = parts.map(part => encodeURIComponent(decodeSegment(part))).join("/");

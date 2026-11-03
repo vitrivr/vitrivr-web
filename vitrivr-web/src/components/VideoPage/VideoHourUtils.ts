@@ -16,18 +16,14 @@ export function parseVideoURL(url: string): ParsedVideoUrl | null {
     if (!url) return null;
 
     try {
-        const splitted = url.split("/")
-        const len = splitted.length
-        const hour = splitted[len-1]
-        const name = splitted[len-2]
-        const day = splitted[len-3]
-
-
+        const parsed = new URL(url);
+        const match = parsed.pathname.match(/\/(day\d+)\/([^/]+)\/video\/([^/]+)$/i);
+        if (!match) return null;
         return {
-            origin: MEDIA_PATH_ORIGIN,
-            day: day,
-            source: name,
-            filename: hour,
+            origin: parsed.origin,
+            day: decodeURIComponent(match[1]),
+            source: decodeURIComponent(match[2]),
+            filename: decodeURIComponent(match[3]),
         };
     } catch {
         console.log("Could not parse URL");
@@ -66,7 +62,10 @@ export function getVideoAtOffset(src: string, offset: number): string | null {
             return null;
         }
 
-        parts[parts.length - 1] = `${targetHour}.mp4`;
+        const digits = filename.match(/^(\d+)/)?.[1] ?? "";
+        const padded = digits.startsWith("0") && digits.length > 1;
+        if (offset === 0) return src;
+        parts[parts.length - 1] = `${padded ? String(targetHour).padStart(digits.length, "0") : targetHour}${filename.slice(digits.length)}`;
         url.pathname = "/" + parts.join("/");
         return url.toString();
     } catch {

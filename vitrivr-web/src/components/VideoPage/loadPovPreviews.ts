@@ -1,7 +1,7 @@
 import type {HourlyVideo} from "./ThumbnailUtils.ts";
 
 type PreviewDependencies = {
-    exists: (url: string, signal: AbortSignal) => Promise<boolean>;
+    exists?: (url: string, signal: AbortSignal) => Promise<boolean>;
     thumbnail: (url: string, time: number, signal: AbortSignal) => Promise<string | undefined>;
 };
 
@@ -40,7 +40,7 @@ export async function loadPovPreviews(
             const video = candidates[index++];
             if (!video) return;
             try {
-                if (!await dependencies.exists(video.url, signal) || signal.aborted) continue;
+                if ((dependencies.exists && !await dependencies.exists(video.url, signal)) || signal.aborted) continue;
                 onUpdate(video);
                 // Availability checks continue while the separate decoder queue runs.
                 previews.push(loadThumbnail(video));

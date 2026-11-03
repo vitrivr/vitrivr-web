@@ -9,8 +9,11 @@ import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
+import VideoQA from "./VideoQA.tsx";
 import {getHourFromFilename, getVideoAtOffset, getVideoViewPlayback, getVideoFilename, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
+import {useCastleRecordings} from "./useCastleRecordings.ts";
+import {findCastleRecording} from "./castleRecordings.ts";
 import {generateVideoThumbnail} from "./ThumbnailUtils.ts";
 import {requestCLIPVector} from "../../lib/pythonDescriptorServer.ts";
 import HlsVideoPlayer from "./HLSVideoPlayer.tsx";
@@ -54,7 +57,8 @@ export default function VideoPage() {
     }
         | null;
 
-    const {items} = useSearch();
+    const {items, schema} = useSearch();
+    const {recordings, loading: recordingsLoading, error: recordingsError} = useCastleRecordings(schema, isCastleView);
     const item = items.find((it) => it.id === id);
     const mediaItemName = item?.mediaItemName ?? routeState?.mediaItemName;
     const src = item?.url ?? routeState?.src ?? "";
@@ -79,8 +83,9 @@ export default function VideoPage() {
     const directFile = /\.mp4(?:$|[?#])/i.test(src) ? src : "";
     const hourlySrc = !isCastleView && directFile ? directFile : mp4Location || directFile;
     const playback = getVideoViewPlayback(settings.frontendView, src, hourlySrc, hourOffset);
-    const activeMp4Src = playback.file;
-    const activeVideoSrc = playback.src;
+    const activeRecording = isCastleView ? findCastleRecording(recordings, playback.file) : undefined;
+    const activeMp4Src = activeRecording?.file || playback.file;
+    const activeVideoSrc = activeRecording?.stream || playback.src;
     const activeOffset = playback.offset;
     console.log("Item media name is: "+item?.mediaItemName)
 
@@ -101,15 +106,17 @@ export default function VideoPage() {
      * Move the whole 3-video window, when arrow is clicked
      */
     const goPreviousHour = () => {
-        setHourOffset((current) =>
-            getVideoAtOffset(hourlySrc, current - 1) ? current - 1 : current
-        );
+        setHourOffset(current => {
+            const file = getVideoAtOffset(hourlySrc, current - 1);
+            return file && (!recordings.length || findCastleRecording(recordings, file)) ? current - 1 : current;
+        });
     };
 
     const goNextHour = () => {
-        setHourOffset((current) =>
-            getVideoAtOffset(hourlySrc, current + 1) ? current + 1 : current
-        );
+        setHourOffset(current => {
+            const file = getVideoAtOffset(hourlySrc, current + 1);
+            return file && (!recordings.length || findCastleRecording(recordings, file)) ? current + 1 : current;
+        });
     };
 
     useEffect(() => {
@@ -280,7 +287,7 @@ export default function VideoPage() {
             <div className="vp-content">
                 <section className={`vp-playback${isCastleView ? "" : " vp-playback--vbs"}`} aria-label={isCastleView ? "Video playback and recording navigation" : "Video playback"}>
                     {isCastleView && <div className="vp-hour vp-hour--previous">
-                        <HourGallery src={hourlySrc} direction="previous" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour}/>
+                        <HourGallery src={hourlySrc} direction="previous" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour} recordings={recordings}/>
                     </div>}
                     <div className="vp-mainPlayer">
                         <div className="vp-playerHeading">
@@ -308,10 +315,12 @@ export default function VideoPage() {
                         </div>
                     </div>
                     {isCastleView && <div className="vp-hour vp-hour--next">
-                        <HourGallery src={hourlySrc} direction="next" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour}/>
+                        <HourGallery src={hourlySrc} direction="next" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour} recordings={recordings}/>
                     </div>}
                 </section>
-                {isCastleView && <POVs src={activeMp4Src || activeVideoSrc} timestamp={playbackTimestamp}/>}
+                {isCastleView && <VideoQA key={`${schema}:${id}:${activeMp4Src}`} file={activeMp4Src || mediaItemName || ""}/>}
+                {isCastleView && <POVs src={activeMp4Src || activeVideoSrc} timestamp={playbackTimestamp}
+                    recordings={recordings} catalogueLoading={recordingsLoading} catalogueError={recordingsError}/>}
                 <NearestNeighbor id={id} queryVector={nnVector} onResultsChange={setHasNeighbors}/>
             </div>
         </div>
