@@ -74,8 +74,8 @@ export default function VideoQA({file}: {file: string}) {
                         placeholder="Ask about this recording…"/>
                 </label>
                 <div className="vp-qaActions">
-                    <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? "Answering…" : "Ask Video QA"}</button>
-                    {loading && <button className="btn" type="button" onClick={() => activeRequest.current?.abort()}>Cancel</button>}
+                    <button className="btn btn-primary" type="submit" data-log-action="qa.submit" disabled={loading}>{loading ? "Answering…" : "Ask Video QA"}</button>
+                    {loading && <button className="btn" type="button" data-log-action="qa.cancel" onClick={() => activeRequest.current?.abort()}>Cancel</button>}
                 </div>
             </div>
             <fieldset className="vp-qaFields" disabled={loading}>

@@ -6,6 +6,7 @@ import {useSearch} from "../state/SearchContext.tsx";
 import {activeQueryFilters, enabledResourceFilters} from "../lib/queryFilters.ts";
 import {selectedPersonNames} from "../lib/personQuery.ts";
 import {vlmModelOptions, type VlmRerankingPreferences} from "../lib/vlm.ts";
+import LoggingPanel from "../logging/LoggingPanel.tsx";
 import "./FrontendSettingsPanel.css";
 
 type Choice = {value: string; label: string};
@@ -149,6 +150,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
                 </label>)}
             </div>
         </details>
+        <LoggingPanel/>
         {error && <p className="fs-error" role="alert">{error}</p>}
         {notice && <p className="fs-note" role="status">{notice}</p>}
         <div className="fs-footer">

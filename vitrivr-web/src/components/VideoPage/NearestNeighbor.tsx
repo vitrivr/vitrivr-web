@@ -211,6 +211,8 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
                     <ResultItem
                         key={neighbor.id}
                         id={neighbor.id}
+                        logFrameRank={neighbor.searchRank}
+                        videoRank={neighbor.videoRank}
                         kind="video"
                         mediaItemName={neighbor.mediaItemName ?? videoNameFromUrl(neighbor.url)}
                         start={neighbor.start}

@@ -93,6 +93,7 @@ type MediaKind = "image" | "video" | "custom";
 
 export type MediaItem = {
     searchRank?: number;
+    videoRank?: number;
     score?: number;
     properties?: Record<string, string>;
     id: string;
@@ -426,7 +427,13 @@ export function SearchCard() {
     }, []);
 
     // Assign ranks before filtering/grouping so badges always refer to the original result order.
-    let filteredItems: MediaItem[] = items.map((item, index) => ({...item, searchRank: item.searchRank ?? index + 1}))
+    const originalVideoRanks = new Map<string, number>();
+    for (const item of items) {
+        const key = item.parentId || item.mediaItemName || item.id;
+        if (!originalVideoRanks.has(key)) originalVideoRanks.set(key, originalVideoRanks.size + 1);
+    }
+    let filteredItems: MediaItem[] = items.map((item, index) => ({...item, searchRank: item.searchRank ?? index + 1,
+        videoRank: item.videoRank ?? originalVideoRanks.get(item.parentId || item.mediaItemName || item.id)}))
         .filter(i => mediaFilter[i.kind]);
 
     if (mediaFilter.uniqueVideos && resultView === "ranked") {
@@ -716,12 +723,12 @@ export function SearchCard() {
                             </Flash>
 
                             <div className="stack sc-queryActions">
-                                {!isPrak && !blocks.some(isFederatedBlock) && <button className="btn sc-addBlock" type="button" disabled={modalityOptions.length === 0} onClick={addBlock}>+ Add temporal block</button>}
-                                <button className="btn btn-primary" disabled={loading || (!isPrak && modalityOptions.length === 0)} onClick={onSearch}>
+                                {!isPrak && !blocks.some(isFederatedBlock) && <button className="btn sc-addBlock" type="button" data-log-action="query.add_temporal_block" disabled={modalityOptions.length === 0} onClick={addBlock}>+ Add temporal block</button>}
+                                <button className="btn btn-primary" data-log-action="query.submit" disabled={loading || (!isPrak && modalityOptions.length === 0)} onClick={onSearch}>
                                     <span>{loading ? "Searching…" : "Search"}</span>
                                     <span className="sc-shortcut">Ctrl / ⌘ ↵</span>
                                 </button>
-                                <button className="btn sc-reset" type="button" onClick={resetAll}
+                                <button className="btn sc-reset" type="button" data-log-action="query.reset" onClick={resetAll}
                                     disabled={loading && items.length === 0 && raw === ""}>Reset</button>
                             </div>
                         </div>
@@ -793,8 +800,8 @@ export function SearchCard() {
                                 )}
                                 {resultView === "video" ? (
                                     <div className="sc-videoGroups">
-                                        {resultGroups.slice(0, visibleCount).map(group => (
-                                            <section className="sc-videoGroup" key={group.key} aria-label={group.label}>
+                                        {resultGroups.slice(0, visibleCount).map((group, index) => (
+                                            <section className="sc-videoGroup" key={group.key} aria-label={group.label} data-log-video-group-rank={index + 1}>
                                                 <div className="sc-videoGroupHeading">
                                                     <h3 title={group.label}>{group.label}</h3>
                                                     <span>{group.items.length} match{group.items.length === 1 ? "" : "es"}</span>

@@ -4,6 +4,9 @@ import App from "./App";
 import "./styles/styles.css"
 import {AuthProvider} from "./state/AuthContext.tsx";
 import {BrowserRouter} from "react-router-dom";
+import {startInteractionLogging} from "./logging/bootstrap.ts";
+
+startInteractionLogging();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>

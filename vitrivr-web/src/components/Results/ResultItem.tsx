@@ -11,6 +11,9 @@ import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generate
 type BaseProps = {
     id: string,
     searchRank?: number,
+    logFrameRank?: number,
+    videoRank?: number,
+    displayPosition?: number,
     evidence?: SourceEvidence[],
     mappingError?: string,
     resultScore?: number,
@@ -205,6 +208,13 @@ export default function ResultItem(props: ResultItemProps) {
     return (
         <div
             className="ri-wrap"
+            data-log-result-id={id}
+            data-log-frame-rank={props.logFrameRank ?? props.searchRank}
+            data-log-video-rank={props.videoRank}
+            data-log-position={props.displayPosition}
+            data-log-media-name={props.kind === "video" ? props.mediaItemName : undefined}
+            data-log-start={props.kind === "video" ? props.start : undefined}
+            data-log-end={props.kind === "video" ? props.end : undefined}
             onFocus={() => setFocused(true)}
             onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);

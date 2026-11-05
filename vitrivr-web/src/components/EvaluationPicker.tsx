@@ -34,79 +34,58 @@ import {useEffect, useMemo, useState} from "react";
 import {useAuth} from "../state/AuthContext";
 import {EvaluationClientApiFactory} from "../dres/generated/api";
 import {dresAxios} from "../dres/generated/api/dresAxios";
+import {dresErrorMessage} from "../dres/auth.ts";
+import {loadEvaluationChoices, type EvaluationChoice} from "../dres/evaluations.ts";
 import "./EvaluationPicker.css";
-
-type EvalRow = {
-    id: string;
-    name: string;
-    taskName?: string;
-    taskType?: string;
-};
 
 type EvaluationPickerProps = {
     onClose?: () => void;
 };
 
 export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
-    const {session, setEvaluationId} = useAuth();
+    const {session, setEvaluationId, logout} = useAuth();
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
     const api = useMemo(() => EvaluationClientApiFactory(undefined, basePath, dresAxios), [basePath]);
 
-    const [rows, setRows] = useState<EvalRow[]>([]);
+    const [rows, setRows] = useState<EvaluationChoice[]>([]);
     const [selected, setSelected] = useState<string>("");
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
-        let cancelled = false;
+        const controller = new AbortController();
 
         async function load() {
-            if (!session) return;
+            if (!session) {
+                setLoading(false);
+                setErr("Sign in to DRES before selecting an evaluation.");
+                return;
+            }
 
             setLoading(true);
             setErr(null);
+            setRows([]);
+            setSelected("");
 
             try {
-                const evaluationsResp = await api.getApiV2ClientEvaluationList(session);
-                const evaluations = evaluationsResp.data ?? [];
-
-                const display: EvalRow[] = [];
-
-                for (const ev of evaluations) {
-                    const id = (ev as any).id;
-                    const name = (ev as any).name;
-                    if (!id || !name) continue;
-
-                    try {
-                        const taskResp = await api.getApiV2ClientEvaluationCurrentTaskByEvaluationId(id, session);
-                        const task = taskResp.data as any;
-                        display.push({
-                            id,
-                            name,
-                            taskName: task?.name,
-                            taskType: task?.taskType,
-                        });
-                    } catch {
-                        display.push({id, name});
-                    }
-                }
-
-                if (!cancelled) {
+                await loadEvaluationChoices(api, session, controller.signal, display => {
                     setRows(display);
                     setSelected(display[0]?.id ?? "");
-                }
-            } catch (e: any) {
-                if (!cancelled) setErr(e?.message ?? "Failed to load evaluations.");
+                    setLoading(false);
+                }, (id, patch) => setRows(previous => previous.map(row => row.id === id ? {...row, ...patch} : row)));
+            } catch (error) {
+                if (!controller.signal.aborted) setErr(dresErrorMessage(error));
             } finally {
-                if (!cancelled) setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
         load();
         return () => {
-            cancelled = true;
+            controller.abort();
         };
-    }, [api, session]);
+    }, [api, session, attempt]);
 
     const onContinue = () => {
         if (!selected) return;
@@ -137,8 +116,8 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
 
                 <div className="ep-subtitle">Choose the active evaluation you want to submit to.</div>
 
-                {loading && <div className="ep-muted">Loading…</div>}
-                {err && <div className="ep-error">{err}</div>}
+                {loading && <div className="ep-muted" role="status">Loading evaluations…</div>}
+                {err && <div className="ep-error" role="alert">{err}</div>}
 
                 {!loading && !err && rows.length === 0 && (
                     <div className="ep-error">No evaluations found for this user.</div>
@@ -157,7 +136,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                                 <div className="ep-itemText">
                                     <div className="ep-itemName">{r.name}</div>
                                     <div className="ep-itemMeta">
-                                        {r.taskName ? `Task: ${r.taskName}` : "Task: (not available)"}{" "}
+                                        {r.taskLoading ? "Loading task…" : r.taskName ? `Task: ${r.taskName}` : "Task: (not available)"}{" "}
                                         {r.taskType ? `• Type: ${r.taskType}` : ""}
                                     </div>
                                     <div className="ep-itemId">{r.id}</div>
@@ -168,7 +147,9 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                 )}
 
                 <div className="ep-actions">
-                    <button className="ep-btn" type="button" disabled={!selected} onClick={onContinue}>
+                    {err && <button className="ep-btn" type="button" onClick={() => setAttempt(value => value + 1)}>Retry</button>}
+                    {!onClose && <button className="ep-btn" type="button" onClick={() => void logout()}>Sign out</button>}
+                    <button className="ep-btn" type="button" disabled={loading || !selected} onClick={onContinue}>
                         Continue
                     </button>
                 </div>

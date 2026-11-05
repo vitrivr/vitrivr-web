@@ -4,12 +4,13 @@ import React, {createContext, useContext, useEffect, useMemo, useState} from "re
 import type {ApiUser, LoginRequest} from "../dres/generated/api";
 import {UserApiFactory} from "../dres/generated/api";
 import {dresAxios} from "../dres/generated/api/dresAxios";
+import {authenticateDres, type DresLoginOptions} from "../dres/auth.ts";
 
 type AuthState = {
     status: "loading" | "loggedOut" | "loggedIn";
     user: ApiUser | null;
     session: string | null;
-    login: (req: LoginRequest) => Promise<void>;
+    login: (req: LoginRequest, options?: DresLoginOptions) => Promise<void>;
     logout: () => Promise<void>;
     loginOpen: boolean;
     openLogin: () => void;
@@ -66,20 +67,13 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = async (req: LoginRequest) => {
-        // 1) login (sets cookie)
-        const loginResp = await userApi.postApiV2Login(req);
-        const loggedInUser = loginResp.data ?? null;
-
-        // 2) fetch sessionId (cookie-authenticated call)
-        const sessionResp = await userApi.getApiV2UserSession();
-        const sessionId = sessionResp.data;
+    const login = async (req: LoginRequest, options?: DresLoginOptions) => {
+        const {user: loggedInUser, session: sessionId} = await authenticateDres(userApi, req, options);
+        if (options?.signal?.aborted) throw new DOMException("Sign-in cancelled.", "AbortError");
 
         setUser(loggedInUser);
         setSession(sessionId);
         setStatus("loggedIn");
-
-        setLoginOpen(false);
 
         setEvaluationId(null);
         setLoginOpen(false);
@@ -93,24 +87,24 @@ export function AuthProvider({children}: { children: React.ReactNode }) {
     };
 
     const logout = async () => {
-        try {
-            // optional server-side logout
-            // note: endpoint accepts session query param, but cookie should also work
-            if (session) await userApi.getApiV2Logout(session);
-        } catch {
-            // ignore
-        }
-
+        // Clear local state immediately even when the remote server is unreachable.
+        const previousSession = session;
         setUser(null);
         setSession(null);
         setStatus("loggedOut");
-
+        setEvaluationId(null);
         try {
             window.localStorage.removeItem(LS_SESSION);
             window.localStorage.removeItem(LS_USER);
+        } catch { /* Browser storage is optional. */ }
+        try {
+            // optional server-side logout
+            // note: endpoint accepts session query param, but cookie should also work
+            if (previousSession) await userApi.getApiV2Logout(previousSession);
         } catch {
             // ignore
         }
+
     };
 
     const value: AuthState = {

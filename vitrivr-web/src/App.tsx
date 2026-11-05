@@ -5,6 +5,7 @@ import {SearchCard} from "./components/SearchCard";
 import VideoPage from "./components/VideoPage/VideoPage.tsx";
 import {FrontendSettingsProvider} from "./state/FrontendSettingsContext.tsx";
 import {SearchProvider} from "./state/SearchContext.tsx";
+import LoggingObserver from "./logging/LoggingObserver.tsx";
 import "./styles/styles.css"
 
 function Home() {
@@ -25,6 +26,7 @@ export default function App() {
     return (
         <FrontendSettingsProvider>
         <SearchProvider key={searchSession} initial={{blocks: initialBlocks}}>
+            <LoggingObserver/>
             <Layout onHome={resetSearch}>
                 <Routes>
                     <Route path="/" element={<Home/>}/>

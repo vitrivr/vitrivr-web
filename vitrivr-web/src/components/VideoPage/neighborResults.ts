@@ -64,7 +64,8 @@ function nsToSeconds(value: number): number {
 export function mapNeighborResults(response: RetrievablesResponse, urls: {video: (id: string) => string; thumbnail: (id: string) => string; file?: (path: string) => string}, view: FrontendView = "CASTLE"): MediaItem[] {
     const retrievables = response.retrievables ?? [];
     const output: MediaItem[] = [];
-    for (const retrievable of retrievables) {
+    const videoRanks = new Map<string, number>();
+    for (const [rank, retrievable] of retrievables.entries()) {
         const id = retrievable.id?.trim();
 
         if (!id || retrievable.type !== "SEGMENT") {
@@ -81,9 +82,13 @@ export function mapNeighborResults(response: RetrievablesResponse, urls: {video:
         const videoUrl = filePath ? (urls.file?.(filePath) ?? videoURL(filePath, view)) : "";
         const url = hlsUrl || videoUrl;
         if (!url) continue;
+        const videoKey = parentId || mediaItemName || id;
+        if (!videoRanks.has(videoKey)) videoRanks.set(videoKey, videoRanks.size + 1);
 
         output.push({
             id,
+            searchRank: rank + 1,
+            videoRank: videoRanks.get(videoKey),
             parentId,
             kind: "video",
             mediaItemName,

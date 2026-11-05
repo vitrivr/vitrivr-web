@@ -1,3 +1,5 @@
+import {loggedDescriptorFetch} from "../logging/adapters/descriptor.ts";
+
 export const DESCRIPTOR_SERVER = import.meta.env.VITE_DESCRIPTOR_API_BASE
     ?? (import.meta.env.DEV ? "/descriptor-api" : import.meta.env.VITE_PYTHON_DESCRIPTOR_SERVER);
 
@@ -9,7 +11,7 @@ export async function requestCLIPVector(base64Image: string, signal?: AbortSigna
     const formData = new FormData(); // this allows us to skip the header part.
     formData.append("data", base64Image);
 
-    const response = await fetch(
+    const response = await loggedDescriptorFetch(
         `${DESCRIPTOR_SERVER.replace(/\/$/, "")}/extract/clip_image`,
         {
             method: "POST",

@@ -27,8 +27,9 @@
 
 "use client";
 
-import React, {useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {useAuth} from "../state/AuthContext";
+import {dresErrorMessage, type DresLoginStage} from "../dres/auth.ts";
 import "./LoginModal.css";
 
 type LoginModalProps = {
@@ -41,19 +42,34 @@ export default function LoginModal({onClose}: LoginModalProps) {
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [stage, setStage] = useState<DresLoginStage>("credentials");
+    const activeRequest = useRef<AbortController | null>(null);
+
+    useEffect(() => () => {
+        activeRequest.current?.abort();
+        activeRequest.current = null;
+    }, []);
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (activeRequest.current) return;
+        const controller = new AbortController();
+        activeRequest.current = controller;
         setError(null);
         setSubmitting(true);
 
         try {
-            await login({username: username.trim(), password});
+            await login({username: username.trim(), password}, {signal: controller.signal, onStage: next => {
+                if (!controller.signal.aborted) setStage(next);
+            }});
             onClose?.();
-        } catch (err: any) {
-            setError(err?.response?.data?.description ?? err?.message ?? "Login failed.");
+        } catch (err) {
+            if (!controller.signal.aborted && activeRequest.current === controller) setError(dresErrorMessage(err));
         } finally {
-            setSubmitting(false);
+            if (activeRequest.current === controller) {
+                activeRequest.current = null;
+                setSubmitting(false);
+            }
         }
     };
 
@@ -65,7 +81,7 @@ export default function LoginModal({onClose}: LoginModalProps) {
                         type="button"
                         className="lm-close"
                         aria-label="Close login"
-                        onClick={onClose}
+                        onClick={() => { activeRequest.current?.abort(); onClose(); }}
                     >
                         ×
                     </button>
@@ -76,7 +92,7 @@ export default function LoginModal({onClose}: LoginModalProps) {
                     <div className="lm-subtitle">Sign in to DRES to continue.</div>
                 </div>
 
-                <form className="lm-form" onSubmit={onSubmit}>
+                <form className="lm-form" onSubmit={onSubmit} data-log-private aria-busy={submitting}>
                     <label className="lm-label">
                         Username
                         <input
@@ -84,6 +100,8 @@ export default function LoginModal({onClose}: LoginModalProps) {
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             autoComplete="username"
+                            required
+                            disabled={submitting}
                             autoFocus
                         />
                     </label>
@@ -96,14 +114,16 @@ export default function LoginModal({onClose}: LoginModalProps) {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             autoComplete="current-password"
+                            disabled={submitting}
                         />
                     </label>
 
-                    {error && <div className="lm-error">{error}</div>}
+                    {error && <div className="lm-error" role="alert">{error}</div>}
 
                     <button className="lm-btn" type="submit" disabled={submitting}>
-                        {submitting ? "Signing in…" : "Sign in"}
+                        {submitting ? stage === "session" ? "Checking session…" : "Signing in…" : "Sign in"}
                     </button>
+                    {submitting && <button className="btn" type="button" onClick={() => activeRequest.current?.abort()}>Cancel</button>}
                 </form>
             </div>
         </div>

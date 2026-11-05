@@ -51,6 +51,7 @@ const HlsVideoPlayer = forwardRef<HTMLVideoElement, HlsVideoPlayerProps>(
         }, [src, fallbackSrc, startTime, preload, autoPlay, controls]);
         return <>
             <video ref={attachVideoRef} poster={poster} controls={controls} autoPlay={autoPlay} loop={loop} muted={muted}
+                data-log-media-src={src} data-log-fallback-src={fallbackSrc} data-log-start-time={startTime}
                 playsInline preload={preload} className={className}
                 onTimeUpdate={event => onTimeUpdate?.(event.currentTarget.currentTime)}
                 style={{display: "block", width: "100%", aspectRatio: "16 / 9", objectFit: "contain", borderRadius: 8, background: "#000", ...style}}/>
