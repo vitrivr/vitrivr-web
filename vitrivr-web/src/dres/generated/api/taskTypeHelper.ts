@@ -1,11 +1,8 @@
 import {EvaluationClientApiFactory} from "./api.ts";
 import {dresAxios} from "./dresAxios.ts";
 
-export type SubmissionKind =
-    | "text"
-    | "item"
-    | "temporal"
-    | "unknown";
+import {submissionKindFromTask, type SubmissionKind, type SubmissionTask} from "../../taskKind.ts";
+export type {SubmissionKind} from "../../taskKind.ts";
 
 const BASE_URL = (import.meta.env.VITE_DRES_BASE_URL ?? "").toString();
 
@@ -18,28 +15,10 @@ export async function getCurrentSubmissionKind(params: {
     evaluationId: string;
     session: string;
 }): Promise<SubmissionKind> {
-    const {evaluationId, session} = params;
+    return submissionKindFromTask(await getCurrentSubmissionTask(params));
+}
 
-    const resp = await evalClient.getApiV2ClientEvaluationCurrentTaskByEvaluationId(
-        evaluationId,
-        session
-    );
-
-    const task = resp.data as any;
-    if (!task) return "unknown";
-
-    const taskType: string | undefined = task.taskType ?? task.type ?? task.name;
-
-    if (!taskType) return "unknown";
-
-    const t = taskType.toLowerCase();
-    //console.log("taskType", taskType);
-
-
-    // Could be implemented more pretty, but oh well...
-    if (t.includes("qa")) {
-        return "text";
-    }
-
-    return "item";
+export async function getCurrentSubmissionTask(params: {evaluationId: string; session: string}): Promise<SubmissionTask> {
+    const resp = await evalClient.getApiV2ClientEvaluationCurrentTaskByEvaluationId(params.evaluationId, params.session);
+    return resp.data;
 }
