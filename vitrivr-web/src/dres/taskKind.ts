@@ -1,3 +1,5 @@
+import {videoQaIdFromPath} from "../lib/videoQa.ts";
+
 export type SubmissionKind = "text" | "item" | "temporal" | "unknown";
 
 /** DRES task types use display names, e.g. "Visual Question Answering". */
@@ -13,8 +15,15 @@ export function submissionKindFromTask(task: SubmissionTask | null | undefined):
     return "item";
 }
 
-/** Match the viewer's DRES item identifier, rather than sending a filesystem path. */
-export function submissionMediaName(path: string): string {
+/** CASTLE identifies recordings by day, camera and hour; VBS uses the filename stem. */
+export function submissionMediaName(path: string, view = "VBS"): string {
+    if (view === "CASTLE") {
+        const recordingId = videoQaIdFromPath(path);
+        if (recordingId) return recordingId;
+        const canonicalId = path.trim().replace(/\.mp4$/i, "");
+        if (/^day[1-9]\d*_[A-Za-z0-9]+_\d{2}$/.test(canonicalId)) return canonicalId;
+        throw new Error("Cannot identify the CASTLE recording for DRES. Its day, person or room, and hour are required.");
+    }
     let value = path;
     try { if (/^https?:\/\//i.test(path)) value = new URL(path).pathname; } catch { /* Use the supplied path. */ }
     return value.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "";

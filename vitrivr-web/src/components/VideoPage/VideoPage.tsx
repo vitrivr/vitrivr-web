@@ -13,7 +13,7 @@ import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
 import VideoQA from "./VideoQA.tsx";
-import {getHourFromFilename, getVideoAtOffset, getVideoViewPlayback, getVideoFilename, parseVideoURL} from "./VideoHourUtils.ts";
+import {getHourFromFilename, getVideoAtOffset, getVideoViewPlayback, parseVideoURL} from "./VideoHourUtils.ts";
 import HourGallery from "./HourGallery.tsx";
 import {useCastleRecordings} from "./useCastleRecordings.ts";
 import {findCastleRecording} from "./castleRecordings.ts";
@@ -218,7 +218,7 @@ export default function VideoPage() {
                 }
                 const tSec = videoRef.current?.currentTime ?? start;
                 const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
-                const videoName = submissionMediaName(activeInfo?.filename ?? getVideoFilename(mediaItemName || activeMp4Src || src));
+                const videoName = submissionMediaName(isCastleView ? activeMp4Src || mediaItemName || src : mediaItemName || activeMp4Src || src, settings.frontendView);
                 const res = await submitVideo({session, evaluationId, mediaItemName: videoName, start: tMs, end: tMs});
                 notifyDresSubmission(res.data);
             }
