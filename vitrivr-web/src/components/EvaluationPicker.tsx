@@ -30,7 +30,7 @@
 
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {useAuth} from "../state/AuthContext";
 import {EvaluationClientApiFactory} from "../dres/generated/api";
 import {dresAxios} from "../dres/generated/api/dresAxios";
@@ -46,6 +46,24 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
     const {session, setEvaluationId, logout} = useAuth();
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
     const api = useMemo(() => EvaluationClientApiFactory(undefined, basePath, dresAxios), [basePath]);
+
+    const panelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const previous = document.activeElement as HTMLElement | null;
+        const panel = panelRef.current;
+        panel?.focus();
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && onClose) { event.preventDefault(); onClose(); }
+            if (event.key !== "Tab" || !panel) return;
+            const controls = Array.from(panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), summary'));
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel)) { event.preventDefault(); first?.focus(); }
+        };
+        panel?.addEventListener("keydown", onKeyDown);
+        return () => { panel?.removeEventListener("keydown", onKeyDown); previous?.focus(); };
+    }, [onClose]);
 
     const [rows, setRows] = useState<EvaluationChoice[]>([]);
     const [selected, setSelected] = useState<string>("");
@@ -104,9 +122,9 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                 if (e.target === e.currentTarget) onClose?.();
             }}
         >
-            <div className="ep-panel" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="ep-panel" ref={panelRef} tabIndex={-1} onMouseDown={(e) => e.stopPropagation()}>
                 <div className="ep-titleRow">
-                    <div className="ep-title">Select evaluation / task</div>
+                    <div className="ep-title">Select DRES evaluation</div>
                     {onClose && (
                         <button className="ep-close" type="button" aria-label="Close" onClick={onClose}>
                             ×
@@ -114,7 +132,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                     )}
                 </div>
 
-                <div className="ep-subtitle">Choose the active evaluation you want to submit to.</div>
+                <div className="ep-subtitle">Choose where your answers will be submitted.</div>
 
                 {loading && <div className="ep-muted" role="status">Loading evaluations…</div>}
                 {err && <div className="ep-error" role="alert">{err}</div>}
@@ -139,7 +157,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                                         {r.taskLoading ? "Loading task…" : r.taskName ? `Task: ${r.taskName}` : "Task: (not available)"}{" "}
                                         {r.taskType ? `• Type: ${r.taskType}` : ""}
                                     </div>
-                                    <div className="ep-itemId">{r.id}</div>
+                                    <details className="ep-itemId"><summary>Evaluation ID</summary>{r.id}</details>
                                 </div>
                             </label>
                         ))}
@@ -149,8 +167,8 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                 <div className="ep-actions">
                     {err && <button className="ep-btn" type="button" onClick={() => setAttempt(value => value + 1)}>Retry</button>}
                     {!onClose && <button className="ep-btn" type="button" onClick={() => void logout()}>Sign out</button>}
-                    <button className="ep-btn" type="button" disabled={loading || !selected} onClick={onContinue}>
-                        Continue
+                    <button className="ep-btn ep-btn--primary" type="button" disabled={loading || !selected} onClick={onContinue}>
+                        Use evaluation
                     </button>
                 </div>
             </div>

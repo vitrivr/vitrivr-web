@@ -1,0 +1,11 @@
+.dres-feedback { position: fixed; bottom: 24px; right: 24px; z-index: 10000; display: flex; align-items: flex-start; gap: 16px; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; padding: 16px; border: 1px solid var(--line); border-left: 3px solid var(--brand); border-radius: 9px; background: var(--surface); color: var(--text); box-shadow: 0 8px 32px #0005; font-size: 13px; }
+.dres-feedback--error { border-left-color: var(--berry-ink); }
+.dres-feedback strong { font-size: 13px; }
+.dres-feedback p { margin: 6px 0 0; line-height: 1.5; color: var(--text-2); overflow-wrap: anywhere; }
+.dres-feedback button { flex-shrink: 0; margin-left: auto; border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 22px; line-height: 1; padding: 2px 5px; border-radius: 4px; }
+.dres-feedback button:focus-visible { outline: 2px solid var(--brand); }
+@media (max-width: 600px) { .dres-feedback { right: 16px; bottom: 16px; } }
+
+.dres-feedback--success { border-left-color: #2b9966; }
+.dres-feedback--success strong { color: var(--text); }
+.dres-feedback--pending { border-left-color: var(--brand); }

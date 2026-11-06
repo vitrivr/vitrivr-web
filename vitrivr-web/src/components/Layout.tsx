@@ -1,5 +1,7 @@
+import DresTaskProvider from "../dres/DresTaskProvider.tsx";
 import {useState, type PropsWithChildren} from "react";
 import "./SearchTheme.css";
+import DresFeedback from "./DresFeedback.tsx";
 import Header from "./Header";
 import AuthGate from "./AuthGate";
 import EvaluationPicker from "./EvaluationPicker";
@@ -20,12 +22,15 @@ function Layout({children, onHome}: PropsWithChildren<{onHome: () => void}>) {
     };
     const {status, evaluationId} = useAuth();
     return (
+        <DresTaskProvider>
         <div className={`search-shell search-shell--${theme}`}>
             <Header onHome={onHome} theme={theme} onToggleTheme={toggleTheme}/>
             <main className="layout">{children}</main>
+            <DresFeedback/>
             <AuthGate/>
             {status === "loggedIn" && !evaluationId && <EvaluationPicker/>}
         </div>
+        </DresTaskProvider>
     );
 }
 

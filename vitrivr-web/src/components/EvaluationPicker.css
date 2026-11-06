@@ -1,110 +1,21 @@
-.ep-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: grid;
-    place-items: center;
-    z-index: 9999;
-    padding: 16px;
-}
-
-.ep-panel {
-    width: min(720px, 100%);
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #eee;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    padding: 18px;
-    display: grid;
-    gap: 12px;
-}
-
-.ep-title {
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.ep-subtitle {
-    color: #666;
-    font-size: 13px;
-}
-
-.ep-muted {
-    color: #666;
-}
-
-.ep-error {
-    color: #b00020;
-    font-size: 13px;
-}
-
-.ep-list {
-    display: grid;
-    gap: 10px;
-    max-height: 55vh;
-    overflow: auto;
-    padding: 6px 0;
-}
-
-.ep-item {
-    display: grid;
-    grid-template-columns: 20px 1fr;
-    gap: 10px;
-    align-items: start;
-    padding: 10px;
-    border: 1px solid #eee;
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-.ep-itemName {
-    font-weight: 600;
-}
-
-.ep-itemMeta {
-    color: #666;
-    font-size: 12px;
-    margin-top: 2px;
-}
-
-.ep-itemId {
-    color: #999;
-    font-size: 11px;
-    margin-top: 4px;
-}
-
-.ep-actions {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.ep-btn {
-    height: 38px;
-    padding: 0 14px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    background: #fff;
-    cursor: pointer;
-}
-
-.ep-titleRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.ep-close {
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    font-size: 22px;
-    line-height: 1;
-    padding: 6px 10px;
-    border-radius: 10px;
-}
-
-.ep-close:hover {
-    background: rgba(0, 0, 0, 0.06);
-}
-
+.ep-backdrop { position: fixed; inset: 0; background: #0009; display: grid; place-items: center; z-index: 9999; padding: 20px; }
+.ep-panel { box-sizing: border-box; width: min(560px, 100%); max-height: calc(100dvh - 40px); overflow: auto; padding: 24px; display: grid; gap: 16px; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 20px 60px #0005; }
+.ep-titleRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ep-title { font-size: 18px; font-weight: 650; }
+.ep-subtitle, .ep-muted { color: var(--text-3); font-size: 13px; line-height: 1.5; }
+.ep-error { color: var(--berry-ink); background: var(--berry-bg); padding: 12px; border-radius: 7px; font-size: 13px; }
+.ep-list { display: grid; gap: 10px; max-height: 48dvh; overflow: auto; }
+.ep-item { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); cursor: pointer; }
+.ep-item:hover { border-color: var(--line-2); }
+.ep-item:has(input:checked) { border-color: var(--brand); background: var(--surface-2); }
+.ep-item input { margin: 3px 0 0; accent-color: var(--brand); }
+.ep-itemName { color: var(--text); font-weight: 650; font-size: 14px; overflow-wrap: anywhere; }
+.ep-itemMeta { color: var(--text-3); font-size: 12px; line-height: 1.5; margin-top: 5px; }
+.ep-itemId { color: var(--text-3); font-size: 11px; margin-top: 8px; overflow-wrap: anywhere; }
+.ep-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--line); }
+.ep-btn { min-height: 36px; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--input-bg); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.ep-btn--primary { background: var(--brand); border-color: var(--brand); color: white; font-weight: 650; }
+.ep-btn:disabled { opacity: .5; cursor: default; }
+.ep-close { width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); font-size: 22px; cursor: pointer; }
+.ep-close:hover { background: var(--surface-2); color: var(--text); }
+.ep-panel :is(button, input):focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }

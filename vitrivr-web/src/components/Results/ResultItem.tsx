@@ -1,12 +1,15 @@
+import {useDresTask} from "../../dres/TaskContext.ts";
+import {submissionMediaName} from "../../dres/taskKind.ts";
+import {dresErrorMessage} from "../../dres/auth.ts";
+import {notifyDres, notifyDresSubmission} from "../../dres/feedback.ts";
 import type {SourceEvidence} from "../../lib/prakFederated.ts";
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {Link} from "react-router-dom";
 import HlsVideoPlayer from "../VideoPage/HLSVideoPlayer.tsx";
 import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import {thumbnailURL, videoURL} from "../../lib/vitrivr";
 import {submitText, submitVideo} from "../../dres/generated/api/dresSubmit.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
-import {getCurrentSubmissionKind, type SubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 
 type BaseProps = {
     id: string,
@@ -61,7 +64,7 @@ export default function ResultItem(props: ResultItemProps) {
     const [submitting, setSubmitting] = useState(false);
     const {session, openLogin} = useAuth();
     const {evaluationId} = useAuth();
-    const [kind, setKind] = useState<SubmissionKind>("unknown");
+    const {kind, refresh: refreshTask, reportSubmissionError} = useDresTask();
     const [textAnswer, setTextAnswer] = useState("");
     const [focused, setFocused] = useState(false);
     const [hovered, setHovered] = useState(false);
@@ -97,101 +100,48 @@ export default function ResultItem(props: ResultItemProps) {
         media = <img className={mediaClassName} src={src} alt={alt}/>;
     }
 
-    useEffect(() => {
-        let cancelled = false;
 
-        async function loadKind() {
-            if (!session || !evaluationId) {
-                setKind("unknown");
-                return;
-            }
-            try {
-                const k = await getCurrentSubmissionKind({session, evaluationId});
-                if (!cancelled) setKind(k);
-            } catch {
-                if (!cancelled) setKind("unknown");
-            }
-        }
 
-        loadKind();
-        return () => {
-            cancelled = true;
-        };
-    }, [session, evaluationId]);
-
-    const onSubmit = async (e: React.MouseEvent) => {
+    const onSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        if (!session) {
-            openLogin();
-            return;
-        }
-
-        if (!evaluationId) {
-            openLogin();
-            return;
-        }
-
-        if (props.kind !== "video") return;
-
-        const kind = await getCurrentSubmissionKind({session, evaluationId});
-        console.log("kind" + kind)
-
-        if (kind === "text") {
-            const text = textAnswer.trim();
-            if (!text) {
-                alert("Please enter a text answer.");
+        if (!session || !evaluationId) { openLogin(); return; }
+        if (props.kind !== "video" || submitting) return;
+        setSubmitting(true);
+        try {
+            const currentKind = await refreshTask();
+            if (currentKind === "unknown") {
+                notifyDres("No active DRES task was found. Start a task before submitting.");
                 return;
             }
-
-            setSubmitting(true);
-            try {
-                const res = await submitText({
-                    session,
-                    evaluationId,
-                    text,
-                });
-                alert("Submitted! " + JSON.stringify(res.data.submission));
-                console.log("Submitted text", text)
-                console.log("DRES submitText response:", res);
-                setTextAnswer("");
-            } catch (err: any) {
-                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-            } finally {
-                setSubmitting(false);
+            if (currentKind === "text") {
+                const text = textAnswer.trim();
+                if (kind !== "text" || !text) {
+                    notifyDres("This task expects a text answer. Enter your answer in the result card.");
+                    return;
+                }
+                const res = await submitText({session, evaluationId, text});
+                notifyDresSubmission(res.data);
+                if (res.data.status && res.data.submission === "CORRECT") setTextAnswer("");
+            } else {
+                if (kind === "text") {
+                    notifyDres("The active task now expects a video answer. Review this result before submitting again.");
+                    return;
+                }
+                const start = Number.isFinite(props.start) ? Math.max(0, Math.round(props.start * 1000)) : undefined;
+                const end = Number.isFinite(props.end) ? Math.max(0, Math.round(props.end * 1000)) : undefined;
+                const mediaItemName = submissionMediaName(props.mediaItemName);
+                if (!mediaItemName) throw new Error("This result has no DRES media item name.");
+                const res = await submitVideo({session, evaluationId, mediaItemName, start, end});
+                notifyDresSubmission(res.data);
             }
-            return;
+        } catch (error) {
+            reportSubmissionError(error);
+            notifyDres(dresErrorMessage(error));
+        } finally {
+            setSubmitting(false);
         }
-
-        if (kind === "item") {
-            const start = Math.max(0, Math.round(props.start * 1000));
-            const end = Math.max(0, Math.round(props.end * 1000));
-            const videoName = props.mediaItemName;
-            console.log("Submission", videoName, end, start);
-            setSubmitting(true);
-
-            try {
-                const res = await submitVideo({
-                    session,
-                    mediaItemName: videoName,
-                    evaluationId,
-                    start: start > 0 ? start : undefined,
-                    end: end > 0 ? end : undefined,
-                });
-
-                alert("Submitted! " + JSON.stringify(res.data.submission));
-            } catch (err: any) {
-                alert(
-                    err?.response?.data?.description ??
-                    err?.message ??
-                    "Submit failed."
-                );
-            } finally {
-                setSubmitting(false);
-            }
-        }
-    }
+    };
 
     const linkState =
         props.kind === "video"
@@ -222,26 +172,6 @@ export default function ResultItem(props: ResultItemProps) {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {props.kind === "video" && (hovered || focused) && kind === "text" && (
-                <div
-                    className="ri-floatText"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }}
-                >
-                    <input
-                        value={textAnswer}
-                        onChange={(e) => setTextAnswer(e.target.value)}
-                        placeholder="Type answer (DRES)…"
-                        className="ri-textInput"
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") onSubmit(e as any);
-                        }}
-                    />
-                </div>
-            )}
-
             <figure className={`${className}${props.relevance?.selected ? " sc-relevantResult" : ""}`} style={{position: "relative"}}>
                 <div className="ri-preview" style={{position: "relative"}}>
                 <Link
@@ -281,7 +211,16 @@ export default function ResultItem(props: ResultItemProps) {
                     </figcaption>
                 </Link>
 
-                {props.kind === "video" && (hovered || focused) && (
+                {props.kind === "video" && kind === "text" && <form className="ri-textSubmission" aria-label="DRES text submission"
+                    onSubmit={onSubmit} onClick={event => event.stopPropagation()}>
+                    <input aria-label="DRES text answer" className="ri-textInput" placeholder="Enter your answer…"
+                        value={textAnswer} onChange={event => setTextAnswer(event.target.value)} required disabled={submitting}/>
+                    <button className="btn btn-primary" type="submit" disabled={submitting}>
+                        {submitting ? "Submitting…" : "Submit text"}
+                    </button>
+                </form>}
+
+                {props.kind === "video" && kind !== "text" && (hovered || focused) && (
                     <button
                         type="button"
                         onClick={onSubmit}

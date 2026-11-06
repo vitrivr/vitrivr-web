@@ -212,3 +212,8 @@
     background: #FF00FF;
     cursor: pointer;
 }
+
+.ri-textSubmission { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--line); background: var(--surface); }
+.ri-textSubmission .ri-textInput { box-sizing: border-box; min-width: 0; width: 100%; max-width: none; box-shadow: none; border-radius: 6px; font-size: 12px; }
+.ri-textSubmission .btn { margin-left: auto; font-size: 11px; }
+.ri-textSubmission .ri-textInput:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }

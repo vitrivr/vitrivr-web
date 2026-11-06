@@ -1,3 +1,7 @@
+import {useDresTask} from "../../dres/TaskContext.ts";
+import {submissionMediaName} from "../../dres/taskKind.ts";
+import {dresErrorMessage} from "../../dres/auth.ts";
+import {notifyDres, notifyDresSubmission} from "../../dres/feedback.ts";
 "use client";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {thumbnailURL, videoURL} from "../../lib/vitrivr.ts";
@@ -6,7 +10,6 @@ import {useSearch} from "../../state/SearchContext.tsx";
 import {useEffect, useRef, useState} from "react";
 import {useAuth} from "../../state/AuthContext.tsx";
 import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
-import {getCurrentSubmissionKind} from "../../dres/generated/api/taskTypeHelper.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
 import POVs from "./POVs.tsx";
 import VideoQA from "./VideoQA.tsx";
@@ -76,8 +79,9 @@ export default function VideoPage() {
         hlsSrc: src,
     });
 
-    const [kind, setKind] = useState<"text" | "item" | "temporal" | "unknown">("unknown");
+    const {kind, refresh: refreshTask, reportSubmissionError} = useDresTask();
     const [textAnswer, setTextAnswer] = useState("");
+
     const poster = item?.thumbUrl || routeState?.poster || (id ? thumbnailURL(id, settings.frontendView) : "");
     const [hourOffset, setHourOffset] = useState(0);
     const directFile = /\.mp4(?:$|[?#])/i.test(src) ? src : "";
@@ -119,27 +123,7 @@ export default function VideoPage() {
         });
     };
 
-    useEffect(() => {
-        let cancelled = false;
 
-        async function loadKind() {
-            if (!session || !evaluationId) {
-                setKind("unknown");
-                return;
-            }
-            try {
-                const k = await getCurrentSubmissionKind({session, evaluationId});
-                if (!cancelled) setKind(k);
-            } catch {
-                if (!cancelled) setKind("unknown");
-            }
-        }
-
-        loadKind();
-        return () => {
-            cancelled = true;
-        };
-    }, [session, evaluationId]);
 
     useEffect(() => {
         window.scrollTo({top: 0, left: 0, behavior: "instant" as ScrollBehavior});
@@ -205,66 +189,45 @@ export default function VideoPage() {
     };
 
 
-    /**
-     * For submitting a video to DRES.
-     */
     const onSubmit = async () => {
-        if (!session) {
+        if (!session || !evaluationId) {
             openLogin();
             return;
         }
-        if (!evaluationId) {
-            openLogin();
-            return;
-        }
-
-        const k = await getCurrentSubmissionKind({session, evaluationId});
-
-        if (k === "text") {
-            const text = textAnswer.trim();
-            if (!text) {
-                alert("Please enter a text answer.");
+        if (submitting) return;
+        const text = textAnswer.trim();
+        setSubmitting(true);
+        try {
+            const currentKind = await refreshTask();
+            if (currentKind === "unknown") {
+                notifyDres("No active DRES task was found. Start a task before submitting.");
                 return;
             }
-            setSubmitting(true);
-            try {
+            if (currentKind === "text") {
+                if (kind !== "text" || !text) {
+                    notifyDres("This task expects a text answer. Enter your answer in the field below the video.");
+                    return;
+                }
                 const res = await submitText({session, evaluationId, text});
-                console.log("Submitted text", text)
-                alert("Submitted! " + JSON.stringify(res.data.submission));
-                console.log("DRES submitText response:", res.data.submission);
-                setTextAnswer("");
-            } catch (err: any) {
-                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-            } finally {
-                setSubmitting(false);
+                notifyDresSubmission(res.data);
+                if (res.data.status && res.data.submission === "CORRECT") setTextAnswer("");
+            } else {
+                if (kind === "text") {
+                    notifyDres("The active task now expects a video answer. Review the current video before submitting again.");
+                    return;
+                }
+                const tSec = videoRef.current?.currentTime ?? start;
+                const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
+                const videoName = submissionMediaName(activeInfo?.filename ?? getVideoFilename(mediaItemName || activeMp4Src || src));
+                const res = await submitVideo({session, evaluationId, mediaItemName: videoName, start: tMs, end: tMs});
+                notifyDresSubmission(res.data);
             }
-            return;
+        } catch (error) {
+            reportSubmissionError(error);
+            notifyDres(dresErrorMessage(error));
+        } finally {
+            setSubmitting(false);
         }
-
-        if (k === "item") {
-            const video = videoRef.current;
-            const tSec = video?.currentTime ?? start;
-            const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
-            const videoName = (activeInfo?.filename ?? getVideoFilename(mediaItemName || activeMp4Src || src)).replace(/\.[^.]+$/, "");
-            setSubmitting(true);
-            try {
-                const res = await submitVideo({
-                    session,
-                    mediaItemName: videoName,
-                    evaluationId,
-                    start: tMs,
-                    end: tMs,
-                });
-                console.log("Submission", videoName, tMs, tMs)
-                alert("Submitted! " + JSON.stringify(res.data.submission));
-                setTextAnswer("");
-            } catch (err: any) {
-                alert(err?.response?.data?.description ?? err?.message ?? "Submit failed.");
-            } finally {
-                setSubmitting(false);
-            }
-        }
-
     };
 
     if (!id) {
@@ -303,15 +266,15 @@ export default function VideoPage() {
                             <button type="button" className="btn btn-primary" onClick={onSearch} disabled={searching}>
                                 {searching ? nnStage || "Searching NN…" : "Search NN"}
                             </button>
-                            <div className="vp-submission">
+                            <form className="vp-submission" aria-label="Submit answer to DRES"
+                                onSubmit={event => { event.preventDefault(); void onSubmit(); }}>
                                 {kind === "text" && <input className="vp-answer" aria-label="DRES text answer"
-                                    value={textAnswer} onChange={(e) => setTextAnswer(e.target.value)}
-                                    placeholder="Type answer (DRES)…"
-                                    onKeyDown={(e) => { if (e.key === "Enter") onSubmit(); }}/>}
-                                <button type="button" className="btn vp-submit" onClick={onSubmit} disabled={submitting}>
-                                    {submitting ? "Submitting…" : "Submit"}
+                                    value={textAnswer} onChange={event => setTextAnswer(event.target.value)}
+                                    placeholder="Enter your answer…" required disabled={submitting}/>}
+                                <button type="submit" className="btn vp-submit" disabled={submitting}>
+                                    {submitting ? "Submitting…" : kind === "text" ? "Submit text" : "Submit video"}
                                 </button>
-                            </div>
+                            </form>
                         </div>
                     </div>
                     {isCastleView && <div className="vp-hour vp-hour--next">
