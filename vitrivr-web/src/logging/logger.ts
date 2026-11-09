@@ -6,7 +6,7 @@ import type {EventStore, InteractionEvent, LogContext, LoggingPreferences, Loggi
 export const defaultLoggingPreferences: LoggingPreferences = {enabled: true, operatorId: "", taskId: ""};
 
 export function eventCategory(action: string): string {
-    if (/^(query\.filters|feedback\.selection|ui\.(editing_started|change))/.test(action)) return "Query formulation";
+    if (/^(query\.filters|feedback\.selection|ui\.(editing_started|change|beforeinput|input|key|composition|selection))/.test(action)) return "Query formulation";
     if (/^(query\.|qa\.|api\.engine|api\.descriptor)/.test(action)) return "Query submission";
     if (/^(navigation\.|ui\.click|ui\.submit)/.test(action)) return "Traversing";
     if (/^(results\.|result\.|media\.|ui\.scroll)/.test(action)) return "Browsing";
@@ -24,7 +24,7 @@ export class InteractionLogger {
     private flushing: Promise<void> | null = null;
     private listeners = new Set<() => void>();
     private snapshots = new Map<string, string>();
-    private context: LogContext = {operatorId: "anonymous", taskId: null, taskName: null, evaluationId: null, schema: "", frontendView: "", route: ""};
+    private context: LogContext = {operatorId: "anonymous", dresUsername: null, taskId: null, taskName: null, evaluationId: null, schema: "", frontendView: "", route: ""};
     private status: LoggingStatus;
     private store: EventStore;
     private savePreferences?: (preferences: LoggingPreferences) => void;
@@ -33,12 +33,16 @@ export class InteractionLogger {
         this.store = store;
         this.savePreferences = savePreferences;
         this.status = {...defaultLoggingPreferences, ...preferences, sessionId, eventCount: 0, pendingCount: 0, lastSavedAt: null, storageError: null};
+        store.subscribe?.(() => {
+            const status = store.getSnapshot?.();
+            if (status) this.notify({storageError: status.storageError, captureError: status.captureError, lastSavedAt: status.lastSavedAt});
+        });
     }
 
     getSnapshot = (): LoggingStatus => this.status;
     subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
     private notify(patch: Partial<LoggingStatus> = {}) {
-        this.status = {...this.status, ...patch, pendingCount: this.queue.length + this.inFlight.length};
+        this.status = {...this.status, ...patch, pendingCount: this.store.capture ? this.store.getSnapshot?.().pendingEvents ?? 0 : this.queue.length + this.inFlight.length};
         for (const listener of this.listeners) { try { listener(); } catch { /* Observers must not affect logging. */ } }
     }
 
@@ -59,14 +63,19 @@ export class InteractionLogger {
         void this.flush();
     }
 
-    record(action: string, data: unknown = null, options: {context?: LogContext; frameRank?: number; videoRank?: number} = {}): string | null {
+    record(action: string, data: unknown = null, options: {context?: LogContext; frameRank?: number; videoRank?: number; snapshotKey?: string} = {}): string | null {
         if (!this.status.enabled) return null;
         try {
             const event: InteractionEvent = {version: 1, id: uuid(), sessionId: this.status.sessionId, pageId: this.pageId,
                 sequence: ++this.sequence, timestamp: Date.now(), elapsedMs: performance.now() - this.started,
-                action, category: eventCategory(action), context: {...(options.context ?? this.getContext())}, data: sanitize(data),
+                action, category: eventCategory(action), context: {...(options.context ?? this.getContext())}, data: this.store.capture ? data : sanitize(data),
                 ...(options.frameRank === undefined ? {} : {frameRank: options.frameRank}),
                 ...(options.videoRank === undefined ? {} : {videoRank: options.videoRank})};
+            if (this.store.capture) {
+                this.store.capture(event, options.snapshotKey);
+                this.status = {...this.status, eventCount: this.status.eventCount + 1};
+                return event.id;
+            }
             this.queue.push(event);
             this.status = {...this.status, eventCount: this.status.eventCount + 1};
             if (!this.timer) this.timer = setTimeout(() => { this.timer = undefined; void this.flush(); }, this.status.storageError ? 10_000 : 250);
@@ -77,6 +86,7 @@ export class InteractionLogger {
     /** De-duplicate React StrictMode/redundant state notifications, without sampling user events. */
     snapshot(action: string, data: unknown, key = action) {
         if (!this.status.enabled) return;
+        if (this.store.capture) { this.record(action, data, {snapshotKey: key}); return; }
         try {
             const value = sanitize(data);
             const serialized = JSON.stringify(value);
@@ -95,11 +105,15 @@ export class InteractionLogger {
         return (outcome: "response" | "error" | "cancelled", response: unknown) => {
             if (finished) return;
             finished = true;
-            this.record(`${action}.${outcome}`, {requestId, durationMs: performance.now() - started, response}, {context});
+            this.record(`${action}.${outcome}`, {requestId, durationMs: performance.now() - started, response: outcome === "error" ? sanitize(response) : response}, {context});
         };
     }
 
     async flush(): Promise<void> {
+        if (this.store.capture) {
+            try { await this.store.flush?.(); } catch (error) { this.notify({storageError: error instanceof Error ? error.message : String(error)}); }
+            return;
+        }
         if (this.timer) { clearTimeout(this.timer); this.timer = undefined; }
         if (this.flushing) return this.flushing;
         this.flushing = (async () => {

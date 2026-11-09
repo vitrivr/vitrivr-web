@@ -1,5 +1,6 @@
 import {InteractionLogger, defaultLoggingPreferences} from "./logger.ts";
 import {IndexedDbEventStore} from "./store.ts";
+import {WorkerEventStore, deliveryConfig} from "./WorkerEventStore.ts";
 import {uuid} from "../utils/uuid.ts";
 import type {LoggingPreferences} from "./types.ts";
 
@@ -23,5 +24,8 @@ function sessionId(): string {
     } catch { return uuid(); }
 }
 
-export const interactionLogger = new InteractionLogger(new IndexedDbEventStore(), sessionId(), preferences(), value => localStorage.setItem(preferencesKey, JSON.stringify(value)));
+export const loggingDelivery = typeof window !== "undefined" ? new WorkerEventStore(deliveryConfig()) : null;
+export const interactionLogger = new InteractionLogger(loggingDelivery ?? new IndexedDbEventStore(), sessionId(), preferences(), value => localStorage.setItem(preferencesKey, JSON.stringify(value)));
 interactionLogger.setContext({operatorId: `anonymous-${interactionLogger.getSnapshot().sessionId}`});
+
+if (import.meta.hot) import.meta.hot.dispose(() => { void interactionLogger.flush().finally(() => loggingDelivery?.dispose()); });

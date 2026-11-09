@@ -10,7 +10,7 @@ function isPrivate(node: Element | null): boolean {
     return Boolean(node?.closest('[data-log-private],input[type="password"],input[autocomplete="one-time-code"]'));
 }
 function isTextEntry(node: Element | null): boolean {
-    return node instanceof HTMLTextAreaElement || (node instanceof HTMLInputElement &&
+    return Boolean((node as HTMLElement | null)?.isContentEditable) || node instanceof HTMLTextAreaElement || (node instanceof HTMLInputElement &&
         ["text", "search", "email", "url", "tel", "password"].includes(node.type));
 }
 function controlLabel(target: Element, label: Element | null): string {
@@ -52,6 +52,8 @@ function inputValue(node: Element | null): unknown {
         return {value: node.value, checked: node.checked};
     }
     if (node instanceof HTMLSelectElement) return {value: node.value, selected: [...node.selectedOptions].map(option => option.value)};
+    if (node instanceof HTMLTextAreaElement) return {value: node.value};
+    if ((node as HTMLElement | null)?.isContentEditable) return {value: node?.textContent};
     return null;
 }
 
@@ -59,10 +61,54 @@ function inputValue(node: Element | null): unknown {
 export function installDomLogging(logger: InteractionLogger = interactionLogger): () => void {
     const cleanups: (() => void)[] = [];
     const listen = (target: EventTarget, type: string, handler: (event: Event) => void, capture = true) => {
-        const safe = (event: Event) => { try { handler(event); } catch { /* Instrumentation cannot affect interaction. */ } };
+        const safe = (event: Event) => { try { if (logger.getSnapshot().enabled) handler(event); } catch { /* Instrumentation cannot affect interaction. */ } };
         target.addEventListener(type, safe, {capture, passive: true});
         cleanups.push(() => target.removeEventListener(type, safe, capture));
     };
+    // Preserve individual events; batching the worker transport does not sample them.
+    for (const type of ["keydown", "keyup"]) listen(document, type, event => {
+        const node = element(event.target);
+        if (isPrivate(node)) return;
+        const key = event as KeyboardEvent;
+        logger.record(`ui.${type}`, {target: targetInfo(node), key: key.key, code: key.code,
+            location: key.location, repeat: key.repeat, composing: key.isComposing,
+            ctrl: key.ctrlKey, shift: key.shiftKey, alt: key.altKey, meta: key.metaKey, nativeTimestamp: event.timeStamp});
+    });
+    for (const type of ["beforeinput", "input", "compositionstart", "compositionupdate", "compositionend"]) listen(document, type, event => {
+        const node = element(event.target);
+        if (!node || isPrivate(node)) return;
+        const input = event as InputEvent;
+        const field = node as HTMLInputElement;
+        logger.record(`ui.${type}`, {target: targetInfo(node), data: input.data, inputType: input.inputType,
+            composing: input.isComposing, value: inputValue(node), selectionStart: field.selectionStart,
+            selectionEnd: field.selectionEnd, selectionDirection: field.selectionDirection, nativeTimestamp: event.timeStamp});
+    });
+    for (const type of ["pointerdown", "pointerup", "pointermove", "pointercancel", "wheel"]) listen(document, type, event => {
+        const node = element(event.target);
+        if (isPrivate(node)) return;
+        const pointer = event as PointerEvent;
+        const wheel = event as WheelEvent;
+        logger.record(`ui.${type}`, {target: targetInfo(node), x: pointer.clientX, y: pointer.clientY,
+            button: pointer.button, buttons: pointer.buttons, pointerId: pointer.pointerId, pointerType: pointer.pointerType,
+            pressure: pointer.pressure, deltaX: wheel.deltaX, deltaY: wheel.deltaY, deltaMode: wheel.deltaMode,
+            nativeTimestamp: event.timeStamp}, resultInfo(node));
+    });
+    listen(document, "selectionchange", event => {
+        const node = document.activeElement;
+        const selection = window.getSelection();
+        const anchor = selection?.anchorNode?.parentElement ?? null;
+        const focus = selection?.focusNode?.parentElement ?? null;
+        if (isPrivate(node) || isPrivate(anchor) || isPrivate(focus)) return;
+        const field = node as HTMLInputElement | null;
+        logger.record("ui.selection", {target: targetInfo(node), selectionStart: field?.selectionStart,
+            selectionEnd: field?.selectionEnd, selectionDirection: field?.selectionDirection,
+            anchor: targetInfo(anchor), focus: targetInfo(focus), anchorOffset: selection?.anchorOffset,
+            focusOffset: selection?.focusOffset, text: selection?.toString(), nativeTimestamp: event.timeStamp});
+    });
+    for (const type of ["focusin", "focusout", "paste", "cut"]) listen(document, type, event => {
+        const node = element(event.target);
+        if (!isPrivate(node)) logger.record(`ui.${type}`, {target: targetInfo(node)});
+    });
     for (const type of ["click", "dblclick", "contextmenu"]) listen(document, type, event => {
         const mouse = event as MouseEvent;
         const node = element(event.target);
@@ -84,7 +130,7 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
     });
     listen(document, "change", event => {
         const node = element(event.target);
-        if (isPrivate(node) || isTextEntry(node)) return;
+        if (isPrivate(node)) return;
         logger.record("ui.change", {target: targetInfo(node), value: inputValue(node)});
     });
     listen(document, "focusout", event => {
@@ -110,10 +156,12 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
     });
     listen(document, "scroll", event => {
         const node = event.target instanceof Document ? document.scrollingElement : element(event.target);
-        logger.record("ui.scroll", {target: targetInfo(node), x: node?.scrollLeft, y: node?.scrollTop,
-            scrollHeight: node?.scrollHeight, scrollWidth: node?.scrollWidth, width: node?.clientWidth, height: node?.clientHeight});
+        if (!node || isPrivate(node)) return;
+        logger.record("ui.scroll", {target: targetInfo(node), x: node.scrollLeft, y: node.scrollTop,
+            scrollHeight: node.scrollHeight, scrollWidth: node.scrollWidth, width: node.clientWidth, height: node.clientHeight,
+            nativeTimestamp: event.timeStamp});
     });
-    for (const type of ["play", "pause", "seeked", "ended", "ratechange", "volumechange", "loadedmetadata", "waiting", "stalled", "error", "enterpictureinpicture", "leavepictureinpicture"]) {
+    for (const type of ["play", "pause", "seeking", "seeked", "timeupdate", "ended", "ratechange", "volumechange", "loadedmetadata", "waiting", "stalled", "error", "enterpictureinpicture", "leavepictureinpicture"]) {
         listen(document, type, event => {
             const video = event.target;
             // Exclude detached frame-capture decoders: they are not user inspections.
@@ -161,6 +209,11 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
     const results = (node: Node): Element[] => node instanceof Element ? [
         ...(node.matches("[data-log-result-id]") ? [node] : []), ...node.querySelectorAll("[data-log-result-id]"),
     ] : [];
+    const themeObserver = new MutationObserver(records => {
+        for (const record of records) if (record.target instanceof Element) logger.snapshot("settings.theme", {dark: record.target.classList.contains("search-shell--dark")});
+    });
+    const watchTheme = (shell: Element | null) => { if (shell) themeObserver.observe(shell, {attributes: true, attributeFilter: ["class"]}); };
+    watchTheme(document.querySelectorAll(".search-shell")[0] ?? null);
     const mutation = new MutationObserver(records => {
         for (const record of records) {
             if (record.type === "attributes" && record.target instanceof Element && record.target.matches(".search-shell")) {
@@ -169,14 +222,14 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
             for (const added of record.addedNodes) for (const result of results(added)) observer?.observe(result);
             for (const added of record.addedNodes) if (added instanceof Element) {
                 const shell = added.matches(".search-shell") ? added : added.querySelector(".search-shell");
-                if (shell) logger.snapshot("settings.theme", {dark: shell.classList.contains("search-shell--dark")});
+                if (shell) { watchTheme(shell); logger.snapshot("settings.theme", {dark: shell.classList.contains("search-shell--dark")}); }
                 const messages = [...(added.matches('[role="alert"],.flash,.vp-message--error') ? [added] : []), ...added.querySelectorAll('[role="alert"],.flash,.vp-message--error')];
                 for (const message of messages) logger.record("app.message", {text: message.textContent, role: message.getAttribute("role"), classes: message.className});
             }
             for (const removed of record.removedNodes) for (const result of results(removed)) { leave(result); observer?.unobserve(result); }
         }
     });
-    mutation.observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["class"]});
+    mutation.observe(document.body, {childList: true, subtree: true});
     document.querySelectorAll("[data-log-result-id]").forEach(node => observer?.observe(node));
     let recordingEnabled = logger.getSnapshot().enabled;
     const unsubscribe = logger.subscribe(() => {
@@ -200,5 +253,5 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
         void logger.flush();
     }, false);
     listen(window, "pageshow", event => logger.record("session.pageshow", {persisted: (event as PageTransitionEvent).persisted}), false);
-    return () => { editingPeriods.reset(); unsubscribe(); cleanups.forEach(cleanup => cleanup()); [...visible.keys()].forEach(leave); observer?.disconnect(); mutation.disconnect(); void logger.flush(); };
+    return () => { themeObserver.disconnect(); editingPeriods.reset(); unsubscribe(); cleanups.forEach(cleanup => cleanup()); [...visible.keys()].forEach(leave); observer?.disconnect(); mutation.disconnect(); void logger.flush(); };
 }

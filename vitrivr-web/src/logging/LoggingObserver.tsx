@@ -30,6 +30,7 @@ export default function LoggingObserver() {
         }
         logger.setContext({schema: search.schema, frontendView: settings.frontendView,
             operatorId: auth.user?.username || `anonymous-${logger.getSnapshot().sessionId}`,
+            dresUsername: auth.status === "loggedIn" ? auth.user?.username ?? null : null,
             evaluationId: activeEvaluation, route: `${location.pathname}${location.search}${location.hash}`});
         logger.snapshot("navigation.route", {url: safeUrl(`${location.pathname}${location.search}${location.hash}`), navigationType, state: location.state});
         logger.snapshot("auth.state", {status: auth.status, username: auth.user?.username, evaluationId: auth.evaluationId});

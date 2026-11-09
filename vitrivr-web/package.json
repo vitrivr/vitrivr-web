@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "logging:server": "python3 services/interaction-logging/server.py",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

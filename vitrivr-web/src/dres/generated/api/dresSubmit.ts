@@ -17,15 +17,18 @@ export async function submitVideo(params: {
     evaluationId: string;
     session: string;
     mediaItemName: string;
+    mediaItemCollectionName?: string;
     start?: number;
     end?: number
 }) {
+    const collectionName = (params.mediaItemCollectionName ?? import.meta.env.VITE_DRES_MEDIA_COLLECTION_NAME ?? "").trim();
     const payload: ApiClientSubmission = {
         answerSets: [
             {
                 answers: [
                     {
                         mediaItemName: params.mediaItemName,
+                        ...(collectionName ? {mediaItemCollectionName: collectionName} : {}),
                         start: params.start ?? null,
                         end: params.end ?? null,
                     },

@@ -32,6 +32,8 @@ thumb
 sketch
 *.idea/
 .env
+__pycache__/
+services/interaction-logging/data/
 .idea/
 
 

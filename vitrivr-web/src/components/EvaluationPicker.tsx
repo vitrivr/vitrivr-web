@@ -16,7 +16,7 @@
  * Behavior:
  * - Loads evaluations when the component mounts
  * - Shows loading and error states
- * - Preselects the first available evaluation
+ * - Preselects the saved evaluation, or the first available evaluation
  * - Clicking "Continue" saves the selected evaluation id
  * - Clicking outside the panel closes the dialog
  *
@@ -43,7 +43,7 @@ type EvaluationPickerProps = {
 };
 
 export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
-    const {session, setEvaluationId, logout} = useAuth();
+    const {session, evaluationId, setEvaluationId, logout} = useAuth();
     const basePath = useMemo(() => (import.meta.env.VITE_DRES_BASE_URL ?? "").toString(), []);
     const api = useMemo(() => EvaluationClientApiFactory(undefined, basePath, dresAxios), [basePath]);
 
@@ -89,7 +89,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
             try {
                 await loadEvaluationChoices(api, session, controller.signal, display => {
                     setRows(display);
-                    setSelected(display[0]?.id ?? "");
+                    setSelected(display.find(row => row.id === evaluationId)?.id ?? display[0]?.id ?? "");
                     setLoading(false);
                 }, (id, patch) => setRows(previous => previous.map(row => row.id === id ? {...row, ...patch} : row)));
             } catch (error) {
@@ -103,7 +103,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
         return () => {
             controller.abort();
         };
-    }, [api, session, attempt]);
+    }, [api, session, evaluationId, attempt]);
 
     const onContinue = () => {
         if (!selected) return;

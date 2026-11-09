@@ -24,6 +24,10 @@ export function serializeLog(events: InteractionEvent[], format: "json" | "jsonl
 
 export function downloadLog(contents: string, format: "json" | "jsonl" | "rivals") {
     const blob = new Blob([contents], {type: format === "jsonl" ? "application/x-ndjson" : "application/json"});
+    downloadBlob(blob, format);
+}
+
+export function downloadBlob(blob: Blob, format: "json" | "jsonl" | "rivals") {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;

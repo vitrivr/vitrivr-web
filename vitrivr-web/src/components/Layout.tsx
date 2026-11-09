@@ -1,3 +1,4 @@
+import LoggingHealth from "../logging/LoggingHealth.tsx";
 import DresTaskProvider from "../dres/DresTaskProvider.tsx";
 import {useState, type PropsWithChildren} from "react";
 import "./SearchTheme.css";
@@ -27,6 +28,7 @@ function Layout({children, onHome}: PropsWithChildren<{onHome: () => void}>) {
             <Header onHome={onHome} theme={theme} onToggleTheme={toggleTheme}/>
             <main className="layout">{children}</main>
             <DresFeedback/>
+            <LoggingHealth/>
             <AuthGate/>
             {status === "loggedIn" && !evaluationId && <EvaluationPicker/>}
         </div>
