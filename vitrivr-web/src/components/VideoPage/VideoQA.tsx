@@ -1,4 +1,5 @@
-import {useEffect, useRef, useState, type FormEvent} from "react";
+import {useEffect, useMemo, useRef, useState, type FormEvent} from "react";
+import {useInteractionSnapshot} from "../../logging/react.ts";
 import DisclosureSection from "./DisclosureHeader.tsx";
 import {retrieval} from "../../vitirvr/api/client.ts";
 import {buildVideoQaQuery, executeVideoQa, videoQaErrorMessage, videoQaIdFromPath, VIDEO_QA_SCHEMA} from "../../lib/videoQa.ts";
@@ -23,6 +24,9 @@ export default function VideoQA({file}: {file: string}) {
     const [error, setError] = useState<string | null>(null);
     const [answer, setAnswer] = useState<{question: string; text: string} | null>(null);
     const activeRequest = useRef<AbortController | null>(null);
+    useInteractionSnapshot("qa.form", useMemo(() => ({recordingId: currentId, question, scope, videoIds, cameras,
+        timeStart, timeEnd, filters, frames, open}), [currentId, question, scope, videoIds, cameras, timeStart, timeEnd, filters, frames, open]));
+    useInteractionSnapshot("qa.state", useMemo(() => ({recordingId: currentId, loading, error, answer}), [currentId, loading, error, answer]));
 
     useEffect(() => () => {
         activeRequest.current?.abort();
@@ -61,7 +65,7 @@ export default function VideoQA({file}: {file: string}) {
 
     const recordingLabel = currentId ? currentId.split("_").map((part, index) => index === 2 ? `${part}:00` : part).join(" · ") : "Custom selection";
 
-    return <div className="vp-qaPanel"><DisclosureSection open={open} onToggle={() => setOpen(value => !value)} title="Video QA" loading={loading && !open}>
+    return <div className="vp-qaPanel" data-log-area="video-qa"><DisclosureSection open={open} onToggle={() => setOpen(value => !value)} title="Video QA" loading={loading && !open}>
         <form className="vp-qaForm" onSubmit={event => void ask(event)} aria-busy={loading}>
             <div className="vp-qaContext">
                 <p>{scope === "current" ? recordingLabel : "Custom selection"}</p>

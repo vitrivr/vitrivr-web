@@ -46,12 +46,17 @@ export default function LoggingObserver() {
             const {clipVector, ...media} = item;
             return {...media, searchRank: item.searchRank ?? index + 1, vectorDimensions: clipVector?.length ?? 0};
     }), [search.items]);
+    const blocks = useMemo(() => search.blocks.map(({file, ...block}) => ({...block,
+        file: file ? {name: file.name, size: file.size, type: file.type, lastModified: file.lastModified} : null,
+    })), [search.blocks]);
     useLogSnapshot("settings.snapshot", settings, enabled);
     useLogSnapshot("settings.schema", search.schema, enabled);
     useLogSnapshot("query.filters", search.queryFilters, enabled);
+    useLogSnapshot("query.blocks", blocks, enabled);
     useLogSnapshot("results.filters", search.mediaFilter, enabled);
     useLogSnapshot("results.view", search.resultView, enabled);
     useLogSnapshot("qa.reranking_enabled", search.vlmReranking.enabled, enabled);
+    useLogSnapshot("qa.reranking_settings", search.vlmReranking, enabled);
     useLogSnapshot("feedback.selection", feedback, enabled);
     useLogSnapshot("results.projected", projected, enabled);
 

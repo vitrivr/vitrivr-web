@@ -1,13 +1,15 @@
+"use client";
+
 import {useDresTask} from "../../dres/TaskContext.ts";
 import {submissionMediaName} from "../../dres/taskKind.ts";
 import {dresErrorMessage} from "../../dres/auth.ts";
 import {notifyDres, notifyDresSubmission} from "../../dres/feedback.ts";
-"use client";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {thumbnailURL, videoURL} from "../../lib/vitrivr.ts";
 import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
 import {useSearch} from "../../state/SearchContext.tsx";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
+import {useInteractionSnapshot} from "../../logging/react.ts";
 import {useAuth} from "../../state/AuthContext.tsx";
 import {submitVideo, submitText} from "../../dres/generated/api/dresSubmit.ts";
 import NearestNeighbor from "./NearestNeighbor.tsx";
@@ -104,6 +106,11 @@ export default function VideoPage() {
         : originalTitle;
     const activeHour = activeInfo ? getHourFromFilename(activeInfo.filename) : null;
     const timeOfRecording = activeHour !== null ? String(activeHour).padStart(2, "0") : "";
+    const activeVideoLog = useMemo(() => ({resultId: id, src: activeVideoSrc, file: activeMp4Src,
+        hourOffset: activeOffset, start: activeOffset === 0 ? start : 0, view: settings.frontendView,
+        recording: isCastleView ? parseVideoURL(activeMp4Src) : null,
+    }), [id, activeVideoSrc, activeMp4Src, activeOffset, start, settings.frontendView, isCastleView]);
+    useInteractionSnapshot("video.active", activeVideoLog);
     const [playbackTimestamp, setPlaybackTimestamp] = useState(start);
 
     /*
@@ -252,7 +259,7 @@ export default function VideoPage() {
                     {isCastleView && <div className="vp-hour vp-hour--previous">
                         <HourGallery src={hourlySrc} direction="previous" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour} recordings={recordings}/>
                     </div>}
-                    <div className="vp-mainPlayer">
+                    <div className="vp-mainPlayer" data-log-area="main-player">
                         <div className="vp-playerHeading">
                             <span className="vp-eyebrow">Now playing</span>
                             {isCastleView && <span className="sc-count">{timeOfRecording ? `${timeOfRecording}:00` : "Current"}</span>}

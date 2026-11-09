@@ -21,7 +21,7 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
     const info = useMemo(() => parseVideoURL(src), [src]);
     if (!info) {
         return (
-            <div
+            <div data-log-area={`hour-${direction}`}
                 className="vp-message vp-message--error">Could not parse video URL: {src}
             </div>);
     }
@@ -42,7 +42,7 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
 
     if (!videoUrl) {
         return (
-            <div
+            <div data-log-area={`hour-${direction}`}
                 style={{
                     minWidth: 0,
                     display: "grid",
@@ -108,7 +108,7 @@ export default function HourGallery({src, direction, offset, onPrevious, onNext,
     }
 
     return (
-        <div
+        <div data-log-area={`hour-${direction}`}
             style={{
                 minWidth: 0,
                 display: "grid",

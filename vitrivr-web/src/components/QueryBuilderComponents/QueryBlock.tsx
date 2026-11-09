@@ -36,7 +36,7 @@ export default function QueryBlock({block, onChange, onRemove, modalityOptions, 
             ...(!next.includes("clip") ? {queryType: "text", file: null} : {})});
     };
     if (!allowed.length) return <p className="muted">No modalities are enabled for this schema. Update the frontend settings.</p>;
-    return <div className="sc-queryBlock">
+    return <div className="sc-queryBlock" data-log-query-block={block.id}>
         {onRemove && <div className="sc-blockHeader"><span>Temporal block</span><button type="button" className="sc-removeBlock" onClick={onRemove}>Remove ×</button></div>}
         <fieldset className="rg rg--row sc-modalities"><legend className="rg__legend">Modalities</legend>
             {allowed.map(option => <label className="rg__option" key={option.value}>

@@ -37,11 +37,14 @@ function resultInfo(node: Element | null) {
 }
 function targetInfo(node: Element | null) {
     if (!node) return null;
-    const control = node.closest<HTMLElement>('button,a,input,textarea,select,summary,[role="button"],[data-log-action]');
+    const control = node.closest<HTMLElement>('button,a,input,textarea,select,summary,[role="button"],[role="option"],[data-log-action]');
     const target = control ?? node;
     const labels = "labels" in target ? (target as HTMLInputElement).labels : null;
     return {tag: target.tagName.toLowerCase(), id: target.id || undefined, classes: target.getAttribute("class"),
         name: target.getAttribute("name"), type: target.getAttribute("type"),
+        role: target.getAttribute("role"), title: target.getAttribute("title"), expanded: target.getAttribute("aria-expanded"), selected: target.getAttribute("aria-selected"),
+        queryBlockId: node.closest<HTMLElement>("[data-log-query-block]")?.dataset.logQueryBlock,
+        area: node.closest<HTMLElement>("[data-log-area]")?.dataset.logArea,
         label: (target.getAttribute("aria-label") || (control ? controlLabel(target, labels?.[0] ?? null) : "")).trim().slice(0, 240),
         href: target instanceof HTMLAnchorElement ? target.href : undefined, ...resultInfo(node)};
 }
@@ -161,7 +164,7 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
             scrollHeight: node.scrollHeight, scrollWidth: node.scrollWidth, width: node.clientWidth, height: node.clientHeight,
             nativeTimestamp: event.timeStamp});
     });
-    for (const type of ["play", "pause", "seeking", "seeked", "timeupdate", "ended", "ratechange", "volumechange", "loadedmetadata", "waiting", "stalled", "error", "enterpictureinpicture", "leavepictureinpicture"]) {
+    for (const type of ["play", "playing", "pause", "seeking", "seeked", "timeupdate", "ended", "ratechange", "volumechange", "loadstart", "loadedmetadata", "loadeddata", "durationchange", "progress", "suspend", "abort", "emptied", "waiting", "stalled", "error", "enterpictureinpicture", "leavepictureinpicture", "webkitbeginfullscreen", "webkitendfullscreen"]) {
         listen(document, type, event => {
             const video = event.target;
             // Exclude detached frame-capture decoders: they are not user inspections.
@@ -215,21 +218,45 @@ export function installDomLogging(logger: InteractionLogger = interactionLogger)
     const watchTheme = (shell: Element | null) => { if (shell) themeObserver.observe(shell, {attributes: true, attributeFilter: ["class"]}); };
     watchTheme(document.querySelectorAll(".search-shell")[0] ?? null);
     const mutation = new MutationObserver(records => {
+        const changedControls = new Set<Element>();
+        const changedResults = new Set<Element>();
+        const changedMessages = new Set<Element>();
+        const messageSelector = '[role="alert"],[role="status"],.flash,.vp-message,.alert--error';
         for (const record of records) {
-            if (record.type === "attributes" && record.target instanceof Element && record.target.matches(".search-shell")) {
-                logger.snapshot("settings.theme", {dark: record.target.classList.contains("search-shell--dark")});
+            if (record.type === "attributes" && record.target instanceof Element) {
+                if (record.attributeName === "aria-expanded" || record.attributeName === "aria-selected") changedControls.add(record.target);
+                else for (const result of results(record.target)) if (visible.has(result)) changedResults.add(result);
             }
+            const parent = record.target instanceof Element ? record.target : record.target.parentElement;
+            const message = parent?.closest(messageSelector);
+            if (message) changedMessages.add(message);
             for (const added of record.addedNodes) for (const result of results(added)) observer?.observe(result);
             for (const added of record.addedNodes) if (added instanceof Element) {
                 const shell = added.matches(".search-shell") ? added : added.querySelector(".search-shell");
                 if (shell) { watchTheme(shell); logger.snapshot("settings.theme", {dark: shell.classList.contains("search-shell--dark")}); }
-                const messages = [...(added.matches('[role="alert"],.flash,.vp-message--error') ? [added] : []), ...added.querySelectorAll('[role="alert"],.flash,.vp-message--error')];
-                for (const message of messages) logger.record("app.message", {text: message.textContent, role: message.getAttribute("role"), classes: message.className});
+                const messages = [...(added.matches(messageSelector) ? [added] : []), ...added.querySelectorAll(messageSelector)];
+                for (const message of messages) changedMessages.add(message);
             }
             for (const removed of record.removedNodes) for (const result of results(removed)) { leave(result); observer?.unobserve(result); }
         }
+        for (const node of changedControls) if (node.isConnected && !isPrivate(node)) {
+            logger.record("ui.control_state", {target: targetInfo(node)});
+        }
+        for (const node of changedResults) {
+            const view = visible.get(node);
+            if (!view || !node.isConnected) continue;
+            const data = resultInfo(node);
+            if (JSON.stringify(view.data) === JSON.stringify(data)) continue;
+            logger.record("result.presentation_changed", {previous: view.data, current: data, previousDwellMs: performance.now() - view.started}, data);
+            visible.set(node, {data, started: performance.now(), context: logger.getContext()});
+        }
+        for (const message of changedMessages) if (message.isConnected && !isPrivate(message)) {
+            logger.record("app.message", {text: message.textContent, role: message.getAttribute("role"), classes: message.className});
+        }
     });
-    mutation.observe(document.body, {childList: true, subtree: true});
+    mutation.observe(document.body, {childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["aria-expanded", "aria-selected", "data-log-result-id", "data-log-media-name", "data-log-frame-rank",
+            "data-log-video-rank", "data-log-position", "data-log-video-group-rank", "data-log-start", "data-log-end"]});
     document.querySelectorAll("[data-log-result-id]").forEach(node => observer?.observe(node));
     let recordingEnabled = logger.getSnapshot().enabled;
     const unsubscribe = logger.subscribe(() => {

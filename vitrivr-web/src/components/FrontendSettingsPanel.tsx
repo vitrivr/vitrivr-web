@@ -1,4 +1,5 @@
-import {useState, type FormEvent, type ReactNode} from "react";
+import {useMemo, useState, type FormEvent, type ReactNode} from "react";
+import {useInteractionSnapshot} from "../logging/react.ts";
 import {defaultFrontendSettings, normalizeFrontendSettings, type FrontendSettings, type FrontendView} from "../config/frontendSettings.ts";
 import {queryTypeOptions} from "../config/queryModalities.ts";
 import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
@@ -59,6 +60,8 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
     const [resourceFilters, setResourceFilters] = useState(settings.enabledResourceFilters);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
+    useInteractionSnapshot("settings.draft", useMemo(() => ({base, frontendView, bayesianRefinement, queryTypes, resourceFilters}),
+        [base, frontendView, bayesianRefinement, queryTypes, resourceFilters]));
     const save = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
@@ -96,7 +99,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
         setError("");
         setNotice("Project defaults loaded. Save changes to apply them.");
     };
-    return <form key={revision} className="fs-form" onSubmit={save}>
+    return <form key={revision} className="fs-form" data-log-area="settings" onSubmit={save}>
         <fieldset className="fs-viewSelector">
             <legend>Frontend view</legend>
             <div className="fs-viewOptions">

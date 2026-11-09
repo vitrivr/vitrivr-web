@@ -148,6 +148,7 @@ export default function EvaluationPicker({onClose}: EvaluationPickerProps) {
                                 <input
                                     type="radio"
                                     name="evaluation"
+                                    value={r.id}
                                     checked={selected === r.id}
                                     onChange={() => setSelected(r.id)}
                                 />

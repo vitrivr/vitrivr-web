@@ -43,7 +43,7 @@ export default function LoggingPanel() {
         } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
         finally { setExporting(false); }
     }
-    return <details className="fs-section" open>
+    return <details className="fs-section" data-log-area="logging" open>
         <summary>Interaction logging</summary>
         <label className="fs-check"><input type="checkbox" checked={status.enabled} onChange={event => logger.configure({enabled: event.target.checked})}/>Record interactions</label>
         <p className="fs-note">Log processing runs in a background worker. {delivery.bufferMode === "memory" ? "The backend stores the archive. Only pending uploads stay in worker memory; closing or reloading this tab loses pending events." : delivery.mode === "upload" ? "Batches upload automatically; confirmed batches are removed from this browser." : "Local recording only: backend uploads are not configured yet."}</p>

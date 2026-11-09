@@ -1,3 +1,4 @@
+import {interactionLogger} from "../logging/index.ts";
 import {directVideoUrl, mediaConfiguration, resolveVideoSources, thumbnailMediaUrl} from "./mediaSources.ts";
 import type {FrontendView} from "../config/frontendSettings.ts";
 import {isFederatedBlock, federatedQueryFromBlock} from "./prakFederated.ts";
@@ -159,39 +160,46 @@ export function buildSegmentMediaUrls(r: VitrivrRetrievable, view: FrontendView 
  */
 export async function fetchSchemas(): Promise<string[]> {
     const url = `${API_BASE}/api/schema/list`;
+    const finish = interactionLogger.begin("api.schemas", {method: "GET", url});
+    try {
 
-    const res = await fetch(url);
-    if (!res.ok) {
-        throw new Error(`Failed to fetch schemas (HTTP ${res.status})`);
-    }
-
-    const data = await res.json() as unknown;
-    let rawList: unknown;
-
-    if (Array.isArray(data)) {
-        rawList = data;
-    } else if (data && typeof data === "object") {
-        const obj = data as Record<string, unknown>;
-        if (Array.isArray(obj.schemas)) {
-            rawList = obj.schemas;
-        } else if (Array.isArray(obj.result)) {
-            rawList = obj.result;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Failed to fetch schemas (HTTP ${res.status})`);
         }
+
+        const data = await res.json() as unknown;
+        finish("response", {status: res.status, body: data});
+        let rawList: unknown;
+
+        if (Array.isArray(data)) {
+            rawList = data;
+        } else if (data && typeof data === "object") {
+            const obj = data as Record<string, unknown>;
+            if (Array.isArray(obj.schemas)) {
+                rawList = obj.schemas;
+            } else if (Array.isArray(obj.result)) {
+                rawList = obj.result;
+            }
+        }
+
+        if (!Array.isArray(rawList)) {
+            return [];
+        }
+
+        const names = (rawList as RawSchema[])
+            .map((item) =>
+                typeof item === "string"
+                    ? item
+                    : item?.name ?? undefined
+            )
+            .filter((name): name is string => typeof name === "string" && name.length > 0);
+
+        return names;
+    } catch (error) {
+        finish("error", error);
+        throw error;
     }
-
-    if (!Array.isArray(rawList)) {
-        return [];
-    }
-
-    const names = (rawList as RawSchema[])
-        .map((item) =>
-            typeof item === "string"
-                ? item
-                : item?.name ?? undefined
-        )
-        .filter((name): name is string => typeof name === "string" && name.length > 0);
-
-    return names;
 }
 
 /**

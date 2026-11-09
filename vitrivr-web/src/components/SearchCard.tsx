@@ -74,6 +74,8 @@ import "../styles/styles.css"
 import {useFrontendSettings} from "../state/FrontendSettingsContext.tsx";
 import {makeBlockState} from "../state/makeBlockState.ts";
 import {enabledQueryModalities, type Modality} from "../config/queryModalities.ts";
+import {interactionLogger} from "../logging/index.ts";
+import {useLoggingEnabled} from "../logging/react.ts";
 
 
 const PAGE_SIZE = 100;
@@ -361,6 +363,19 @@ export function SearchCard() {
     } = useSearch();
     const isLocalFeedback = schema.toLowerCase() === "castle";
     const [visibleCount, setVisibleCount] = useState(resultView === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
+    const resultLogRoot = useRef<HTMLDivElement>(null);
+    const loggingEnabled = useLoggingEnabled();
+    useEffect(() => {
+        if (!loggingEnabled) return;
+        // Read only IDs/ranks from the committed DOM. This captures the actual
+        // filtered/grouped/paginated order without copying vectors or layout.
+        const rendered = [...resultLogRoot.current?.querySelectorAll<HTMLElement>(".sc-resultsGrid [data-log-result-id]") ?? []]
+            .map(node => ({id: node.dataset.logResultId, mediaName: node.dataset.logMediaName,
+                frameRank: Number(node.dataset.logFrameRank) || undefined, videoRank: Number(node.dataset.logVideoRank) || undefined,
+                positionInGroup: Number(node.dataset.logPosition) || undefined,
+                groupPosition: Number(node.closest<HTMLElement>("[data-log-video-group-rank]")?.dataset.logVideoGroupRank) || undefined}));
+        interactionLogger.snapshot("results.display", {view: resultView, visibleLimit: visibleCount, filters: mediaFilter, rendered});
+    }, [items, mediaFilter, resultView, visibleCount, settings.frontendView, loggingEnabled]);
 
     useEffect(() => {
         if (scrollY > 0) {
@@ -684,10 +699,10 @@ export function SearchCard() {
     const beforeNavigate = () => setScrollY(window.scrollY);
 
     return (
-        <div className="sc-search">
+        <div className="sc-search" ref={resultLogRoot} data-log-area="search">
             <div className="sc-page">
                 <div className="sc-workspace">
-                    <section className="panel sc-queryPanel" aria-label="Query Builder">
+                    <section className="panel sc-queryPanel" aria-label="Query Builder" data-log-area="query-builder">
                         <div className="panel__head row-between">
                             <h2 className="panel__title">Query Builder</h2>
                             <span className="sc-count">{blocks.length} block{blocks.length === 1 ? "" : "s"}</span>

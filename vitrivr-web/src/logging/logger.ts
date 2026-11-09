@@ -6,10 +6,10 @@ import type {EventStore, InteractionEvent, LogContext, LoggingPreferences, Loggi
 export const defaultLoggingPreferences: LoggingPreferences = {enabled: true, operatorId: "", taskId: ""};
 
 export function eventCategory(action: string): string {
-    if (/^(query\.filters|feedback\.selection|ui\.(editing_started|change|beforeinput|input|key|composition|selection))/.test(action)) return "Query formulation";
+    if (/^(query\.(filters|blocks)|qa\.form|feedback\.selection|ui\.(editing_started|change|beforeinput|input|key|composition|selection))/.test(action)) return "Query formulation";
     if (/^(query\.|qa\.|api\.engine|api\.descriptor)/.test(action)) return "Query submission";
     if (/^(navigation\.|ui\.click|ui\.submit)/.test(action)) return "Traversing";
-    if (/^(results\.|result\.|media\.|ui\.scroll)/.test(action)) return "Browsing";
+    if (/^(results\.|result\.|media\.|video\.|ui\.scroll)/.test(action)) return "Browsing";
     if (/^submission\./.test(action)) return "Answer submission";
     return "Other";
 }

@@ -1,4 +1,5 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
+import {useInteractionSnapshot} from "../../logging/react.ts";
 import {useNavigate} from "react-router-dom";
 import {applyVisualDeduplication} from "../../lib/visualDeduplication.ts";
 import {useFrontendSettings} from "../../state/FrontendSettingsContext.tsx";
@@ -54,6 +55,10 @@ export default function NearestNeighbor({id, queryVector, onResultsChange}: Near
     const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const {schema, queryFilters, visualDeduplicationEnabled, setVectorsById, setItems} = useSearch();
+    useInteractionSnapshot("results.neighbours", useMemo(() => ({sourceResultId: id, open, loading, loaded, error,
+        items: neighbors.map(item => ({id: item.id, mediaName: item.mediaItemName, frameRank: item.searchRank,
+            videoRank: item.videoRank, start: item.start, end: item.end})),
+    }), [id, open, loading, loaded, error, neighbors]));
 
     useEffect(() => {
         setOpen(false);

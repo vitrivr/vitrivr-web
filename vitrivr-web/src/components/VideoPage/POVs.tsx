@@ -9,6 +9,7 @@ import {getHourFromFilename, parseVideoURL} from "./VideoHourUtils.ts";
 import {mediaNameFromPath} from "../../lib/vitrivr.ts";
 import type {CastleRecording} from "./castleRecordings.ts";
 import {otherPovRecordings, type PovRecording} from "./povRecordings.ts";
+import {useInteractionSnapshot} from "../../logging/react.ts";
 
 type OtherPovsProps = {
     src: string;
@@ -36,6 +37,9 @@ function PovGallery({src, timestamp, recordings, catalogueLoading, catalogueErro
     const timestampRef = useRef(timestamp);
     timestampRef.current = timestamp;
     const previewTime = useRef<number | null>(null);
+    useInteractionSnapshot("video.povs", useMemo(() => ({source: src, open, catalogueLoading, catalogueError, previewLoading,
+        recordings: videos.map(video => ({id: video.id, source: video.source, kind: video.kind, file: video.file})),
+    }), [src, open, catalogueLoading, catalogueError, previewLoading, videos]));
 
     useEffect(() => {
         if (!open || !videos.length) return;
