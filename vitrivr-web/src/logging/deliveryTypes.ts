@@ -10,5 +10,6 @@ export type WorkerCommand = {id: number} & (
     {type: "init"; config: DeliveryConfig} | {type: "capture"; event: InteractionEvent; snapshotKey?: string} |
     {type: "captureBatch"; events: InteractionEvent[]} |
     {type: "flush"} | {type: "retry"} | {type: "read"; sessionId?: string} |
-    {type: "export"; sessionId?: string; format: "json" | "jsonl" | "rivals"});
+    {type: "export"; sessionId?: string; format: "json" | "jsonl" | "rivals"} |
+    {type: "exportSession"; sessionId: string; format: "json" | "jsonl" | "rivals"});
 export type WorkerReply = {type: "status"; status: DeliveryStatus} | {type: "reply"; id: number; value?: unknown; error?: string};

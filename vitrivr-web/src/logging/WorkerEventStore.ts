@@ -1,6 +1,7 @@
 import {sanitize} from "./sanitize.ts";
 import {initialDeliveryStatus, type DeliveryConfig, type DeliveryStatus, type WorkerCommand, type WorkerReply} from "./deliveryTypes.ts";
 import type {EventStore, InteractionEvent} from "./types.ts";
+import type {SessionExport} from "./sessionExport.ts";
 
 type Command = WorkerCommand extends infer T ? T extends WorkerCommand ? Omit<T, "id"> : never : never;
 export class WorkerEventStore implements EventStore {
@@ -46,7 +47,7 @@ export class WorkerEventStore implements EventStore {
             const timer = setTimeout(() => {
                 this.pending.delete(id);
                 reject(new Error("Logging worker timed out. Check logging status before continuing."));
-            }, command.type === "export" || command.type === "read" ? 120_000 : 30_000);
+            }, command.type === "export" || command.type === "exportSession" || command.type === "read" ? 120_000 : 30_000);
             this.pending.set(id, {resolve, reject, timer});
             try { this.worker!.postMessage({...command, id}); }
             catch (error) {
@@ -90,6 +91,10 @@ export class WorkerEventStore implements EventStore {
     async flush() { this.sendBuffered(); await this.request({type: "flush"}); }
     async read(sessionId?: string) { this.sendBuffered(); return await this.request({type: "read", sessionId}) as InteractionEvent[]; }
     async exportBlob(sessionId: string | undefined, format: "json" | "jsonl" | "rivals") { this.sendBuffered(); return await this.request({type: "export", sessionId, format}) as Blob; }
+    async exportSession(sessionId: string, format: "json" | "jsonl" | "rivals") {
+        this.sendBuffered();
+        return await this.request({type: "exportSession", sessionId, format}) as SessionExport;
+    }
     async retry() {
         await this.request({type: "retry"});
         this.localError = null;

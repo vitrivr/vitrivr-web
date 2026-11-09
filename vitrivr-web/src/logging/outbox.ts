@@ -5,6 +5,7 @@ export interface BatchOutbox {
     stats(): Promise<OutboxStats>;
     put(batch: StoredBatch, maxBytes: number): Promise<void>;
     first(): Promise<StoredBatch | undefined>;
+    oldest?(limit: number, maxBytes: number): Promise<StoredBatch[]>;
     remove(batchId: string): Promise<void>;
     visit(consume: (batch: StoredBatch) => void): Promise<void>;
 }
@@ -24,6 +25,15 @@ export class MemoryOutbox implements BatchOutbox {
         this.bytes += batch.bytes; this.events += batch.eventCount;
     }
     async first() { return this.batches.values().next().value; }
+    async oldest(limit: number, maxBytes: number) {
+        const selected: StoredBatch[] = [];
+        let bytes = 0;
+        for (const batch of this.batches.values()) {
+            if (selected.length && (selected.length >= limit || bytes + batch.bytes > maxBytes)) break;
+            selected.push(batch); bytes += batch.bytes;
+        }
+        return selected;
+    }
     async remove(batchId: string) {
         const batch = this.batches.get(batchId);
         if (!batch) return;
@@ -102,6 +112,25 @@ export class IndexedDbOutbox implements BatchOutbox {
             const request = db.transaction("batches", "readonly").objectStore("batches").index("createdAt").openCursor();
             request.onsuccess = () => resolve(request.result?.value);
             request.onerror = () => reject(request.error);
+        });
+    }
+    async oldest(limit: number, maxBytes: number): Promise<StoredBatch[]> {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("batches", "readonly");
+            const request = tx.objectStore("batches").index("createdAt").openCursor();
+            const selected: StoredBatch[] = [];
+            let bytes = 0;
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                const batch = cursor.value as StoredBatch;
+                if (selected.length && (selected.length >= limit || bytes + batch.bytes > maxBytes)) return;
+                selected.push(batch); bytes += batch.bytes;
+                cursor.continue();
+            };
+            tx.oncomplete = () => resolve(selected);
+            tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Cannot read pending log batches."));
         });
     }
     async remove(batchId: string): Promise<void> {

@@ -15,9 +15,23 @@ export default function LoggingPanel() {
     const [allSessions, setAllSessions] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
+    async function exportSession() {
+        if (!loggingDelivery) return;
+        setExporting(true); setError(""); setNotice("");
+        logger.record("logging.export_requested", {format, source: "local-and-server", sessionId: status.sessionId});
+        try {
+            await logger.flush();
+            const result = await loggingDelivery.exportSession(status.sessionId, format);
+            downloadBlob(result.blob, format);
+            setNotice(`Downloaded ${result.eventCount.toLocaleString()} events for this session, deduplicated across local and server logs.${result.warning ? ` ${result.warning}` : ""}`);
+        } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+        finally { setExporting(false); }
+    }
     async function exportLogs(bufferedOnly = false) {
         setExporting(true);
         setError("");
+        setNotice("");
         logger.record("logging.export_requested", {format, allSessions, bufferedOnly});
         try {
             await logger.flush();
@@ -45,12 +59,13 @@ export default function LoggingPanel() {
                     <option value="json">Full JSON</option><option value="jsonl">JSON Lines</option><option value="rivals">RIVALS</option>
                 </select>
             </label>
-            <label className="fs-field">Export scope
+            <label className="fs-field">Local export scope
                 <select value={allSessions ? "all" : "session"} onChange={event => setAllSessions(event.target.value === "all")}>
                     <option value="session">Current session (including reloads)</option><option value="all">All saved sessions</option>
                 </select>
             </label>
         </div>
+        <p className="fs-note">Current session: <code>{status.sessionId}</code></p>
         <p className="fs-note">{delivery.pendingBatches.toLocaleString()} pending batches · {delivery.pendingEvents.toLocaleString()} pending events · {(delivery.pendingBytes / 1048576).toFixed(1)} / 128 MiB{delivery.bufferMode === "memory" ? " in worker memory" : " on local disk"}{delivery.lastUploadedAt ? ` · Last uploaded ${new Date(delivery.lastUploadedAt).toLocaleTimeString()}` : ""}</p>
         {delivery.uploadError && <p className="fs-error" role="alert">{delivery.uploadError} Retrying automatically; unacknowledged logs remain {delivery.bufferMode === "memory" ? "in memory until this tab closes" : "on local disk"}.</p>}
         {delivery.captureError && <p className="fs-error" role="alert">{delivery.captureError}</p>}
@@ -61,8 +76,11 @@ export default function LoggingPanel() {
             {loggingDelivery && <button type="button" className="btn" onClick={() => { void loggingDelivery?.retry().catch(err => setError(err instanceof Error ? err.message : String(err))); }}>Retry logging / upload</button>}
 
         </div>
-        {loggingDelivery?.config.baseUrl && <a className="btn" href={`${loggingDelivery.config.baseUrl}/sessions/${encodeURIComponent(status.sessionId)}/export?format=${format}`} download>Download server session</a>}
-        <p className="fs-note">{delivery.bufferMode === "memory" ? "Pending downloads contain this worker’s unacknowledged events only. Use the server download for archived events. Pending uploads do not survive closing or reloading the tab." : "Local downloads contain retained batches and older browser archives. Already uploaded batches must be downloaded from the server. Unsaved buffered events can be lost if the page closes; uploads resume from saved batches after reload."}</p>
+        {loggingDelivery?.config.baseUrl && <button className="btn" type="button" disabled={exporting} onClick={() => void exportSession()}>
+            {exporting ? "Exporting…" : "Download current session (local + server)"}
+        </button>}
+        <p className="fs-note">The current-session download combines saved server events and locally retained events, removing duplicates. Local downloads contain only events retained in this browser. {delivery.bufferMode === "memory" ? "Pending uploads do not survive closing or reloading the tab." : "Uploads resume from saved batches after reload."}</p>
+        {notice && <p className="fs-note" role="status">{notice}</p>}
         {error && <p className="fs-error" role="alert">{error}</p>}
     </details>;
 }

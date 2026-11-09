@@ -105,35 +105,44 @@ class LogStore:
         return db
 
     def ingest(self, batch):
-        validate_batch(batch)
-        digest = hashlib.sha256(encoded(batch).encode("utf-8")).hexdigest()
-        # Validation/serialization outside the write lock keeps concurrent clients moving.
+        return self.ingest_many([batch])[0]
+
+    def ingest_many(self, batches):
+        # All envelopes validate before taking the shared write lock.
         prepared = []
-        for event in batch["events"]:
-            body = encoded(event)
-            ctx = event["context"]
-            prepared.append((event["id"], hashlib.sha256(body.encode("utf-8")).hexdigest(), event["sessionId"],
-                event["pageId"], event["sequence"], event["timestamp"], ctx["operatorId"], ctx["evaluationId"],
-                ctx["taskId"], event["category"], event["action"], body))
+        for batch in batches:
+            validate_batch(batch)
+            digest = hashlib.sha256(encoded(batch).encode("utf-8")).hexdigest()
+            rows = []
+            for event in batch["events"]:
+                body = encoded(event)
+                ctx = event["context"]
+                rows.append((event["id"], hashlib.sha256(body.encode("utf-8")).hexdigest(), event["sessionId"],
+                    event["pageId"], event["sequence"], event["timestamp"], ctx["operatorId"], ctx["evaluationId"],
+                    ctx["taskId"], event["category"], event["action"], body))
+            prepared.append((batch, digest, rows))
+        created = []
         with closing(self.connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             try:
-                previous = db.execute("SELECT digest FROM batches WHERE id=?", (batch["batchId"],)).fetchone()
-                if previous:
-                    if previous[0] != digest:
-                        raise ApiError(409, "Batch ID already exists with different content.")
-                    db.rollback()
-                    return False
-                for row in prepared:
-                    previous = db.execute("SELECT digest FROM events WHERE id=?", (row[0],)).fetchone()
-                    if previous and previous[0] != row[1]:
-                        raise ApiError(409, "Event ID already exists with different content.")
-                    if not previous:
-                        db.execute("INSERT INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", row)
-                db.execute("INSERT INTO batches VALUES (?,?,?,?,?)", (batch["batchId"], digest, batch["createdAt"],
-                    datetime.now(timezone.utc).isoformat(), len(prepared)))
-                db.commit()  # Acknowledge only after the durable transaction commits.
-                return True
+                for batch, digest, rows in prepared:
+                    previous = db.execute("SELECT digest FROM batches WHERE id=?", (batch["batchId"],)).fetchone()
+                    if previous:
+                        if previous[0] != digest:
+                            raise ApiError(409, "Batch ID already exists with different content.")
+                        created.append(False)
+                        continue
+                    for row in rows:
+                        previous = db.execute("SELECT digest FROM events WHERE id=?", (row[0],)).fetchone()
+                        if previous and previous[0] != row[1]:
+                            raise ApiError(409, "Event ID already exists with different content.")
+                        if not previous:
+                            db.execute("INSERT INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", row)
+                    db.execute("INSERT INTO batches VALUES (?,?,?,?,?)", (batch["batchId"], digest, batch["createdAt"],
+                        datetime.now(timezone.utc).isoformat(), len(rows)))
+                    created.append(True)
+                db.commit()  # Acknowledge only after every batch durably commits.
+                return created
             except BaseException:
                 db.rollback()
                 raise
@@ -255,9 +264,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Vary", "Origin")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
-        if origin in self.server.origins:
+        if "*" in self.server.origins:
+            self.send_header("Access-Control-Allow-Origin", "*")
+        elif origin in self.server.origins:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Access-Control-Expose-Headers", "X-Log-Event-Count")
         super().end_headers()
 
     def json(self, status, body):
@@ -270,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorize(self):
         origin = self.headers.get("Origin")
-        if origin and origin not in self.server.origins:
+        if origin and "*" not in self.server.origins and origin not in self.server.origins:
             raise ApiError(403, "Origin is not allowed.")
         if self.server.token and not hmac.compare_digest(self.headers.get("Authorization", "").encode("utf-8"), ("Bearer " + self.server.token).encode("utf-8")):
             raise ApiError(401, "Logging-service authentication required.")
@@ -293,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         origin = self.headers.get("Origin")
-        if origin not in self.server.origins:
+        if not origin or ("*" not in self.server.origins and origin not in self.server.origins):
             self.json(403, {"error": "Origin is not allowed."})
             return
         if self.headers.get("Access-Control-Request-Method") not in ("GET", "POST"):
@@ -313,7 +325,8 @@ class Handler(BaseHTTPRequestHandler):
         self.dispatch(self.ingest)
 
     def ingest(self):
-        if urlsplit(self.path).path != PREFIX + "/batches":
+        path = urlsplit(self.path).path
+        if path not in (PREFIX + "/batches", PREFIX + "/batches/bulk"):
             raise ApiError(404, "Endpoint not found.")
         if self.headers.get_content_type() != "application/json":
             raise ApiError(415, "Content-Type must be application/json.")
@@ -330,8 +343,15 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length)
         require(len(raw) == length, "Incomplete request body.")
         batch = parse_json(raw)
-        created = self.server.store.ingest(batch)
-        self.json(201 if created else 200, {"batchId": batch["batchId"], "accepted": True})
+        if path.endswith("/bulk"):
+            require(isinstance(batch, dict) and batch.get("format") == "vitrivr-interaction-batches" and type(batch.get("version")) is int and batch["version"] == 1, "Invalid bulk envelope.")
+            batches = batch.get("batches")
+            require(isinstance(batches, list) and 1 <= len(batches) <= 16, "Bulk upload must contain 1–16 batches.")
+            created = self.server.store.ingest_many(batches)
+            self.json(201 if any(created) else 200, {"batchIds": [item["batchId"] for item in batches], "accepted": True})
+        else:
+            created = self.server.store.ingest(batch)
+            self.json(201 if created else 200, {"batchId": batch["batchId"], "accepted": True})
 
     def do_GET(self):
         self.dispatch(self.download)
@@ -351,7 +371,9 @@ class Handler(BaseHTTPRequestHandler):
         if format not in ("jsonl", "json", "rivals"):
             raise ApiError(400, "Unsupported export format.")
         with self.server.store.session(session_id) as db:
+            count = db.execute("SELECT count(*) FROM events WHERE session_id=?", (session_id,)).fetchone()[0]
             self.send_response(200)
+            self.send_header("X-Log-Event-Count", str(count))
             self.response_started = True
             self.send_header("Content-Type", "application/x-ndjson" if format == "jsonl" else "application/json")
             # Fixed safe filename; session IDs cannot inject response headers.
@@ -366,7 +388,8 @@ def main():
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=9092)
     parser.add_argument("--db", type=Path, default=Path(__file__).parent / "data" / "logs.sqlite3")
-    parser.add_argument("--allow-origin", action="append", default=None)
+    parser.add_argument("--allow-origin", action="append", default=None,
+        help="Allowed frontend origin; repeat for several origins, or use '*' for all origins without cross-origin cookies.")
     parser.add_argument("--max-clients", type=int, default=16)
     args = parser.parse_args()
     if args.max_clients < 1:

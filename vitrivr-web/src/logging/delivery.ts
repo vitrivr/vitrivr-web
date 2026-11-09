@@ -1,6 +1,6 @@
 import {uuid} from "../utils/uuid.ts";
 import {sanitize} from "./sanitize.ts";
-import {uploadBatch} from "./upload.ts";
+import {uploadBatch, uploadBatches} from "./upload.ts";
 import {initialDeliveryStatus, type DeliveryConfig, type DeliveryStatus, type LogBatch, type StoredBatch} from "./deliveryTypes.ts";
 import type {BatchOutbox} from "./outbox.ts";
 import type {InteractionEvent} from "./types.ts";
@@ -19,6 +19,7 @@ export class LogDelivery {
     private uploading: Promise<void> | null = null;
     private retryAt = 0;
     private failures = 0;
+    private bulkSupported = true;
     constructor(privateOutbox: BatchOutbox, privateConfig: DeliveryConfig, privateChanged: (status: DeliveryStatus) => void,
         privateFetcher: typeof fetch = fetch) {
         this.outbox = privateOutbox; this.config = privateConfig; this.changed = privateChanged; this.fetcher = privateFetcher;
@@ -82,11 +83,16 @@ export class LogDelivery {
     }
     private async send() {
         try {
-            // Drain the durable backlog sequentially. One batch per three-second
-            // tick cannot keep up with full pointer/key capture even on a fast link.
-            for (let batch = await this.outbox.first(); batch; batch = await this.outbox.first()) {
-                await uploadBatch(batch, this.config, this.fetcher);
-                await this.outbox.remove(batch.batchId);
+            for (;;) {
+                let batches: StoredBatch[];
+                if (this.outbox.oldest) batches = await this.outbox.oldest(this.bulkSupported ? 16 : 1, batchBytes);
+                else { const first = await this.outbox.first(); batches = first ? [first] : []; }
+                if (!batches.length) break;
+                if (batches.length > 1 && this.bulkSupported) {
+                    this.bulkSupported = await uploadBatches(batches, this.config, this.fetcher);
+                    if (!this.bulkSupported) continue;
+                } else await uploadBatch(batches[0], this.config, this.fetcher);
+                for (const batch of batches) await this.outbox.remove(batch.batchId);
                 this.failures = 0; this.retryAt = 0;
                 Object.assign(this.status, await this.outbox.stats(), {lastUploadedAt: Date.now(), uploadError: null});
                 this.emit();
