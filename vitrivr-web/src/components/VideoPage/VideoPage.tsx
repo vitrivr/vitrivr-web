@@ -172,7 +172,8 @@ export default function VideoPage() {
         try {
             video.pause();
             setNnStage("Capturing frame…");
-            const thumbnail = await generateVideoThumbnail(activeMp4Src, video.currentTime, controller.signal);
+            const thumbnail = await generateVideoThumbnail(activeMp4Src, video.currentTime, controller.signal,
+                /\.m3u8(?:$|[?#])/i.test(activeVideoSrc) ? activeVideoSrc : undefined);
             if (controller.signal.aborted) return;
             if (!thumbnail) throw new Error("Could not capture the video frame. Check that the original video is available and permits frame capture.");
             setNnStage("Finding similar frames…");

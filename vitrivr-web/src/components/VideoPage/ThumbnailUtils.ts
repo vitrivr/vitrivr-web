@@ -180,9 +180,12 @@ export async function generateVideoThumbnail(url: string, seekTime: number, sign
     if (cached) return cached;
     const config = mediaConfiguration();
     const useStream = streamUrl && (Hls.isSupported() || document.createElement("video").canPlayType("application/vnd.apple.mpegurl"));
-    const captureUrl = mediaCaptureUrl(useStream ? streamUrl : url, useStream ? config.hlsBase : config.videoBase,
-        import.meta.env.VITE_MEDIA_CAPTURE_PROXY ?? (import.meta.env.DEV ? "/frame-media" : ""));
-    const thumbnail = await captureVideoThumbnail(captureUrl, seekTime, signal);
+    const proxy = import.meta.env.VITE_MEDIA_CAPTURE_PROXY ?? (import.meta.env.DEV ? "/frame-media" : "");
+    const captureUrl = mediaCaptureUrl(useStream ? streamUrl : url, useStream ? config.hlsBase : config.videoBase, proxy);
+    let thumbnail = await captureVideoThumbnail(captureUrl, seekTime, signal);
+    if (!thumbnail && useStream && !signal?.aborted) {
+        thumbnail = await captureVideoThumbnail(mediaCaptureUrl(url, config.videoBase, proxy), seekTime, signal);
+    }
     if (thumbnail && !signal?.aborted) {
         if (thumbnailCache.size >= 48) thumbnailCache.delete(thumbnailCache.keys().next().value!);
         thumbnailCache.set(key, thumbnail);
@@ -257,7 +260,7 @@ function captureVideoThumbnail(url: string, seekTime: number, signal?: AbortSign
             }
         }
 
-        video.preload = "metadata";
+        video.preload = "auto";
         video.muted = true;
         video.playsInline = true;
 
