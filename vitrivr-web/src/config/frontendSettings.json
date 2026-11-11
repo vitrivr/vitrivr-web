@@ -9,7 +9,6 @@
   "enabledQueryTypes": [
     "clip",
     "vlm",
-    "emotions",
     "ocr",
     "asr",
     "person",
