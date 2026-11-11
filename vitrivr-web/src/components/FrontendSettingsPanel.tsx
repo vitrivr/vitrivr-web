@@ -8,6 +8,7 @@ import {activeQueryFilters, enabledResourceFilters} from "../lib/queryFilters.ts
 import {selectedPersonNames} from "../lib/personQuery.ts";
 import {vlmModelOptions, type VlmRerankingPreferences} from "../lib/vlm.ts";
 import LoggingPanel from "../logging/LoggingPanel.tsx";
+import {formatDresName, normalizeDresNaming} from "../dres/naming.ts";
 import "./FrontendSettingsPanel.css";
 
 type Choice = {value: string; label: string};
@@ -54,18 +55,25 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
     const {setQueryFilters, setBlocks} = useSearch();
     const [base, setBase] = useState(settings);
     const [frontendView, setFrontendView] = useState<FrontendView>(settings.frontendView);
+    const [dresNaming, setDresNaming] = useState(settings.dresNaming);
+    const namingExample = useMemo(() => {
+        try {
+            return formatDresName(normalizeDresNaming(dresNaming[frontendView], frontendView),
+                {day: "1", camera: "Allie", hour: "08", stem: frontendView === "CASTLE" ? "Day_1_Allie_08" : "example_video"});
+        } catch (err) { return err instanceof Error ? err.message : String(err); }
+    }, [dresNaming, frontendView]);
     const [bayesianRefinement, setBayesianRefinement] = useState(settings.bayesianRefinementEnabled);
     const [revision, setRevision] = useState(0);
     const [queryTypes, setQueryTypes] = useState(settings.enabledQueryTypes);
     const [resourceFilters, setResourceFilters] = useState(settings.enabledResourceFilters);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
-    useInteractionSnapshot("settings.draft", useMemo(() => ({base, frontendView, bayesianRefinement, queryTypes, resourceFilters}),
-        [base, frontendView, bayesianRefinement, queryTypes, resourceFilters]));
+    useInteractionSnapshot("settings.draft", useMemo(() => ({base, frontendView, dresNaming, bayesianRefinement, queryTypes, resourceFilters}),
+        [base, frontendView, dresNaming, bayesianRefinement, queryTypes, resourceFilters]));
     const save = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        const draft: FrontendSettings = {...base, frontendView, bayesianRefinementEnabled: bayesianRefinement, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
+        const draft: FrontendSettings = {...base, frontendView, dresNaming, bayesianRefinementEnabled: bayesianRefinement, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
             vlmReranking: {model: String(data.get("vlmModel")) as VlmRerankingPreferences["model"], candidateLimit: Number(data.get("vlmCandidateLimit"))},
             visualDeduplication: {...base.visualDeduplication, enabled: data.has("dedupEnabled"), field: String(data.get("dedupField") ?? "")}};
         for (const {key} of listOptions) if (data.has(key)) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
@@ -91,6 +99,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
     const restore = () => {
         const defaults = defaultFrontendSettings();
         setFrontendView(defaults.frontendView);
+        setDresNaming(defaults.dresNaming);
         setBase(defaults);
         setBayesianRefinement(defaults.bayesianRefinementEnabled);
         setQueryTypes(defaults.enabledQueryTypes);
@@ -111,6 +120,25 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
             </div>
         </fieldset>
         {schemaSelector}
+        <details className="fs-section" open>
+            <summary>DRES video naming — {frontendView}</summary>
+            <p className="fs-note">Saved separately for CASTLE and VBS. Applies to video submissions from results and the video page.</p>
+            <div className="fs-grid">
+                <label className="fs-field">Prefix
+                    <input value={dresNaming[frontendView].prefix} placeholder="None (or mp4s/)" onChange={event => setDresNaming(previous => ({...previous, [frontendView]: {...previous[frontendView], prefix: event.target.value}}))}/>
+                </label>
+                <label className="fs-field">Filename pattern
+                    <input required value={dresNaming[frontendView].pattern} onChange={event => setDresNaming(previous => ({...previous, [frontendView]: {...previous[frontendView], pattern: event.target.value}}))}/>
+                </label>
+                <label className="fs-field">Extension
+                    <input value={dresNaming[frontendView].extension} placeholder="None (or mp4, webm.mp4)" onChange={event => setDresNaming(previous => ({...previous, [frontendView]: {...previous[frontendView], extension: event.target.value}}))}/>
+                </label>
+            </div>
+            <p className="fs-note">{frontendView === "CASTLE"
+                ? "Placeholders: {day} (1), {camera} (Allie), {hour} (08), {stem} (Day_1_Allie_08)."
+                : "Placeholder: {stem} (the filename without its extension)."} Prefixes are added exactly as entered; include a trailing / for folders. Leave extension empty for no extension.</p>
+            <p className="fs-note">Example: <code>{namingExample}</code></p>
+        </details>
         {/*<p className="fs-note">{frontendView === "VBS" ? "PraK retrieval and Bayesian refinement are disabled in VBS. " : ""}Preferences are saved in this browser. The backend schema is selected separately above.</p>*/}
         <div className="fs-grid">
             <Choices label="Query types" options={queryTypeOptions} value={queryTypes} onChange={setQueryTypes} disabledValues={frontendView === "VBS" ? ["prak"] : []}/>

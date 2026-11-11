@@ -18,7 +18,7 @@
   "personNames": [
     "unknown",
     "Allie",
-    "Björn",
+    "Bj\u00f6rn",
     "Cathal",
     "Florian",
     "Klaus",
@@ -37,7 +37,7 @@
   "sourcePersons": [
     "Allie",
     "Bao",
-    "Björn",
+    "Bj\u00f6rn",
     "Cathal",
     "Florian",
     "Klaus",
@@ -65,5 +65,17 @@
     "timeWindowSeconds": 120,
     "candidateLimit": 5000,
     "limit": 1000
+  },
+  "dresNaming": {
+    "CASTLE": {
+      "prefix": "",
+      "pattern": "Day_{day}_{camera}_{hour}",
+      "extension": ""
+    },
+    "VBS": {
+      "prefix": "",
+      "pattern": "{stem}",
+      "extension": ""
+    }
   }
 }

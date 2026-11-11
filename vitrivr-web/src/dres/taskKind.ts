@@ -1,5 +1,8 @@
 import {videoQaIdFromPath} from "../lib/videoQa.ts";
 
+import defaults from "../config/frontendSettings.json" with {type: "json"};
+import {formatDresName, type DresNaming} from "./naming.ts";
+
 export type SubmissionKind = "text" | "item" | "temporal" | "unknown";
 
 /** DRES task types use display names, e.g. "Visual Question Answering". */
@@ -15,18 +18,20 @@ export function submissionKindFromTask(task: SubmissionTask | null | undefined):
     return "item";
 }
 
-/** CASTLE identifies recordings by day, camera and hour; VBS uses the filename stem. */
-export function submissionMediaName(path: string, view = "VBS"): string {
+/** Format DRES names from CASTLE recording identifiers or VBS filename stems. */
+export function submissionMediaName(path: string, view = "VBS", naming: DresNaming = defaults.dresNaming[view === "CASTLE" ? "CASTLE" : "VBS"]): string {
     if (view === "CASTLE") {
-        const recordingId = videoQaIdFromPath(path);
-        if (recordingId) return recordingId;
-        const canonicalId = path.trim().replace(/\.mp4$/i, "");
-        if (/^day[1-9]\d*_[A-Za-z0-9]+_\d{2}$/.test(canonicalId)) return canonicalId;
+        const recordingId = videoQaIdFromPath(path) ?? path.trim().split(/[\\/]/).pop() ?? "";
+        const match = recordingId.match(/^day_?([1-9]\d*)_([A-Za-z0-9]+)_(\d{2})(?:\.webm)?(?:\.mp4)?$/i);
+        if (match) return formatDresName(naming, {
+            day: match[1], camera: match[2], hour: match[3], stem: `Day_${match[1]}_${match[2]}_${match[3]}`,
+        });
         throw new Error("Cannot identify the CASTLE recording for DRES. Its day, person or room, and hour are required.");
     }
     let value = path;
     try { if (/^https?:\/\//i.test(path)) value = new URL(path).pathname; } catch { /* Use the supplied path. */ }
-    return value.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "";
+    const stem = value.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "";
+    return formatDresName(naming, {stem});
 }
 
 /** A rejection from the configured DRES filter overrides guesses based on task names. */

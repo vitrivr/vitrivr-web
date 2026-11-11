@@ -2,10 +2,13 @@ import jsonDefaults from "./frontendSettings.json" with {type: "json"};
 import type {VisualDeduplicationSettings} from "../lib/visualDeduplication.ts";
 import {vlmModelOptions, type VlmRerankingPreferences} from "../lib/vlm.ts";
 
+import {normalizeDresNaming, type DresNamingSettings} from "../dres/naming.ts";
+
 export type FrontendView = "CASTLE" | "VBS";
 
 export type FrontendSettings = {
     frontendView: FrontendView;
+    dresNaming: DresNamingSettings;
     bayesianRefinementEnabled: boolean;
     enabledQueryTypes: string[];
     enabledResourceFilters: string[];
@@ -27,7 +30,7 @@ function record(value: unknown): Record<string, unknown> {
 /** Validate saved/UI overrides while using the JSON file for missing defaults. */
 export function normalizeFrontendSettings(value: unknown): FrontendSettings {
     const input = {...jsonDefaults, ...record(value)};
-    const list = (key: keyof Omit<FrontendSettings, "visualDeduplication" | "vlmReranking" | "bayesianRefinementEnabled" | "frontendView">): string[] => {
+    const list = (key: keyof Omit<FrontendSettings, "dresNaming" | "visualDeduplication" | "vlmReranking" | "bayesianRefinementEnabled" | "frontendView">): string[] => {
         const values = input[key];
         if (!Array.isArray(values) || !values.every(item => typeof item === "string")) throw new Error(`${key} must contain text values.`);
         return [...new Set(values.map(item => item.trim()).filter(Boolean))];
@@ -47,7 +50,13 @@ export function normalizeFrontendSettings(value: unknown): FrontendSettings {
     const model = vlmModelOptions.find(option => option.value === vlm.model)?.value;
     if (!model) throw new Error("Unknown VLM reranking model.");
     if (!Number.isInteger(vlm.candidateLimit) || vlm.candidateLimit < 1 || vlm.candidateLimit > 1000) throw new Error("VLM candidate limit must be a whole number between 1 and 1000.");
+    const naming = {...jsonDefaults.dresNaming, ...record(input.dresNaming)};
+    const dresNaming = {
+        CASTLE: normalizeDresNaming({...jsonDefaults.dresNaming.CASTLE, ...record(naming.CASTLE)}, "CASTLE"),
+        VBS: normalizeDresNaming({...jsonDefaults.dresNaming.VBS, ...record(naming.VBS)}, "VBS"),
+    };
     return {
+        dresNaming,
         frontendView: input.frontendView,
         bayesianRefinementEnabled: input.bayesianRefinementEnabled,
         enabledQueryTypes, enabledResourceFilters,

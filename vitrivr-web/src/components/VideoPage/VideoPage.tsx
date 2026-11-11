@@ -225,7 +225,7 @@ export default function VideoPage() {
                 }
                 const tSec = videoRef.current?.currentTime ?? start;
                 const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
-                const videoName = submissionMediaName(isCastleView ? activeMp4Src || mediaItemName || src : mediaItemName || activeMp4Src || src, settings.frontendView);
+                const videoName = submissionMediaName(isCastleView ? activeMp4Src || mediaItemName || src : mediaItemName || activeMp4Src || src, settings.frontendView, settings.dresNaming[settings.frontendView]);
                 const res = await submitVideo({session, evaluationId, mediaItemName: videoName, start: tMs, end: tMs});
                 notifyDresSubmission(res.data);
             }

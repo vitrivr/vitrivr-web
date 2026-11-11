@@ -489,17 +489,23 @@ export function SearchCard() {
 
     const onSearchRef = useRef<() => void>(() => {});
     onSearchRef.current = () => {void onSearch();};
-
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
-            // Ctrl+Enter on Windows/Linux, Cmd+Enter on macOS
-            const isSubmitCombo = (e.ctrlKey || e.metaKey) && e.key === "Enter";
-            if (!isSubmitCombo) return;
+            if (e.defaultPrevented || e.repeat || e.isComposing || document.querySelector('[role="dialog"], dialog[open]')) return;
+            if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.code === "KeyV" || e.key.toLowerCase() === "v")) {
+                const target = e.target instanceof HTMLElement ? e.target : document.activeElement;
+                if (target instanceof HTMLElement && (target.isContentEditable
+                    || target.closest('input, textarea, select, [role="textbox"], [role="combobox"]'))) return;
+                if (filterOpen) return;
 
-            // optional guardrails
-            if (loading) return;
-            if (filterOpen) return;
-            if (e.altKey || e.shiftKey) return;
+                e.preventDefault();
+                const view = resultView === "video" ? "ranked" : "video";
+                setResultView(view);
+                setVisibleCount(view === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);
+                return;
+            }
+            if (!(e.ctrlKey || e.metaKey) || e.key !== "Enter" || e.altKey || e.shiftKey) return;
+            if (loading || filterOpen || (!isPrak && modalityOptions.length === 0)) return;
 
             e.preventDefault();
             onSearchRef.current();
@@ -507,7 +513,7 @@ export function SearchCard() {
 
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    }, [loading, filterOpen]);
+    }, [loading, filterOpen, isPrak, modalityOptions.length, resultView, setResultView]);
 
     const runPrak = async (refine: boolean) => {
         const previous = prakSession;
@@ -768,7 +774,7 @@ export function SearchCard() {
                                     </div>}
                                     <label className="sc-viewSelect">
                                         View
-                                        <select value={resultView} onChange={(event) => {
+                                        <select value={resultView} title="Option / Alt + V outside text fields" aria-keyshortcuts="Alt+V" onChange={(event) => {
                                             const view = event.target.value === "video" ? "video" : "ranked";
                                             setResultView(view);
                                             setVisibleCount(view === "video" ? GROUP_PAGE_SIZE : PAGE_SIZE);

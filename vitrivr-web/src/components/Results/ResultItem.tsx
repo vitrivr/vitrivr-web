@@ -130,7 +130,7 @@ export default function ResultItem(props: ResultItemProps) {
                 }
                 const start = Number.isFinite(props.start) ? Math.max(0, Math.round(props.start * 1000)) : undefined;
                 const end = Number.isFinite(props.end) ? Math.max(0, Math.round(props.end * 1000)) : undefined;
-                const mediaItemName = submissionMediaName(props.mediaItemName, settings.frontendView);
+                const mediaItemName = submissionMediaName(props.mediaItemName, settings.frontendView, settings.dresNaming[settings.frontendView]);
                 if (!mediaItemName) throw new Error("This result has no DRES media item name.");
                 const res = await submitVideo({session, evaluationId, mediaItemName, start, end});
                 notifyDresSubmission(res.data);
