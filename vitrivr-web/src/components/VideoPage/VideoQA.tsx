@@ -1,6 +1,5 @@
 import {useEffect, useMemo, useRef, useState, type FormEvent} from "react";
 import {useInteractionSnapshot} from "../../logging/react.ts";
-import DisclosureSection from "./DisclosureHeader.tsx";
 import {retrieval} from "../../vitirvr/api/client.ts";
 import {buildVideoQaQuery, executeVideoQa, videoQaErrorMessage, videoQaIdFromPath, VIDEO_QA_SCHEMA} from "../../lib/videoQa.ts";
 
@@ -10,7 +9,7 @@ type DayFilter = {id: number; days: string; start: string; end: string};
 /** The parent keys this panel by the active recording, cancelling stale questions on navigation. */
 export default function VideoQA({file}: {file: string}) {
     const currentId = videoQaIdFromPath(file);
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(false);
     const [question, setQuestion] = useState("");
     const [scope, setScope] = useState<"current" | "custom">(currentId ? "current" : "custom");
     const [videoIds, setVideoIds] = useState("");
@@ -63,28 +62,23 @@ export default function VideoQA({file}: {file: string}) {
         }
     }
 
-    const recordingLabel = currentId ? currentId.split("_").map((part, index) => index === 2 ? `${part}:00` : part).join(" · ") : "Custom selection";
-
-    return <div className="vp-qaPanel" data-log-area="video-qa"><DisclosureSection open={open} onToggle={() => setOpen(value => !value)} title="Video QA" loading={loading && !open}>
+    return <div className="vp-qaPanel" data-log-area="video-qa">
         <form className="vp-qaForm" onSubmit={event => void ask(event)} aria-busy={loading}>
-            <div className="vp-qaContext">
-                <p>{scope === "current" ? recordingLabel : "Custom selection"}</p>
-            </div>
             <div className="vp-qaWorkspace">
             <div className="vp-qaComposer">
             <div className="vp-qaQuestionRow">
-                <label className="vp-qaField vp-qaQuestion">Question
-                    <textarea rows={2} value={question} onChange={event => setQuestion(event.target.value)} required disabled={loading}
+                <label className="vp-qaField vp-qaQuestion">
+                    <textarea aria-label="Video QA question" rows={1} value={question} onChange={event => setQuestion(event.target.value)} required disabled={loading}
                         placeholder="Ask about this recording…"/>
                 </label>
                 <div className="vp-qaActions">
-                    <button className="btn btn-primary" type="submit" data-log-action="qa.submit" disabled={loading}>{loading ? "Answering…" : "Ask Video QA"}</button>
+                    <button className="btn btn-primary" type="submit" data-log-action="qa.submit" disabled={loading}>{loading ? "Answering…" : "Ask"}</button>
                     {loading && <button className="btn" type="button" data-log-action="qa.cancel" onClick={() => activeRequest.current?.abort()}>Cancel</button>}
                 </div>
             </div>
             <fieldset className="vp-qaFields" disabled={loading}>
-                <details className="vp-qaOptions">
-                <summary>Options</summary>
+                <details className="vp-qaOptions" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
+                <summary>Video QA settings</summary>
                 <div className="vp-qaSelection">
                 <label className="vp-qaField">Ask about
                     <select value={scope} onChange={event => setScope(event.target.value as "current" | "custom")}>
@@ -148,5 +142,5 @@ export default function VideoQA({file}: {file: string}) {
             </section>}
             </div>
         </form>
-    </DisclosureSection></div>;
+    </div>;
 }

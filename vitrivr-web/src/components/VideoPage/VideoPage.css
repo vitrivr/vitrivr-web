@@ -7,8 +7,15 @@
 .vp-playback { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 3fr) minmax(150px, 1fr); gap: 20px; align-items: center; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 3px 14px #003b4610; min-width: 0; }
 .vp-mainPlayer, .vp-hour { min-width: 0; }
 .vp-mainPlayer > video { border: 1px solid var(--line); }
+.vp-playback:not(.vp-playback--vbs) .vp-mainPlayer > video { max-height: 46dvh; }
 .vp-playerHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.vp-playerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.vp-playerActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.vp-playerActions .vp-qaPanel, .vp-playerActions .vp-qaForm, .vp-playerActions .vp-qaWorkspace, .vp-playerActions .vp-qaComposer { display: contents; }
+.vp-playerActions .vp-qaQuestionRow { flex: 1 1 200px; align-items: center; gap: 8px; }
+.vp-playerActions .vp-qaQuestion textarea { min-height: 38px; max-height: 120px; }
+.vp-playerActions .vp-qaFields { order: 1; flex: 1 1 100%; }
+.vp-playerActions .vp-qaAnswer { order: 2; flex: 1 1 100%; }
+.vp-playerActions:has(.vp-qaPanel) > .vp-submission { margin-left: 0; }
 .vp-submission { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; margin-left: auto; }
 .vp-answer { width: 240px; max-width: 100%; min-height: 40px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--text); }
 .vp-answer::placeholder { color: var(--text-3); }
@@ -56,7 +63,9 @@
 .vp-hour .vp-message { padding: 10px; }
 @media (max-width: 1100px) {
     .vp-playback { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-    .vp-mainPlayer { grid-column: 1 / -1; grid-row: 1; }
+    .vp-mainPlayer { grid-column: 1 / -1; grid-row: auto; }
+    .vp-hour--previous { grid-column: 1; grid-row: 2; }
+    .vp-hour--next { grid-column: 2; grid-row: 2; }
 }
 @media (max-width: 680px) {
     .vp-heading { flex-direction: column; align-items: start; gap: 14px; }

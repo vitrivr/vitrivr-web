@@ -271,8 +271,9 @@ export default function VideoPage() {
                         {nnError && <div className="vp-message vp-message--error" role="alert">{nnError}</div>}
                         <div className="vp-playerActions">
                             <button type="button" className="btn btn-primary" onClick={onSearch} disabled={searching}>
-                                {searching ? nnStage || "Searching NN…" : "Search NN"}
+                                {searching ? nnStage || "Finding similar frames…" : "Find similar frames"}
                             </button>
+                            {isCastleView && <VideoQA key={`${schema}:${id}:${activeMp4Src}`} file={activeMp4Src || mediaItemName || ""}/>}
                             <form className="vp-submission" aria-label="Submit answer to DRES"
                                 onSubmit={event => { event.preventDefault(); void onSubmit(); }}>
                                 {kind === "text" && <input className="vp-answer" aria-label="DRES text answer"
@@ -288,7 +289,6 @@ export default function VideoPage() {
                         <HourGallery src={hourlySrc} direction="next" offset={hourOffset} onPrevious={goPreviousHour} onNext={goNextHour} recordings={recordings}/>
                     </div>}
                 </section>
-                {isCastleView && <VideoQA key={`${schema}:${id}:${activeMp4Src}`} file={activeMp4Src || mediaItemName || ""}/>}
                 {isCastleView && <POVs src={activeMp4Src || activeVideoSrc} timestamp={playbackTimestamp}
                     recordings={recordings} catalogueLoading={recordingsLoading} catalogueError={recordingsError}/>}
                 <NearestNeighbor id={id} queryVector={nnVector} onResultsChange={setHasNeighbors}/>
