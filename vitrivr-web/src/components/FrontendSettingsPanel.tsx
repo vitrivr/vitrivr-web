@@ -74,7 +74,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const draft: FrontendSettings = {...base, frontendView, dresNaming, bayesianRefinementEnabled: bayesianRefinement, enabledQueryTypes: queryTypes, enabledResourceFilters: resourceFilters,
-            vlmReranking: {model: String(data.get("vlmModel")) as VlmRerankingPreferences["model"], candidateLimit: Number(data.get("vlmCandidateLimit"))},
+            vlmReranking: frontendView === "VBS" ? {model: String(data.get("vlmModel")) as VlmRerankingPreferences["model"], candidateLimit: Number(data.get("vlmCandidateLimit"))} : base.vlmReranking,
             visualDeduplication: {...base.visualDeduplication, enabled: data.has("dedupEnabled"), field: String(data.get("dedupField") ?? "")}};
         for (const {key} of listOptions) if (data.has(key)) draft[key] = String(data.get(key) ?? "").split(/[\n,]/).map(value => value.trim()).filter(Boolean);
         for (const {key} of numericOptions) draft.visualDeduplication[key] = Number(data.get(key));
@@ -140,15 +140,19 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
             <p className="fs-note">Example: <code>{namingExample}</code></p>
         </details>
         {/*<p className="fs-note">{frontendView === "VBS" ? "PraK retrieval and Bayesian refinement are disabled in VBS. " : ""}Preferences are saved in this browser. The backend schema is selected separately above.</p>*/}
-        <div className="fs-grid">
-            <Choices label="Query types" options={queryTypeOptions} value={queryTypes} onChange={setQueryTypes} disabledValues={frontendView === "VBS" ? ["prak"] : []}/>
-            {frontendView === "CASTLE" && <Choices label="Resource filters" options={resourceOptions} value={resourceFilters} onChange={setResourceFilters}/>}
-        </div>
-        <p className="fs-note">Use the arrows to change display order. The first enabled query type is the default for new blocks.</p>
-        <section className="fs-section" aria-label="Relevance feedback">
-            <label className="fs-check"><input type="checkbox" name="bayesianRefinementEnabled" checked={frontendView === "CASTLE" && bayesianRefinement} disabled={frontendView === "VBS"} onChange={event => setBayesianRefinement(event.target.checked)}/>Enable Bayesian refinement</label>
-            <p className="fs-note">Mark results as relevant and refine their ranking with PraK Bayes. Applies to new searches. Changing this setting clears the current feedback session.</p>
-        </section>
+        <details className="fs-section" open>
+            <summary>Query</summary>
+            <div className={`fs-grid fs-queryOptions${frontendView === "VBS" ? " fs-queryOptions--single" : ""}`}>
+                <Choices label="Modalities" options={queryTypeOptions.filter(option => frontendView === "VBS" || option.value !== "vlm")} value={queryTypes.filter(value => frontendView === "VBS" || value !== "vlm")} onChange={values => setQueryTypes(frontendView === "CASTLE" && queryTypes.includes("vlm") ? [...values, "vlm"] : values)} disabledValues={frontendView === "VBS" ? ["prak"] : []}/>
+                {frontendView === "CASTLE" && <Choices label="Resource filters" options={resourceOptions} value={resourceFilters} onChange={setResourceFilters}/>}
+            </div>
+            <p className="fs-note">Use the arrows to reorder. The first enabled modality is the default for new blocks.</p>
+            <fieldset className="fs-choices fs-refinement">
+                <legend>Refinement</legend>
+                <label className="fs-check"><input type="checkbox" name="bayesianRefinementEnabled" checked={frontendView === "CASTLE" && bayesianRefinement} disabled={frontendView === "VBS"} onChange={event => setBayesianRefinement(event.target.checked)}/>Enable Bayesian refinement</label>
+                <p className="fs-note">{frontendView === "VBS" ? "Available in CASTLE view." : "Mark results as relevant to refine their ranking with PraK Bayes. Changing this setting clears the current feedback session and applies to new searches."}</p>
+            </fieldset>
+        </details>
         <details className="fs-section">
             <summary>{frontendView === "CASTLE" ? "People, days and cameras" : "Recognized people"}</summary>
             <p className="fs-note">One value per line, or separate values with commas. Keep spelling and case consistent with the backend.</p>
@@ -158,7 +162,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
                 </label>)}
             </div>
         </details>
-        <details className="fs-section" open>
+        {frontendView === "VBS" && <details className="fs-section" open>
             <summary>VLM reranking</summary>
             <div className="fs-grid">
                 <label className="fs-field">Reranking model
@@ -170,7 +174,7 @@ export default function FrontendSettingsPanel({onClose, schemaSelector}: {onClos
                     <input type="number" name="vlmCandidateLimit" required min="1" max="1000" step="1" defaultValue={base.vlmReranking.candidateLimit}/>
                 </label>
             </div>
-        </details>
+        </details>}
         <details className="fs-section" open>
             <summary>Visual deduplication</summary>
             <label className="fs-check"><input type="checkbox" name="dedupEnabled" defaultChecked={base.visualDeduplication.enabled}/>Enable visual deduplication</label>

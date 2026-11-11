@@ -18,6 +18,7 @@ export function enabledQueryModalities(schema = "", configured: readonly string[
     const restricted = ["LHE", "MVK"].includes(schema.toUpperCase());
     return [...new Set(configured)].flatMap(value => {
         const option = queryTypeOptions.find(option => option.value === value);
+        if (value === "vlm" && frontendView === "CASTLE") return [];
         if (!option || (option.value === "prak" && (schema.toLowerCase() !== "castle" || frontendView === "VBS")) || (restricted && (value === "asr" || value === "emotions"))) return [];
         return [{...option}];
     });

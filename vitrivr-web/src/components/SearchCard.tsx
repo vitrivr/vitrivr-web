@@ -762,7 +762,7 @@ export function SearchCard() {
                                 </div>
 
                                 <div className="sc-resultsControls">
-                                    <VlmRerankingToggle value={vlmReranking} onChange={setVlmReranking}/>
+                                    {settings.frontendView === "VBS" && <VlmRerankingToggle value={vlmReranking} onChange={setVlmReranking}/>}
                                     {activeFeedbackSession && <div className="sc-feedbackActions">
                                         <span role="status">{activeFeedbackSession.selectedIds.length} relevant{activeFeedbackSession.ranking === "bayes" ? " · Bayesian ranking" : ""}</span>
                                         <button className="btn btn-primary" type="button" disabled={loading || !activeFeedbackSession.selectedIds.length || !feedbackReady}
@@ -804,7 +804,7 @@ export function SearchCard() {
                                     />
                                 </div>
                                 </div>
-                                <VlmReranking value={vlmReranking} onChange={setVlmReranking} candidateCount={items.length}/>
+                                {settings.frontendView === "VBS" && <VlmReranking value={vlmReranking} onChange={setVlmReranking} candidateCount={items.length}/>}
                             </div>
 
                             <div className="panel__body stack">
