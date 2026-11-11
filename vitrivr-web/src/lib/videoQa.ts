@@ -1,6 +1,7 @@
 export const VIDEO_QA_SCHEMA = "castle";
 // The service allows three minutes; leave a little time for the engine response.
 export const VIDEO_QA_TIMEOUT_MS = 190_000;
+export type VideoQaMediaType = "frames" | "transcript";
 
 export type VideoQaDayFilter = {days: string[]; time_start?: string; time_end?: string};
 export type VideoQaSelection = {
@@ -35,9 +36,10 @@ function scopeTime(value?: string): string | undefined {
     return `day${match[1]}:${match[2].padStart(2, "0")}`;
 }
 
-export function buildVideoQaQuery(question: string, selection: VideoQaSelection, maxFrames = 8) {
+export function buildVideoQaQuery(question: string, selection: VideoQaSelection, maxFrames = 8, mediaType: VideoQaMediaType = "frames") {
     if (!question.trim()) throw new Error("Enter a question for Video QA.");
-    if (!Number.isInteger(maxFrames) || maxFrames < 1 || maxFrames > 128) throw new Error("Frames per video must be a whole number between 1 and 128.");
+    if (mediaType !== "frames" && mediaType !== "transcript") throw new Error("Choose frames or transcription for Video QA.");
+    if (mediaType === "frames" && (!Number.isInteger(maxFrames) || maxFrames < 1 || maxFrames > 128)) throw new Error("Frames per video must be a whole number between 1 and 128.");
     const videoIds = unique(selection.videoIds);
     if (videoIds.some(id => !/^day[1-9]\d*_[A-Za-z0-9]+_([01]\d|2[0-3])$/.test(id))) throw new Error("Video IDs must use dayN_Camera_HH, for example day2_Bjorn_11.");
     const cameras = unique(selection.cameras?.map(camera => camera.normalize("NFD").replace(/\p{M}/gu, "")));
@@ -55,7 +57,8 @@ export function buildVideoQaQuery(question: string, selection: VideoQaSelection,
         return {days, ...(start ? {time_start: start} : {}), ...(end ? {time_end: end} : {})};
     }) ?? [];
     if (!videoIds.length && !cameras.length && !timeStart && !timeEnd && !filters.length) throw new Error("Select at least one video, camera, time range or day filter.");
-    const parameters: Record<string, string> = {media: JSON.stringify({type: "frames", max_frames_per_video: maxFrames})};
+    const parameters: Record<string, string> = {media: JSON.stringify(mediaType === "frames"
+        ? {type: "frames", max_frames_per_video: maxFrames} : {type: "transcript"})};
     if (videoIds.length) parameters.video_id = JSON.stringify(videoIds);
     // Video IDs take priority; do not send an ignored camera selection.
     else if (cameras.length) parameters.camera_filter = JSON.stringify(cameras);

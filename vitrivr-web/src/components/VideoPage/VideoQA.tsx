@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useRef, useState, type FormEvent} from "react";
 import {useInteractionSnapshot} from "../../logging/react.ts";
 import {retrieval} from "../../vitirvr/api/client.ts";
-import {buildVideoQaQuery, executeVideoQa, videoQaErrorMessage, videoQaIdFromPath, VIDEO_QA_SCHEMA} from "../../lib/videoQa.ts";
+import {buildVideoQaQuery, executeVideoQa, videoQaErrorMessage, videoQaIdFromPath, VIDEO_QA_SCHEMA, type VideoQaMediaType} from "../../lib/videoQa.ts";
 
 const list = (value: string) => value.split(/[,\n]/).map(item => item.trim()).filter(Boolean);
 type DayFilter = {id: number; days: string; start: string; end: string};
@@ -19,12 +19,13 @@ export default function VideoQA({file}: {file: string}) {
     const [filters, setFilters] = useState<DayFilter[]>([]);
     const nextFilterId = useRef(0);
     const [frames, setFrames] = useState("8");
+    const [mediaType, setMediaType] = useState<VideoQaMediaType>("frames");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [answer, setAnswer] = useState<{question: string; text: string} | null>(null);
     const activeRequest = useRef<AbortController | null>(null);
     useInteractionSnapshot("qa.form", useMemo(() => ({recordingId: currentId, question, scope, videoIds, cameras,
-        timeStart, timeEnd, filters, frames, open}), [currentId, question, scope, videoIds, cameras, timeStart, timeEnd, filters, frames, open]));
+        timeStart, timeEnd, filters, frames, mediaType, open}), [currentId, question, scope, videoIds, cameras, timeStart, timeEnd, filters, frames, mediaType, open]));
     useInteractionSnapshot("qa.state", useMemo(() => ({recordingId: currentId, loading, error, answer}), [currentId, loading, error, answer]));
 
     useEffect(() => () => {
@@ -40,7 +41,7 @@ export default function VideoQA({file}: {file: string}) {
             query = buildVideoQaQuery(question, scope === "current" ? {videoIds: currentId ? [currentId] : []} : {
                 videoIds: list(videoIds), cameras: list(cameras), timeStart, timeEnd,
                 additionalFilters: filters.map(filter => ({days: list(filter.days), time_start: filter.start, time_end: filter.end})),
-            }, Number(frames));
+            }, Number(frames), mediaType);
         } catch (err) { setError(videoQaErrorMessage(err)); return; }
         const controller = new AbortController();
         activeRequest.current = controller;
@@ -79,7 +80,17 @@ export default function VideoQA({file}: {file: string}) {
             <fieldset className="vp-qaFields" disabled={loading}>
                 <details className="vp-qaOptions" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
                 <summary>Video QA settings</summary>
-                <div className="vp-qaSelection">
+                <div className="vp-qaSettingsGrid">
+                <div className="vp-qaSettingGroup">
+                <label className="vp-qaField">Answer using
+                    <select value={mediaType} onChange={event => setMediaType(event.target.value as VideoQaMediaType)}>
+                        <option value="frames">Frames</option>
+                        <option value="transcript">Transcription</option>
+                    </select>
+                </label>
+                <p className="sc-personHint">{mediaType === "frames" ? "Ask about what is visible in the video." : "Ask about what is said or discussed in the recording."}</p>
+                </div>
+                <div className="vp-qaSettingGroup">
                 <label className="vp-qaField">Ask about
                     <select value={scope} onChange={event => setScope(event.target.value as "current" | "custom")}>
                         <option value="current" disabled={!currentId}>Current recording{currentId ? ` · ${currentId}` : " (unavailable)"}</option>
@@ -87,7 +98,8 @@ export default function VideoQA({file}: {file: string}) {
                     </select>
                 </label>
                 {scope === "current" && <p className="sc-personHint">Uses the whole hourly recording currently shown.</p>}
-                {scope === "custom" && <div className="vp-qaSelection">
+                </div>
+                {scope === "custom" && <div className="vp-qaSelection vp-qaCustomSelection">
                     <label className="vp-qaField">Video IDs
                         <textarea rows={2} value={videoIds} onChange={event => setVideoIds(event.target.value)} placeholder="day2_Bjorn_11, day2_Klaus_11"/>
                     </label>
@@ -123,9 +135,9 @@ export default function VideoQA({file}: {file: string}) {
                         <button className="btn" type="button" onClick={() => setFilters(previous => [...previous, {id: nextFilterId.current++, days: "", start: "", end: ""}])}>Add day filter</button>
                     </details>
                 </div>}
-                    <label className="vp-qaField">Maximum frames per video
+                    {mediaType === "frames" && <label className="vp-qaField">Maximum frames per video
                         <input type="number" min="1" max="128" step="1" required value={frames} onChange={event => setFrames(event.target.value)}/>
-                    </label>
+                    </label>}
                 </div>
                 </details>
             </fieldset>
@@ -137,7 +149,8 @@ export default function VideoQA({file}: {file: string}) {
                 </div> : error ? <div className="vp-message vp-message--error" role="alert">{error}</div> : answer ? <>
                     <h3>Answer</h3>
                     <p className="vp-qaAsked">{answer.question}</p>
-                    <p className="vp-qaAnswerText">{answer.text}</p>
+                    <p className="vp-qaAnswerText">{answer.text.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+                        part.startsWith("**") && part.endsWith("**") ? <strong key={index}>{part.slice(2, -2)}</strong> : part)}</p>
                 </> : null}
             </section>}
             </div>
