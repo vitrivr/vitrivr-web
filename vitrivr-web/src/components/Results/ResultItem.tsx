@@ -128,11 +128,13 @@ export default function ResultItem(props: ResultItemProps) {
                     notifyDres("The active task now expects a video answer. Review this result before submitting again.");
                     return;
                 }
-                const start = Number.isFinite(props.start) ? Math.max(0, Math.round(props.start * 1000)) : undefined;
-                const end = Number.isFinite(props.end) ? Math.max(0, Math.round(props.end * 1000)) : undefined;
+                if (!Number.isFinite(props.start) || !Number.isFinite(props.end) || props.end < props.start) {
+                    throw new Error("This result has no valid segment boundaries for a midpoint submission.");
+                }
+                const midpoint = Math.max(0, Math.round((props.start + (props.end - props.start) / 2) * 1000));
                 const mediaItemName = submissionMediaName(props.mediaItemName, settings.frontendView, settings.dresNaming[settings.frontendView]);
                 if (!mediaItemName) throw new Error("This result has no DRES media item name.");
-                const res = await submitVideo({session, evaluationId, mediaItemName, start, end});
+                const res = await submitVideo({session, evaluationId, mediaItemName, start: midpoint, end: midpoint});
                 notifyDresSubmission(res.data);
             }
         } catch (error) {

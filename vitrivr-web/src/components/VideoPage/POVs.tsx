@@ -81,7 +81,7 @@ function PovGallery({src, timestamp, recordings, catalogueLoading, catalogueErro
                 return group.length > 0 && <div key={kind}>
                     <h4 className="vp-povHeading">{kind === "person" ? "People" : "Rooms"}</h4>
                     <div className="vp-povGrid">
-                        {group.map(video => <ResultItem key={video.id} id={video.id} kind="video" posterOnly start={timestamp} end={0}
+                        {group.map(video => <ResultItem key={video.id} id={video.id} kind="video" posterOnly start={timestamp} end={timestamp}
                             preload="none" controls={false} mediaClassName="ri-media" mediaItemName={mediaNameFromPath(video.file, "CASTLE") ?? ""}
                             getPosterSrc={() => previews[video.id] || pendingPoster} getVideoSrc={() => video.stream || video.file}
                             getFallbackVideoSrc={() => video.file} onBeforeOpen={() => savePovBeforeOpen(video)} caption={video.source}/>) }
