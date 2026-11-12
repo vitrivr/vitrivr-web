@@ -25,6 +25,7 @@ export class WorkerEventStore implements EventStore {
                 if (!request) return;
                 this.pending.delete(data.id); clearTimeout(request.timer);
                 if (data.error) request.reject(new Error(data.error)); else request.resolve(data.value);
+                if (!data.error && !this.status.captureError) this.sendBuffered();
             };
             this.worker.onerror = () => this.fail("Logging worker stopped. Recording is paused; reload after downloading any available logs.");
             this.worker.onmessageerror = () => this.fail("Logging worker communication failed. Recording is paused.");
@@ -66,39 +67,46 @@ export class WorkerEventStore implements EventStore {
     }
     capture(event: InteractionEvent, snapshotKey?: string): void {
         if (this.status.captureError) throw new Error(this.status.captureError);
-        if (this.pending.size >= 256) { this.fail("Recording paused: the worker cannot keep up. Some subsequent interactions are not recorded. Retry logging after reducing load."); throw new Error(this.status.captureError!); }
         // These DOM payloads contain owned primitive snapshots, never live API responses.
         // Preserve every event and its original timestamp; reduce messages, not events.
         if (!snapshotKey && /^(ui\.|media\.|result\.)/.test(event.action)) {
+            if (this.buffered.length >= 8192) {
+                this.fail("Recording paused: the logging transport buffer is full. Some subsequent interactions are not recorded. Download available logs and retry after reducing load.");
+                throw new Error(this.status.captureError!);
+            }
             this.buffered.push(event);
             if (this.buffered.length >= 128) this.sendBuffered();
             else if (!this.batchTimer) this.batchTimer = setTimeout(() => this.sendBuffered(), 16);
             return;
         }
-        this.sendBuffered();
+        if (this.pending.size >= 256) { this.fail("Recording paused: the worker cannot keep up. Some subsequent interactions are not recorded. Retry logging after reducing load."); throw new Error(this.status.captureError!); }
+        this.sendBuffered(true);
         // postMessage snapshots data immediately; no mutable response references are retained here.
         void this.request({type: "capture", event, snapshotKey}).catch(error => this.fail(error.message));
     }
-    private sendBuffered() {
+    private sendBuffered(force = false) {
         if (this.batchTimer) clearTimeout(this.batchTimer);
         this.batchTimer = undefined;
-        if (!this.buffered.length) return;
-        const events = this.buffered;
-        this.buffered = [];
-        void this.request({type: "captureBatch", events}).catch(error => this.fail(error.message));
+        // Let durable acknowledgements pace normal DOM traffic. Keep every
+        // event while a slow disk is busy instead of filling the request map.
+        while (this.buffered.length && (force || this.pending.size < 16)) {
+            const events = this.buffered.splice(0, 128);
+            void this.request({type: "captureBatch", events}).catch(error => this.fail(error.message));
+        }
     }
     async append(events: InteractionEvent[]) { for (const event of events) this.capture(event); await this.flush(); }
-    async flush() { this.sendBuffered(); await this.request({type: "flush"}); }
-    async read(sessionId?: string) { this.sendBuffered(); return await this.request({type: "read", sessionId}) as InteractionEvent[]; }
-    async exportBlob(sessionId: string | undefined, format: "json" | "jsonl" | "rivals") { this.sendBuffered(); return await this.request({type: "export", sessionId, format}) as Blob; }
+    async flush() { this.sendBuffered(true); await this.request({type: "flush"}); }
+    async read(sessionId?: string) { this.sendBuffered(true); return await this.request({type: "read", sessionId}) as InteractionEvent[]; }
+    async exportBlob(sessionId: string | undefined, format: "json" | "jsonl" | "rivals") { this.sendBuffered(true); return await this.request({type: "export", sessionId, format}) as Blob; }
     async exportSession(sessionId: string, format: "json" | "jsonl" | "rivals") {
-        this.sendBuffered();
+        this.sendBuffered(true);
         return await this.request({type: "exportSession", sessionId, format}) as SessionExport;
     }
     async retry() {
         await this.request({type: "retry"});
         this.localError = null;
         this.update({captureError: null});
+        this.sendBuffered();
     }
     dispose() { if (this.batchTimer) clearTimeout(this.batchTimer); this.batchTimer = undefined; this.buffered = []; this.worker?.terminate(); this.worker = null; this.fail("Logging worker was restarted."); }
 }
