@@ -56,7 +56,7 @@ worker.onmessage = ({data}) => {
                 if (!memoryOnly) await delivery.flush();
                 break;
             case "flush": await delivery.flush(); break;
-            case "retry": await delivery.retry(); break;
+            case "retry": await delivery.retry(false); break;
             case "read": value = await localEvents(data.sessionId); break;
             case "export": value = new Blob([serializeLog(await localEvents(data.sessionId), data.format)], {type: data.format === "jsonl" ? "application/x-ndjson" : "application/json"}); break;
             case "exportSession": {

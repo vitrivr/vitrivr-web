@@ -47,7 +47,9 @@ export class WorkerEventStore implements EventStore {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 this.pending.delete(id);
-                reject(new Error("Logging worker timed out. Check logging status before continuing."));
+                const operation = command.type === "capture" || command.type === "captureBatch" || command.type === "flush"
+                    ? "saving local events" : command.type === "init" ? "opening local storage" : command.type;
+                reject(new Error(`Logging worker timed out while ${operation} (${this.pending.size} other requests pending). Check logging status before continuing.`));
             }, command.type === "export" || command.type === "exportSession" || command.type === "read" ? 120_000 : 30_000);
             this.pending.set(id, {resolve, reject, timer});
             try { this.worker!.postMessage({...command, id}); }

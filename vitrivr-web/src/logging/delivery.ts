@@ -113,9 +113,12 @@ export class LogDelivery {
             this.emit();
         }
     }
-    async retry() {
+    async retry(waitForUploads = true) {
         this.retryAt = 0;
-        await this.pump();
+        // The UI's worker reply must not wait for an entire network backlog.
+        // Upload errors are reported separately and retained batches retry later.
+        if (waitForUploads) await this.pump();
+        else void this.pump();
         await this.flush();
         this.status.captureError = null; this.status.storageError = null;
         this.emit();
