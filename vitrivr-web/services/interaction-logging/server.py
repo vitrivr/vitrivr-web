@@ -160,8 +160,11 @@ class LogStore:
 
     @staticmethod
     def bodies(db, session_id, operator=None):
-        query = "SELECT body FROM events WHERE session_id=?"
-        params = [session_id]
+        query = "SELECT body FROM events WHERE 1=1"
+        params = []
+        if session_id is not None:
+            query += " AND session_id=?"
+            params.append(session_id)
         if operator is not None:
             query += " AND operator_id=?"
             params.append(operator)
@@ -176,7 +179,8 @@ def export_chunks(db, session_id, format):
             yield body + "\n"
         return
     if format == "json":
-        header = {"format": "vitrivr-interaction-log", "version": 1, "exportedAt": datetime.now(timezone.utc).isoformat(), "sessions": [session_id]}
+        sessions = [session_id] if session_id is not None else [row[0] for row in db.execute("SELECT DISTINCT session_id FROM events ORDER BY session_id")]
+        header = {"format": "vitrivr-interaction-log", "version": 1, "exportedAt": datetime.now(timezone.utc).isoformat(), "sessions": sessions}
         yield encoded(header)[:-1] + ',"events":['
         for i, body in enumerate(LogStore.bodies(db, session_id)):
             yield ("," if i else "") + body
@@ -185,7 +189,9 @@ def export_chunks(db, session_id, format):
     categories = {}
     operators = {}
     # Two streaming passes retain only hierarchy/operator names, not event payloads.
-    for category, action, operator in db.execute("SELECT category,action,operator_id FROM events WHERE session_id=? ORDER BY timestamp,page_id,sequence,id", (session_id,)):
+    scope = " WHERE session_id=?" if session_id is not None else ""
+    params = (session_id,) if session_id is not None else ()
+    for category, action, operator in db.execute("SELECT category,action,operator_id FROM events" + scope + " ORDER BY timestamp,page_id,sequence,id", params):
         categories.setdefault(category, set()).add(action)
         operators.setdefault(operator, None)
     hierarchy = [{"Name": name, "Visualize": True, "Children": [
