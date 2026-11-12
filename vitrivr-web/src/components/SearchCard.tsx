@@ -367,10 +367,13 @@ export function SearchCard() {
     const loggingEnabled = useLoggingEnabled();
     useEffect(() => {
         if (!loggingEnabled) return;
-        // Read only IDs/ranks from the committed DOM. This captures the actual
+        // Read IDs, ranks and video times from the committed DOM. This captures the actual
         // filtered/grouped/paginated order without copying vectors or layout.
+        const seconds = (value: string | undefined) => value !== undefined && value.trim() !== "" && Number.isFinite(Number(value))
+            ? Number(value) : undefined;
         const rendered = [...resultLogRoot.current?.querySelectorAll<HTMLElement>(".sc-resultsGrid [data-log-result-id]") ?? []]
             .map(node => ({id: node.dataset.logResultId, mediaName: node.dataset.logMediaName,
+                startSeconds: seconds(node.dataset.logStart), endSeconds: seconds(node.dataset.logEnd),
                 frameRank: Number(node.dataset.logFrameRank) || undefined, videoRank: Number(node.dataset.logVideoRank) || undefined,
                 positionInGroup: Number(node.dataset.logPosition) || undefined,
                 groupPosition: Number(node.closest<HTMLElement>("[data-log-video-group-rank]")?.dataset.logVideoGroupRank) || undefined}));
