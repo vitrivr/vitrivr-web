@@ -14,6 +14,8 @@ export class LogDelivery {
     status: DeliveryStatus = {...initialDeliveryStatus};
     private queue: {event: InteractionEvent; bytes: number}[] = [];
     private queueBytes = 0;
+    private capturedEvents = 0;
+    private savedEvents = 0;
     private snapshots = new Map<string, string>();
     private saving: Promise<void> | null = null;
     private uploading: Promise<void> | null = null;
@@ -46,16 +48,21 @@ export class LogDelivery {
         }
         if (snapshotKey) this.snapshots.set(snapshotKey, serialized);
         this.queue.push({event: prepared, bytes}); this.queueBytes += bytes;
+        this.capturedEvents++;
     }
     async flush(): Promise<void> {
-        if (this.saving) return this.saving;
-        this.saving = this.save();
-        try { await this.saving; } finally { this.saving = null; }
+        const target = this.capturedEvents;
+        while (this.savedEvents < target) {
+            if (!this.saving) this.saving = this.save(this.queue.length);
+            const saving = this.saving;
+            try { await saving; } finally { if (this.saving === saving) this.saving = null; }
+        }
     }
-    private async save() {
-        while (this.queue.length) {
+    private async save(remaining: number) {
+        while (remaining > 0) {
             let length = 0, bytes = 0;
             for (const queued of this.queue) {
+                if (length >= remaining) break;
                 if (length && (bytes + queued.bytes > batchBytes || length >= 128)) break;
                 length++; bytes += queued.bytes;
             }
@@ -66,6 +73,8 @@ export class LogDelivery {
             try {
                 await this.outbox.put(batch, this.config.maxBytes);
                 this.queue.splice(0, length); this.queueBytes -= bytes;
+                this.savedEvents += length;
+                remaining -= length;
                 Object.assign(this.status, await this.outbox.stats(), {lastSavedAt: Date.now(), storageError: null});
                 this.emit();
             } catch (error) {
