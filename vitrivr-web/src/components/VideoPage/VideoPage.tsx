@@ -225,9 +225,11 @@ export default function VideoPage() {
                     return;
                 }
                 const tSec = videoRef.current?.currentTime ?? start;
-                const tMs = Number.isFinite(tSec) ? Math.round(tSec * 1000) : undefined;
+                if (!Number.isFinite(tSec)) throw new Error("The current video timestamp is unavailable for submission.");
+                const tMs = Math.max(0, Math.round(tSec * 1000));
                 const videoName = submissionMediaName(isCastleView ? activeMp4Src || mediaItemName || src : mediaItemName || activeMp4Src || src, settings.frontendView, settings.dresNaming[settings.frontendView]);
-                const res = await submitVideo({session, evaluationId, mediaItemName: videoName, start: tMs, end: tMs});
+                const res = await submitVideo({session, evaluationId, mediaItemName: videoName,
+                    start: Math.max(0, tMs - 2000), end: tMs + 2000});
                 notifyDresSubmission(res.data);
             }
         } catch (error) {
